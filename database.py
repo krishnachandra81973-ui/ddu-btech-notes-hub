@@ -335,6 +335,17 @@ def delete_user(user_id):
     conn.close()
     return True
 
+def update_user_password(user_id, new_password):
+    conn = get_connection()
+    cursor = conn.cursor()
+    hash_val, salt = hash_password(new_password)
+    cursor.execute("""
+    UPDATE users SET password_hash = ?, salt = ? WHERE id = ?
+    """, (hash_val, salt, user_id))
+    conn.commit()
+    conn.close()
+    return True
+
 # ----------------- Semesters, Subjects, Units -----------------
 
 def get_semesters():

@@ -633,7 +633,8 @@ const Admin = {
                   <tr>
                     <th>Student Name & Email</th>
                     <th>Branch & Sem</th>
-                    <th>Registered At</th>
+                    <th>Joined At (Password Set)</th>
+                    <th>Password Status</th>
                     <th>Account Status</th>
                     <th>Actions</th>
                   </tr>
@@ -646,21 +647,33 @@ const Admin = {
                         <div style="font-size: 0.78rem; color: var(--text-muted);">${escapeHtml(u.email)}</div>
                       </td>
                       <td>
-                        <div>${escapeHtml(u.branch)}</div>
+                        <div>${escapeHtml(u.branch || 'B.Tech CSE')}</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted);">Semester ${u.semester}</div>
                       </td>
-                      <td style="font-size: 0.8rem; color: var(--text-muted);">${u.created_at}</td>
+                      <td style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">
+                        📅 ${u.created_at || 'Recently'}
+                      </td>
+                      <td>
+                        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.25);">
+                          🔒 Salted PBKDF2
+                        </span>
+                      </td>
                       <td>
                         <span style="padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; ${u.is_active ? 'background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald);' : 'background: rgba(239, 68, 68, 0.15); color: var(--accent-rose);'}">
                           ${u.is_active ? 'Active' : 'Disabled'}
                         </span>
                       </td>
                       <td>
-                        <div style="display: flex; gap: 6px;">
-                          <button onclick="Admin.toggleUserActive(${u.id})" class="btn-secondary btn-sm">
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                          <button onclick="Admin.resetStudentPassword(${u.id}, '${escapeHtml(u.full_name)}')" class="btn-primary btn-sm" style="padding: 4px 8px; font-size: 0.75rem;">
+                            🔑 Reset Pass
+                          </button>
+                          <button onclick="Admin.toggleUserActive(${u.id})" class="btn-secondary btn-sm" style="padding: 4px 8px; font-size: 0.75rem;">
                             ${u.is_active ? 'Disable' : 'Enable'}
                           </button>
-                          <button onclick="Admin.deleteStudent(${u.id})" class="btn-outline-danger btn-sm">Delete</button>
+                          <button onclick="Admin.deleteStudent(${u.id})" class="btn-outline-danger btn-sm" style="padding: 4px 8px; font-size: 0.75rem;">
+                            Delete
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1310,6 +1323,31 @@ const Admin = {
       }
     } catch (e) {
       App.toast("Failed to toggle status", "error");
+    }
+  },
+
+  async resetStudentPassword(userId, userName) {
+    const newPass = prompt(`Set new password for student "${userName}" (minimum 6 characters):`);
+    if (!newPass) return;
+    if (newPass.length < 6) {
+      alert("Password must be at least 6 characters long.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/users/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...Auth.getAuthHeaders() },
+        body: JSON.stringify({ user_id: userId, new_password: newPass })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`Success! Password for "${userName}" has been updated to "${newPass}".`);
+        App.toast(`Password updated for ${userName}`, "success");
+      } else {
+        alert("Failed to update password: " + (data.error || "Unknown error"));
+      }
+    } catch (e) {
+      alert("Error: " + e.message);
     }
   },
 
