@@ -34,8 +34,80 @@ const App = {
   },
 
   // ------------------- PWA & Offline Support -------------------
+  isAppInstalled() {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+      || window.navigator.standalone === true 
+      || document.referrer.includes('android-app://')
+      || localStorage.getItem('ddu_pwa_installed') === 'true';
+    return Boolean(isStandalone);
+  },
+
+  updateInstallUi() {
+    const installed = this.isAppInstalled();
+
+    const pwaCard = document.getElementById("pwa-install-card");
+    if (pwaCard) {
+      if (installed) {
+        pwaCard.style.display = "none";
+      } else if (window.deferredPrompt) {
+        pwaCard.style.display = "flex";
+      } else {
+        pwaCard.style.display = "none";
+      }
+    }
+
+    const navBtn = document.getElementById("btn-nav-install");
+    if (navBtn) {
+      if (installed) {
+        navBtn.style.display = "none";
+      } else if (window.deferredPrompt) {
+        navBtn.style.display = "inline-flex";
+      } else {
+        navBtn.style.display = "none";
+      }
+    }
+
+    const bottomInstall = document.getElementById("btn-bottom-install");
+    const bottomUpdates = document.getElementById("btn-bottom-updates");
+    if (bottomInstall && bottomUpdates) {
+      if (installed) {
+        bottomInstall.style.display = "none";
+        bottomUpdates.style.display = "flex";
+      } else {
+        bottomInstall.style.display = "flex";
+        bottomUpdates.style.display = "none";
+      }
+    }
+  },
+
   setupPwa() {
-    // 1. Register Service Worker
+    // 1. Immediately detect if running inside installed standalone app
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true || document.referrer.includes('android-app://')) {
+      localStorage.setItem('ddu_pwa_installed', 'true');
+      console.log('📲 Running in installed standalone PWA mode');
+    }
+
+    // 2. Check modern getInstalledRelatedApps API
+    if ('getInstalledRelatedApps' in navigator) {
+      navigator.getInstalledRelatedApps().then(apps => {
+        if (apps && apps.length > 0) {
+          localStorage.setItem('ddu_pwa_installed', 'true');
+          this.updateInstallUi();
+        }
+      }).catch(() => {});
+    }
+
+    // 3. Listen for display mode changes (e.g. user opens as standalone app)
+    try {
+      window.matchMedia('(display-mode: standalone)').addEventListener('change', (evt) => {
+        if (evt.matches) {
+          localStorage.setItem('ddu_pwa_installed', 'true');
+          this.updateInstallUi();
+        }
+      });
+    } catch(e) {}
+
+    // 4. Register Service Worker
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("/sw.js")
@@ -48,42 +120,41 @@ const App = {
       });
     }
 
-    // 2. Capture beforeinstallprompt event
+    // 5. Capture beforeinstallprompt event
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       window.deferredPrompt = e;
       console.log("📲 [PWA] beforeinstallprompt captured.");
-
-      const navBtn = document.getElementById("btn-nav-install");
-      if (navBtn) navBtn.style.display = "inline-flex";
-
-      const pwaCard = document.getElementById("pwa-install-card");
-      if (pwaCard) pwaCard.style.display = "flex";
-
-      const bottomBtn = document.getElementById("btn-bottom-install");
-      if (bottomBtn) bottomBtn.style.display = "flex";
+      this.updateInstallUi();
     });
 
-    // 3. Listen for successful app installation
+    // 6. Listen for successful app installation
     window.addEventListener("appinstalled", () => {
       console.log("🎉 [PWA] App successfully installed on device!");
+      localStorage.setItem("ddu_pwa_installed", "true");
       window.deferredPrompt = null;
+      this.updateInstallUi();
       App.toast("🎉 DDU B.Tech Notes App installed successfully!", "success");
-
-      const navBtn = document.getElementById("btn-nav-install");
-      if (navBtn) navBtn.style.display = "none";
-
-      const pwaCard = document.getElementById("pwa-install-card");
-      if (pwaCard) pwaCard.style.display = "none";
     });
 
-    // 4. Global window.installPwa function callable from buttons
+    // 7. Initial UI sync
+    this.updateInstallUi();
+
+    // 8. Global window.installPwa function callable from buttons
     window.installPwa = () => {
+      if (this.isAppInstalled()) {
+        App.toast("✅ App is already installed on your device!", "info");
+        this.updateInstallUi();
+        return;
+      }
+
       if (window.deferredPrompt) {
         window.deferredPrompt.prompt();
         window.deferredPrompt.userChoice.then((choiceResult) => {
           if (choiceResult.outcome === "accepted") {
             console.log("User accepted PWA installation prompt");
+            localStorage.setItem("ddu_pwa_installed", "true");
+            this.updateInstallUi();
             App.toast("Installing DDU B.Tech Notes App...", "success");
           } else {
             console.log("User dismissed PWA installation prompt");
@@ -338,7 +409,7 @@ const App = {
           </div>
 
           <!-- PWA Install Promotional Card -->
-          <div id="pwa-install-card" class="pwa-install-card">
+          <div id="pwa-install-card" class="pwa-install-card" style="display: none;">
             <div class="pwa-install-info">
               <div class="pwa-install-icon-wrapper">
                 <img src="/static/icon-192.png" alt="DDU Notes App" class="pwa-install-logo">
@@ -726,6 +797,9 @@ const App = {
         }
       }
     } catch (e) {}
+    
+    // Sync PWA install state on home render
+    this.updateInstallUi();
   },
 
   // ------------------- 2. Semesters Overview -------------------
