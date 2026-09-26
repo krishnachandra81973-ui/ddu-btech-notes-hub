@@ -24,9 +24,33 @@
     {
       "src": "*.png",
       "use": "@vercel/static"
+    },
+    {
+      "src": "sitemap.xml",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "robots.txt",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
+    {
+      "src": "/sitemap.xml",
+      "dest": "/sitemap.xml",
+      "headers": {
+        "content-type": "application/xml; charset=utf-8",
+        "cache-control": "public, max-age=86400, stale-while-revalidate=600"
+      }
+    },
+    {
+      "src": "/robots.txt",
+      "dest": "/robots.txt",
+      "headers": {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "public, max-age=86400"
+      }
+    },
     {
       "src": "/api/(.*)",
       "dest": "api/index.py"

@@ -138,28 +138,29 @@ class DDURequestHandler(BaseHTTPRequestHandler):
 
         # 1. SEO Endpoints
         if path == "/robots.txt":
-            content = "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/admin\nSitemap: /sitemap.xml\n"
+            robots_path = os.path.join(BASE_DIR, "robots.txt")
+            if os.path.exists(robots_path):
+                with open(robots_path, "rb") as f:
+                    content = f.read()
+            else:
+                content = b"User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/admin\nSitemap: https://ddu-btech-kn-notes.vercel.app/sitemap.xml\n"
             self.send_response(200)
-            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.end_headers()
-            self.wfile.write(content.encode("utf-8"))
+            self.wfile.write(content)
             return
 
         if path == "/sitemap.xml":
-            sitemap = """<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://ddubtech.org/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
-  <url><loc>https://ddubtech.org/#semesters</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://ddubtech.org/#syllabus</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ddubtech.org/#notes</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://ddubtech.org/#pyq</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ddubtech.org/#updates</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://ddubtech.org/#about</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-</urlset>"""
+            sitemap_path = os.path.join(BASE_DIR, "sitemap.xml")
+            if os.path.exists(sitemap_path):
+                with open(sitemap_path, "rb") as f:
+                    sitemap_bytes = f.read()
+            else:
+                sitemap_bytes = b'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://ddu-btech-kn-notes.vercel.app/</loc></url></urlset>'
             self.send_response(200)
-            self.send_header("Content-Type", "application/xml")
+            self.send_header("Content-Type", "application/xml; charset=utf-8")
             self.end_headers()
-            self.wfile.write(sitemap.encode("utf-8"))
+            self.wfile.write(sitemap_bytes)
             return
 
         # 2. Public Content APIs
