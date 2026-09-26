@@ -1,7 +1,4 @@
-# Robots.txt for DDU B.Tech Notes Hub
 User-agent: *
 Allow: /
-Disallow: /api/admin/
-Disallow: /api/auth/
-
 Sitemap: https://ddu-btech-kn-notes.vercel.app/sitemap.xml
+Sitemap: https://ddu-btech-kn-notes.vercel.app/sitemap-main.xml

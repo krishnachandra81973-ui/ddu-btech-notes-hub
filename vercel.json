@@ -30,6 +30,10 @@
       "use": "@vercel/static"
     },
     {
+      "src": "sitemap-main.xml",
+      "use": "@vercel/static"
+    },
+    {
       "src": "robots.txt",
       "use": "@vercel/static"
     }
@@ -39,8 +43,16 @@
       "src": "/sitemap.xml",
       "dest": "/sitemap.xml",
       "headers": {
-        "content-type": "application/xml; charset=utf-8",
-        "cache-control": "public, max-age=86400, stale-while-revalidate=600"
+        "content-type": "application/xml",
+        "cache-control": "public, max-age=0, must-revalidate"
+      }
+    },
+    {
+      "src": "/sitemap-main.xml",
+      "dest": "/sitemap-main.xml",
+      "headers": {
+        "content-type": "application/xml",
+        "cache-control": "public, max-age=0, must-revalidate"
       }
     },
     {
@@ -48,7 +60,7 @@
       "dest": "/robots.txt",
       "headers": {
         "content-type": "text/plain; charset=utf-8",
-        "cache-control": "public, max-age=86400"
+        "cache-control": "public, max-age=0, must-revalidate"
       }
     },
     {
