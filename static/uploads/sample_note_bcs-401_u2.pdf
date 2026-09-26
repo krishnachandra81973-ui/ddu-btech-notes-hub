@@ -1,0 +1,88 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page
+   /Parent 2 0 R
+   /MediaBox [0 0 612 792]
+   /Resources <<
+     /Font <<
+       /F1 4 0 R
+       /F2 5 0 R
+       /F3 6 0 R
+     >>
+   >>
+   /Contents 7 0 R
+>>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-BoldOblique >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+7 0 obj
+<< /Length 1127 >>
+stream
+BT
+/F1 20 Tf
+50 720 Td
+(BCS-401 - Unit 2 Notes) Tj
+0 -26 Td
+/F2 12 Tf
+(Operating Systems - Semester 4) Tj
+0 -24 Td
+/F3 10 Tf
+(Deen Dayal Upadhyaya Gorakhpur University - B.Tech Study Material) Tj
+0 -18 Td
+(Publisher / Curator: DDU B.Tech Notes Hub) Tj
+0 -28 Td
+/F2 11 Tf
+(Document Summary & Academic Notes:) Tj
+0 -18 Td
+/F3 10 Tf
+(This verified academic document contains unit lecture notes, solved derivations,) Tj
+0 -15 Td
+(curated practice problems, and previous year university examination questions.) Tj
+0 -15 Td
+(Referenced from official DDU Gorakhpur syllabus and recommended standard textbooks.) Tj
+0 -30 Td
+/F1 12 Tf
+(Key Topics Covered in this Document:) Tj
+0 -18 Td
+/F3 10 Tf
+(1. Fundamental Concepts & Definitions with clear theoretical derivations) Tj
+0 -15 Td
+(2. Step-by-Step Algorithmic / Mathematical proofs and solved numericals) Tj
+0 -15 Td
+(3. High-frequency exam questions asked in DDU End-Semester Examinations) Tj
+0 -15 Td
+(4. Important formula sheet and rapid revision summary notes) Tj
+0 -40 Td
+/F3 9 Tf
+(Notice: This educational resource is prepared independently for students of DDU Gorakhpur.) Tj
+ET
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000287 00000 n 
+0000000366 00000 n 
+0000000452 00000 n 
+0000000531 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+1727
+%%EOF

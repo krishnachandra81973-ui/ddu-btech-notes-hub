@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DDU B.Tech Notes Hub | Study Material, Syllabus & PYQ Portal — DDU Gorakhpur</title>
+  <meta name="description" content="Complete B.Tech study material, semester-wise notes, official syllabus, previous year question papers, and daily academic updates for Deen Dayal Upadhyaya Gorakhpur University (DDU) students.">
+  <meta name="keywords" content="DDU B.Tech Notes, DDU Gorakhpur B.Tech Notes, DDU B.Tech syllabus, DDU previous year papers, DDU B.Tech study material">
+  
+  <!-- OpenGraph Metadata -->
+  <meta property="og:title" content="DDU B.Tech Notes Hub | Complete Study Material Portal">
+  <meta property="og:description" content="Access semester-wise notes, syllabus, previous year question papers and the latest academic updates for DDU B.Tech students.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ddubtech.org/">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>">
+</head>
+<body>
+
+  <!-- Main Navigation Header -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <!-- Logo Branding -->
+      <a href="#home" class="brand-link" title="DDU B.Tech Notes Hub">
+        <img src="/static/ddu_official_logo.png" alt="DDU Gorakhpur Official Emblem" class="brand-logo-img">
+        <div class="brand-info">
+          <div class="brand-title-line">
+            <span class="brand-title">DDU B.Tech Notes Hub</span>
+            <span class="brand-naac-badge">NAAC A++</span>
+          </div>
+          <span class="brand-subtitle">Institute of Engineering & Technology • DDUGU</span>
+        </div>
+      </a>
+
+      <!-- Navigation Links -->
+      <ul class="nav-links" id="navbar-links-list">
+        <li class="nav-item active"><a href="#home">Home</a></li>
+        <li class="nav-item"><a href="#semesters" title="B.Tech 1st to 8th Semesters">Semesters</a></li>
+        <li class="nav-item"><a href="#syllabus" title="Official CBCS Syllabus">Syllabus</a></li>
+        <li class="nav-item"><a href="#notes" title="Unit-Wise Lecture Notes">Notes</a></li>
+        <li class="nav-item"><a href="#pyq" title="Previous Year Question Papers (2021-2025)">PYQ Papers</a></li>
+        <li class="nav-item"><a href="#updates" title="Academic Notices & Updates">Updates</a></li>
+        <li class="nav-item"><a href="#about" title="About DDU & Developer Profile">About</a></li>
+      </ul>
+
+      <!-- Action Items & Auth -->
+      <div class="nav-actions">
+        <!-- Search Trigger -->
+        <button onclick="App.openSearchModal()" class="search-trigger-btn" title="Search Portal (Ctrl + K)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span class="search-btn-text">Search</span>
+          <span class="search-shortcut-badge">Ctrl K</span>
+        </button>
+
+        <!-- Dark / Light Theme Toggle -->
+        <button onclick="App.toggleTheme()" id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Dark/Light Mode">
+          🌙
+        </button>
+
+        <!-- Dynamic Auth Container -->
+        <div id="nav-auth-container" style="display: flex; align-items: center; gap: 8px;">
+          <button onclick="Auth.openModal('login')" class="btn-secondary btn-sm">Log In</button>
+          <button onclick="Auth.openModal('register')" class="btn-primary btn-sm">Student Sign Up</button>
+        </div>
+
+        <!-- Mobile Menu Toggle -->
+        <button onclick="App.toggleMobileMenu()" class="mobile-menu-toggle" aria-label="Toggle Navigation">
+          ☰
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Dynamic Content Injected by Router -->
+  <main id="main-content" style="flex-grow: 1;">
+    <!-- Rendered dynamically -->
+  </main>
+
+  <!-- Complete Academic & Legal Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <!-- Col 1: About & University -->
+        <div>
+          <div class="brand-link" style="margin-bottom: 16px;">
+            <img src="/static/ddu_official_logo.png" alt="DDU Gorakhpur Official Emblem" class="brand-logo-img" style="width: 64px; height: 64px;">
+            <div class="brand-info">
+              <div class="brand-title-line">
+                <span class="brand-title" style="font-size: 1.15rem;">DDU B.Tech Notes Hub</span>
+                <span class="brand-naac-badge">NAAC A++</span>
+              </div>
+              <span class="brand-subtitle" style="font-size: 0.76rem;">Deen Dayal Upadhyaya Gorakhpur University</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Civil Lines, Gorakhpur, UP - 273009</span>
+            </div>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
+            A premier academic study material portal providing verified semester-wise lecture notes, official NEP 2020 syllabus guidelines, unit-wise question banks, and 5-year previous examination papers for engineering students.
+          </p>
+          <div style="font-size: 0.76rem; color: var(--text-muted); padding: 10px 14px; background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-sm); line-height: 1.5;">
+            <strong>Academic Portal:</strong> Independent student educational resource created for engineering learners.
+          </div>
+        </div>
+
+        <!-- Col 2: Quick Links -->
+        <div>
+          <h4 class="footer-col-title">Portal Navigation</h4>
+          <ul class="footer-links">
+            <li><a href="#home">Home</a></li>
+            <li><a href="#semesters">B.Tech Semesters (1st - 8th)</a></li>
+            <li><a href="#notes">Browse All Notes</a></li>
+            <li><a href="#syllabus">Official Syllabus</a></li>
+            <li><a href="#pyq">Previous Year Papers</a></li>
+            <li><a href="#updates">Daily Updates & Notices</a></li>
+          </ul>
+        </div>
+
+
+
+        <!-- Col 4: Developer Attribution Section -->
+        <div>
+          <h4 class="footer-col-title">Lead Architect & Developer</h4>
+          <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; position: relative; overflow: hidden; box-shadow: var(--shadow-sm);">
+            <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #1e40af, #0284c7, #f59e0b);"></div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+              <div class="dev-avatar" style="width: 44px; height: 44px; font-size: 1rem; border: 2px solid rgba(245, 158, 11, 0.4);">KN</div>
+              <div>
+                <div style="font-weight: 800; font-size: 1rem; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                  KESHAV NARAYAN
+                  <span style="color: #10b981; font-size: 0.85rem;" title="Verified Developer">✓</span>
+                </div>
+                <div style="font-size: 0.74rem; color: var(--primary); font-weight: 700;">B.Tech CSE (AI & ML)</div>
+              </div>
+            </div>
+            <p style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;">
+              Department of Computer Science & Engineering, IET, DDU Gorakhpur University.
+            </p>
+            <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+              <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="dev-link-btn" style="flex: 1; justify-content: center; font-size: 0.72rem; padding: 4px 8px;">GitHub</a>
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="dev-link-btn" style="flex: 1; justify-content: center; font-size: 0.72rem; padding: 4px 8px;">LinkedIn</a>
+              <a href="#about" class="dev-link-btn" style="flex: 1; justify-content: center; font-size: 0.72rem; padding: 4px 8px; color: var(--primary);">Bio & Vision</a>
+            </div>
+            <button onclick="App.openFeedbackModal()" class="btn-primary btn-sm" style="width: 100%; font-size: 0.75rem; padding: 6px 10px;">
+              ✉️ Message / Request Notes
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Bar -->
+      <div class="footer-bottom">
+        <div>
+          © 2026 DDU B.Tech Notes Hub. All educational study materials are provided for academic learning purposes.
+        </div>
+        <div style="display: flex; gap: 16px;">
+          <a href="#about">Privacy Policy</a>
+          <a href="#about">Terms of Use</a>
+          <a href="#about">Contact Support</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- 1. Global Search Modal (Ctrl + K) -->
+  <div id="global-search-modal" class="modal-overlay" onclick="if(event.target === this) App.closeAllModals()">
+    <div class="modal-box" style="max-width: 680px;">
+      <div class="modal-header" style="padding: 14px 20px;">
+        <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--primary);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-input-field" oninput="App.handleLiveSearch(this.value)" placeholder="Search subjects, units, notes, pyqs, circulars..." style="border: none; outline: none; background: transparent; font-size: 1.05rem; color: var(--text-main); width: 100%;">
+        </div>
+        <button onclick="App.closeAllModals()" class="modal-close-btn" style="font-size: 1rem; border: 1px solid var(--border); padding: 4px 8px; border-radius: 4px;">ESC</button>
+      </div>
+      <div class="modal-body" id="search-results-container" style="max-height: 480px; padding: 18px 20px;">
+        <p style="color: var(--text-muted); text-align: center; padding: 24px;">Type a subject or topic to search...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Fullscreen PDF Viewer Modal -->
+  <div id="pdf-viewer-modal" class="modal-overlay" onclick="if(event.target === this) App.closeAllModals()">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.3rem;">📄</span>
+          <div>
+            <h3 id="pdf-viewer-title" class="modal-title" style="font-size: 1.05rem;">Document Viewer</h3>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">DDU B.Tech Verified Document</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <a id="pdf-viewer-download-link" href="#" download class="btn-primary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download PDF
+          </a>
+          <button onclick="App.closeAllModals()" class="modal-close-btn">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" style="padding: 0; background: #525659; overflow: hidden; height: calc(100% - 70px);">
+        <iframe id="pdf-viewer-frame" src="about:blank" style="width: 100%; height: 100%; border: none;"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Student Authentication Modal -->
+  <div id="auth-modal" class="modal-overlay" onclick="if(event.target === this) Auth.closeModal()">
+    <div class="modal-box" style="max-width: 520px;">
+      <div class="modal-header" style="border-bottom: none; padding-bottom: 0;">
+        <div style="display: flex; gap: 10px;">
+          <button id="auth-tab-login" onclick="Auth.switchTab('login')" class="btn-secondary btn-sm active" style="font-size: 0.9rem; font-weight: 700;">
+            Sign In
+          </button>
+          <button id="auth-tab-register" onclick="Auth.switchTab('register')" class="btn-secondary btn-sm" style="font-size: 0.9rem; font-weight: 700;">
+            Student Registration
+          </button>
+        </div>
+        <button onclick="Auth.closeModal()" class="modal-close-btn">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding-top: 16px;">
+        <!-- Login Form -->
+        <div id="auth-login-section">
+          <div style="margin-bottom: 20px;">
+            <h3 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main);">Student Sign In</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem;">Access your personalized B.Tech notes dashboard and saved bookmarks.</p>
+          </div>
+
+          <form id="login-form-element">
+            <div class="form-group">
+              <label class="form-label">University Email Address *</label>
+              <input type="email" name="email" required placeholder="student@ddu.ac.in" class="form-control">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Password *</label>
+              <input type="password" name="password" required placeholder="••••••••" class="form-control">
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 0.85rem;">
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" name="remember"> Remember me (30 days)
+              </label>
+              <a href="javascript:void(0)" onclick="Auth.switchTab('forgot')" style="color: var(--primary); font-weight: 600;">Forgot Password?</a>
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: 100%; padding: 11px;">
+              Sign In to Student Account
+            </button>
+          </form>
+
+          <!-- Quick Test Credentials Box for Students only -->
+          <div style="margin-top: 20px; padding: 12px; background: var(--bg-main); border: 1px dashed var(--border); border-radius: var(--radius-sm); font-size: 0.78rem; color: var(--text-muted);">
+            <div style="font-weight: 700; color: var(--text-main); margin-bottom: 4px;">Demo Student Account:</div>
+            <div><strong>Email:</strong> student@ddu.ac.in &nbsp;|&nbsp; <strong>Password:</strong> StudentPassword123!</div>
+          </div>
+        </div>
+
+        <!-- Register Form -->
+        <div id="auth-register-section" style="display: none;">
+          <div style="margin-bottom: 16px;">
+            <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--text-main);">Create Student Account</h3>
+            <p style="color: var(--text-muted); font-size: 0.82rem;">Join the DDU B.Tech Notes Hub community.</p>
+          </div>
+
+          <form id="register-form-element">
+            <div class="form-group">
+              <label class="form-label">Full Name *</label>
+              <input type="text" name="full_name" required placeholder="e.g. Rahul Singh" class="form-control">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Email Address *</label>
+              <input type="email" name="email" required placeholder="e.g. rahul@ddu.ac.in" class="form-control">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Password *</label>
+                <input type="password" name="password" required minlength="6" placeholder="Min 6 characters" class="form-control">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Confirm Password *</label>
+                <input type="password" name="confirm_password" required minlength="6" placeholder="Re-type password" class="form-control">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Branch *</label>
+                <select name="branch" required class="form-control">
+                  <option value="CSE">Computer Science & Engg (CSE)</option>
+                  <option value="CSE (AI/ML)">CSE - Artificial Intelligence & ML</option>
+                  <option value="Information Technology">Information Technology (IT)</option>
+                  <option value="Electronics & Comm">Electronics & Communication (ECE)</option>
+                  <option value="Electrical Engg">Electrical Engineering (EE)</option>
+                  <option value="Mechanical Engg">Mechanical Engineering (ME)</option>
+                  <option value="Civil Engg">Civil Engineering (CE)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Current Semester *</label>
+                <select name="semester" required class="form-control">
+                  <option value="1">1st Semester</option>
+                  <option value="2">2nd Semester</option>
+                  <option value="3" selected>3rd Semester</option>
+                  <option value="4">4th Semester</option>
+                  <option value="5">5th Semester</option>
+                  <option value="6">6th Semester</option>
+                  <option value="7">7th Semester</option>
+                  <option value="8">8th Semester</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">College / Department</label>
+              <input type="text" name="college" value="Deen Dayal Upadhyaya Gorakhpur University" class="form-control">
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: 100%; padding: 11px; margin-top: 10px;">
+              Create Student Account
+            </button>
+          </form>
+        </div>
+
+        <!-- Forgot Password Form -->
+        <div id="auth-forgot-section" style="display: none;">
+          <div style="margin-bottom: 20px;">
+            <h3 style="font-size: 1.3rem; font-weight: 800;">Reset Password</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem;">Enter your registered university email to receive recovery instructions.</p>
+          </div>
+          <form id="forgot-form-element">
+            <div class="form-group">
+              <label class="form-label">Registered Email</label>
+              <input type="email" name="email" required placeholder="your.email@ddu.ac.in" class="form-control">
+            </div>
+            <button type="submit" class="btn-primary" style="width: 100%; padding: 11px;">Send Reset Link</button>
+            <div style="text-align: center; margin-top: 14px;">
+              <a href="javascript:void(0)" onclick="Auth.switchTab('login')" style="font-size: 0.85rem; color: var(--primary);">← Back to Login</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Developer Connect & Notes Request Modal -->
+  <div id="feedback-modal" class="modal-overlay" onclick="if(event.target === this) App.closeAllModals()">
+    <div class="modal-box" style="max-width: 520px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.4rem;">✉️</span>
+          <div>
+            <h3 class="modal-title" style="font-size: 1.1rem;">Message / Request Study Material</h3>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Direct message to Keshav Narayan (Lead Architect)</span>
+          </div>
+        </div>
+        <button onclick="App.closeAllModals()" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 24px;">
+        <form onsubmit="App.handleFeedbackSubmit(event)">
+          <div class="form-group">
+            <label class="form-label">Your Name *</label>
+            <input type="text" name="name" required placeholder="e.g. Rahul Sharma" class="form-control">
+          </div>
+          <div class="row" style="display: flex; gap: 12px;">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">Semester *</label>
+              <select name="semester" class="form-control" required>
+                <option value="1">1st Semester</option>
+                <option value="2">2nd Semester</option>
+                <option value="3">3rd Semester</option>
+                <option value="4">4th Semester</option>
+                <option value="5">5th Semester</option>
+                <option value="6">6th Semester</option>
+                <option value="7">7th Semester</option>
+                <option value="8">8th Semester</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">Branch *</label>
+              <select name="branch" class="form-control" required>
+                <option value="CSE">CSE / AI & ML</option>
+                <option value="IT">IT</option>
+                <option value="ECE">ECE</option>
+                <option value="EE">EE</option>
+                <option value="ME">Mechanical</option>
+                <option value="Civil">Civil</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Request Type</label>
+            <select name="type" class="form-control">
+              <option value="Notes Request">Request Specific Subject Notes</option>
+              <option value="PYQ Request">Request Missing Question Paper</option>
+              <option value="Feedback / Bug">Platform Feedback / Bug Report</option>
+              <option value="Collaboration">Project Collaboration</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subject & Details *</label>
+            <textarea name="message" required rows="3" placeholder="Mention subject code, unit number or any suggestions..." class="form-control"></textarea>
+          </div>
+          <button type="submit" class="btn-primary" style="width: 100%; padding: 12px;">
+            🚀 Submit Request to Keshav
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Modules -->
+  <script src="/static/js/ddu_data.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/dashboard.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

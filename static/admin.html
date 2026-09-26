@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal | DDU B.Tech Notes Hub — Gorakhpur University</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+</head>
+<body>
+
+  <!-- Top Admin Navbar -->
+  <header class="navbar" style="border-bottom: 2px solid var(--primary);">
+    <div class="container nav-container">
+      <div class="brand-link">
+        <img src="/static/ddu_official_logo.png" alt="DDU Official Emblem" class="brand-logo-img">
+        <div class="brand-info">
+          <span class="brand-title">DDU B.Tech Notes Hub <span style="font-size: 0.75rem; background: var(--primary-light); color: var(--primary); padding: 2px 8px; border-radius: 4px; margin-left: 6px; font-weight: 800;">ADMIN</span></span>
+          <span class="brand-subtitle">Administrator Content Management System</span>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <!-- Dark / Light Theme Toggle -->
+        <button onclick="App.toggleTheme()" id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Dark/Light Mode">
+          🌙
+        </button>
+
+        <div id="admin-header-actions" style="display: flex; align-items: center; gap: 10px;">
+          <!-- Injected via admin-app.js -->
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Admin Workspace -->
+  <main id="admin-root-container" style="flex-grow: 1;">
+    <!-- Injected dynamically: either Login Gate or Admin Dashboard -->
+  </main>
+
+  <!-- Fullscreen PDF Viewer Modal for Admin -->
+  <div id="pdf-viewer-modal" class="modal-overlay" onclick="if(event.target === this) App.closeAllModals()">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.3rem;">📄</span>
+          <div>
+            <h3 id="pdf-viewer-title" class="modal-title" style="font-size: 1.05rem;">Document Preview</h3>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Admin Preview Mode</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <a id="pdf-viewer-download-link" href="#" download class="btn-primary btn-sm">Download PDF</a>
+          <button onclick="App.closeAllModals()" class="modal-close-btn">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" style="padding: 0; background: #525659; overflow: hidden; height: calc(100% - 70px);">
+        <iframe id="pdf-viewer-frame" src="about:blank" style="width: 100%; height: 100%; border: none;"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/admin.js"></script>
+  <script>
+    // Standalone Admin Application Orchestrator
+    const AdminApp = {
+      async init() {
+        App.initTheme();
+        await Auth.init();
+        this.renderState();
+      },
+
+      renderState() {
+        const root = document.getElementById("admin-root-container");
+        const headerActions = document.getElementById("admin-header-actions");
+        if (!root) return;
+
+        if (Auth.currentUser && Auth.currentUser.role === "ADMIN") {
+          // Render full Admin Dashboard
+          headerActions.innerHTML = `
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">${escapeHtml(Auth.currentUser.full_name)}</div>
+            <a href="/" target="_blank" class="btn-secondary btn-sm">View Live Site ↗</a>
+            <button onclick="AdminApp.logout()" class="btn-outline-danger btn-sm">Sign Out</button>
+          `;
+          Admin.render(root);
+        } else {
+          // Render dedicated Admin Login Gate
+          headerActions.innerHTML = `
+            <a href="/" class="btn-secondary btn-sm">← Back to Main Site</a>
+          `;
+          root.innerHTML = `
+            <div class="container" style="max-width: 480px; padding: 70px 20px;">
+              <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 36px 30px; box-shadow: var(--shadow-xl);">
+                <div style="text-align: center; margin-bottom: 24px;">
+                  <img src="/static/ddu_official_logo.png" alt="DDU Crest" style="width: 70px; height: 70px; object-fit: contain; margin-bottom: 12px;">
+                  <h1 style="font-size: 1.5rem; font-weight: 800; color: var(--text-main);">Administrator Login</h1>
+                  <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">
+                    Restricted Area: Deen Dayal Upadhyaya Gorakhpur University B.Tech Portal Management
+                  </p>
+                </div>
+
+                <form id="standalone-admin-login-form" onsubmit="AdminApp.handleLogin(event)">
+                  <div class="form-group">
+                    <label class="form-label">Administrator Email *</label>
+                    <input type="email" name="email" required placeholder="admin@ddunotes.ac.in" class="form-control" autofocus>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Administrator Password *</label>
+                    <input type="password" name="password" required placeholder="••••••••••••" class="form-control">
+                  </div>
+
+                  <div id="admin-login-error" style="display: none; background: rgba(239, 68, 68, 0.12); color: var(--accent-rose); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.82rem; margin-bottom: 16px; font-weight: 600;">
+                  </div>
+
+                  <button type="submit" class="btn-primary" style="width: 100%; padding: 12px; font-size: 0.95rem;">
+                    Authenticate as Administrator
+                  </button>
+                </form>
+
+                <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border); text-align: center; font-size: 0.78rem; color: var(--text-muted);">
+                  Unauthorized access attempts to this administrative console are logged and monitored.
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      },
+
+      async handleLogin(e) {
+        e.preventDefault();
+        const form = e.target;
+        const email = form.email.value.trim();
+        const password = form.password.value;
+        const errDiv = document.getElementById("admin-login-error");
+
+        errDiv.style.display = "none";
+        try {
+          const res = await Auth.login(email, password, true);
+          if (!res.success) {
+            errDiv.innerText = res.error;
+            errDiv.style.display = "block";
+            return;
+          }
+          if (res.user.role !== "ADMIN") {
+            Auth.logout(false);
+            errDiv.innerText = "Access Denied: This account does not possess administrator privileges.";
+            errDiv.style.display = "block";
+            return;
+          }
+          App.toast("Administrator verified successfully!", "success");
+          this.renderState();
+        } catch (err) {
+          errDiv.innerText = err.message;
+          errDiv.style.display = "block";
+        }
+      },
+
+      logout() {
+        Auth.logout(false);
+        this.renderState();
+        App.toast("Administrator logged out.", "info");
+      }
+    };
+
+    // Shared UI helpers for Admin app
+    const App = {
+      theme: localStorage.getItem("ddu_theme") || "light",
+      initTheme() {
+        if (this.theme === "dark" || (!localStorage.getItem("ddu_theme") && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.setAttribute("data-theme", "dark");
+          this.theme = "dark";
+        } else {
+          document.documentElement.setAttribute("data-theme", "light");
+          this.theme = "light";
+        }
+        const btn = document.getElementById("theme-toggle-btn");
+        if (btn) btn.innerHTML = this.theme === "dark" ? "☀️" : "🌙";
+      },
+      toggleTheme() {
+        this.theme = this.theme === "light" ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", this.theme);
+        localStorage.setItem("ddu_theme", this.theme);
+        const btn = document.getElementById("theme-toggle-btn");
+        if (btn) btn.innerHTML = this.theme === "dark" ? "☀️" : "🌙";
+      },
+      toast(message, type = "info") {
+        let container = document.getElementById("toast-container");
+        if (!container) {
+          container = document.createElement("div");
+          container.id = "toast-container";
+          document.body.appendChild(container);
+        }
+        const toast = document.createElement("div");
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<span>${type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ'}</span> <span>${escapeHtml(message)}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3500);
+      },
+      openPdfViewer(fileUrl, title = "Document Preview") {
+        const modal = document.getElementById("pdf-viewer-modal");
+        const titleEl = document.getElementById("pdf-viewer-title");
+        const frame = document.getElementById("pdf-viewer-frame");
+        const downloadBtn = document.getElementById("pdf-viewer-download-link");
+        if (titleEl) titleEl.innerText = title;
+        if (frame) frame.src = fileUrl;
+        if (downloadBtn) downloadBtn.href = fileUrl;
+        if (modal) modal.classList.add("active");
+      },
+      closeAllModals() {
+        document.querySelectorAll(".modal-overlay").forEach(m => m.classList.remove("active"));
+        const frame = document.getElementById("pdf-viewer-frame");
+        if (frame) frame.src = "about:blank";
+      },
+      showGenericModal(htmlContent) {
+        let container = document.getElementById("generic-modal-overlay");
+        if (!container) {
+          container = document.createElement("div");
+          container.id = "generic-modal-overlay";
+          container.className = "modal-overlay";
+          document.body.appendChild(container);
+        }
+        container.innerHTML = htmlContent;
+        container.classList.add("active");
+      },
+      closeActiveModal() {
+        const generic = document.getElementById("generic-modal-overlay");
+        if (generic) generic.classList.remove("active");
+        this.closeAllModals();
+      }
+    };
+
+    window.addEventListener("DOMContentLoaded", () => AdminApp.init());
+  </script>
+</body>
+</html>
