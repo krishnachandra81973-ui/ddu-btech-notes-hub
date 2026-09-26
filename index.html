@@ -29,65 +29,122 @@
 </head>
 <body>
 
-  <!-- Main Navigation Header -->
-  <header class="navbar">
-    <div class="container nav-container">
-      <!-- Logo Branding -->
-      <a href="#home" class="brand-link" title="DDU B.Tech Notes Hub">
-        <img src="/static/ddu_kn_notes_logo.png" alt="DDU B.Tech KN Notes Logo" class="brand-logo-img">
-        <div class="brand-info">
-          <div class="brand-title-line">
-            <span class="brand-title">DDU B.Tech Notes Hub</span>
-            <span class="brand-naac-badge">NAAC A++</span>
+  <!-- STICKY HEADER CONTAINER FOR MOBILE & DESKTOP STABILITY -->
+  <div class="sticky-header-container">
+    <!-- Main Navigation Header -->
+    <header class="navbar">
+      <div class="container nav-container">
+        <!-- Logo Branding -->
+        <a href="#home" class="brand-link" title="DDU B.Tech Notes Hub">
+          <img src="/static/ddu_kn_notes_logo.png" alt="DDU B.Tech KN Notes Logo" class="brand-logo-img">
+          <div class="brand-info">
+            <div class="brand-title-line">
+              <span class="brand-title">DDU B.Tech Notes Hub</span>
+              <span class="brand-naac-badge">NAAC A++</span>
+            </div>
+            <span class="brand-subtitle">Institute of Engineering & Technology • DDUGU</span>
           </div>
-          <span class="brand-subtitle">Institute of Engineering & Technology • DDUGU</span>
+        </a>
+
+        <!-- Desktop Navigation Links -->
+        <ul class="nav-links desktop-only-nav" id="navbar-links-list">
+          <li class="nav-item active"><a href="#home">Home</a></li>
+          <li class="nav-item"><a href="#semesters" title="B.Tech 1st to 8th Semesters">Semesters</a></li>
+          <li class="nav-item"><a href="#syllabus" title="Official CBCS Syllabus">Syllabus</a></li>
+          <li class="nav-item"><a href="#notes" title="Unit-Wise Lecture Notes">Notes</a></li>
+          <li class="nav-item"><a href="#pyq" title="Previous Year Question Papers (2021-2025)">PYQ Papers</a></li>
+          <li class="nav-item"><a href="#updates" title="Academic Notices & Updates">Updates</a></li>
+          <li class="nav-item"><a href="#about" title="About DDU & Developer Profile">About</a></li>
+        </ul>
+
+        <!-- Action Items & Auth -->
+        <div class="nav-actions">
+          <!-- Search Trigger -->
+          <button onclick="App.openSearchModal()" class="search-trigger-btn" title="Search Portal (Ctrl + K)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span class="search-btn-text">Search</span>
+            <span class="search-shortcut-badge">Ctrl K</span>
+          </button>
+
+          <!-- Dark / Light Theme Toggle -->
+          <button onclick="App.toggleTheme()" id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Dark/Light Mode">
+            🌙
+          </button>
+
+          <!-- Install App Button (PWA) -->
+          <button onclick="window.installPwa()" id="btn-nav-install" class="btn-nav-install" style="display: none;" title="Install DDU Notes App on Phone or PC">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span class="nav-install-text">Install App</span>
+          </button>
+
+          <!-- Dynamic Auth Container -->
+          <div id="nav-auth-container" class="desktop-auth-container">
+            <button onclick="Auth.openModal('login')" class="btn-secondary btn-sm">Log In</button>
+            <button onclick="Auth.openModal('register')" class="btn-primary btn-sm">Student Sign Up</button>
+          </div>
+
+          <!-- Mobile Menu Toggle -->
+          <button onclick="App.toggleMobileMenu()" class="mobile-menu-toggle" aria-label="Toggle Navigation">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
         </div>
-      </a>
+      </div>
+    </header>
 
-      <!-- Navigation Links -->
-      <ul class="nav-links" id="navbar-links-list">
-        <li class="nav-item active"><a href="#home">Home</a></li>
-        <li class="nav-item"><a href="#semesters" title="B.Tech 1st to 8th Semesters">Semesters</a></li>
-        <li class="nav-item"><a href="#syllabus" title="Official CBCS Syllabus">Syllabus</a></li>
-        <li class="nav-item"><a href="#notes" title="Unit-Wise Lecture Notes">Notes</a></li>
-        <li class="nav-item"><a href="#pyq" title="Previous Year Question Papers (2021-2025)">PYQ Papers</a></li>
-        <li class="nav-item"><a href="#updates" title="Academic Notices & Updates">Updates</a></li>
-        <li class="nav-item"><a href="#about" title="About DDU & Developer Profile">About</a></li>
-      </ul>
+    <!-- Mobile/Tablet Horizontal Scrollable Sub-Navigation Bar (Sticky below header) -->
+    <nav class="mobile-sub-nav scrollable-mobile-nav" id="mobile-sub-navigation">
+      <a href="#home" class="sub-nav-link active" data-subnav="home">🏠 Home</a>
+      <a href="#semesters" class="sub-nav-link" data-subnav="semesters">🎓 Semesters</a>
+      <a href="#syllabus" class="sub-nav-link" data-subnav="syllabus">📖 Syllabus</a>
+      <a href="#notes" class="sub-nav-link" data-subnav="notes">📝 Notes</a>
+      <a href="#pyq" class="sub-nav-link" data-subnav="pyq">📑 PYQs</a>
+      <a href="#updates" class="sub-nav-link" data-subnav="updates">📢 Updates</a>
+      <a href="#about" class="sub-nav-link" data-subnav="about">👨‍💻 About</a>
+    </nav>
+  </div>
 
-      <!-- Action Items & Auth -->
-      <div class="nav-actions">
-        <!-- Search Trigger -->
-        <button onclick="App.openSearchModal()" class="search-trigger-btn" title="Search Portal (Ctrl + K)">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <span class="search-btn-text">Search</span>
-          <span class="search-shortcut-badge">Ctrl K</span>
-        </button>
-
-        <!-- Dark / Light Theme Toggle -->
-        <button onclick="App.toggleTheme()" id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Dark/Light Mode">
-          🌙
-        </button>
-
-        <!-- Install App Button (PWA) -->
-        <button onclick="window.installPwa()" id="btn-nav-install" class="btn-nav-install" style="display: none;" title="Install DDU Notes App on Phone or PC">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span class="nav-install-text">Install App</span>
-        </button>
-
-        <!-- Dynamic Auth Container -->
-        <div id="nav-auth-container" style="display: flex; align-items: center; gap: 8px;">
-          <button onclick="Auth.openModal('login')" class="btn-secondary btn-sm">Log In</button>
-          <button onclick="Auth.openModal('register')" class="btn-primary btn-sm">Student Sign Up</button>
+  <!-- Mobile Drawer Menu & Overlay -->
+  <div class="mobile-drawer-overlay" id="mobile-drawer-overlay" onclick="App.toggleMobileMenu()"></div>
+  <aside class="mobile-drawer" id="mobile-drawer" aria-label="Mobile Navigation Drawer">
+    <div class="mobile-drawer-header">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <img src="/static/ddu_kn_notes_logo.png" style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid #d97706;" alt="DDU Logo">
+        <div>
+          <div style="font-weight: 800; font-size: 0.95rem; font-family: 'Outfit', sans-serif;">DDU B.Tech Hub</div>
+          <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 600;">NAAC A++ • State University</div>
         </div>
+      </div>
+      <button class="mobile-drawer-close" onclick="App.toggleMobileMenu()" aria-label="Close menu">✕</button>
+    </div>
 
-        <!-- Mobile Menu Toggle -->
-        <button onclick="App.toggleMobileMenu()" class="mobile-menu-toggle" aria-label="Toggle Navigation">
-          ☰
-        </button>
+    <!-- Mobile Auth Section -->
+    <div class="mobile-drawer-auth" id="mobile-drawer-auth">
+      <button onclick="Auth.openModal('login'); App.toggleMobileMenu();" class="btn-primary" style="width: 100%; justify-content: center; padding: 12px; margin-bottom: 8px;">🔑 Student Log In</button>
+      <button onclick="Auth.openModal('register'); App.toggleMobileMenu();" class="btn-secondary" style="width: 100%; justify-content: center; padding: 12px;">✨ Create Student Account</button>
+    </div>
+
+    <!-- Mobile Drawer Links -->
+    <div class="mobile-drawer-links">
+      <a href="#home" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>🏠</span> Home Dashboard</a>
+      <a href="#semesters" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>🎓</span> B.Tech Semesters (1st to 8th)</a>
+      <a href="#syllabus" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>📖</span> Official CBCS Syllabus</a>
+      <a href="#notes" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>📝</span> Unit-Wise Lecture Notes</a>
+      <a href="#pyq" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>📑</span> 5-Year PYQs (2021-2025)</a>
+      <a href="#updates" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>📢</span> Academic Notices & Circulars</a>
+      <a href="#about" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>👨‍💻</span> About Developer (Keshav Sir)</a>
+      <button onclick="App.openRequestModal(); App.toggleMobileMenu();" class="mobile-drawer-link" style="width: 100%; text-align: left; background: none; border: none; font-family: inherit; font-size: inherit; cursor: pointer;"><span>📩</span> Request Notes / PYQs</button>
+    </div>
+
+    <div class="mobile-drawer-footer">
+      <button onclick="App.openSearchModal(); App.toggleMobileMenu();" class="btn-secondary" style="width: 100%; justify-content: center; margin-bottom: 12px;">
+        🔍 Search Portal (Ctrl + K)
+      </button>
+      <div style="font-size: 0.72rem; color: var(--text-muted); text-align: center; line-height: 1.5;">
+        Deen Dayal Upadhyaya Gorakhpur University<br>
+        Crafted with ❤️ by Keshav Sir
       </div>
     </div>
-  </header>
+  </aside>
 
   <!-- Dynamic Content Injected by Router -->
   <main id="main-content" style="flex-grow: 1;">

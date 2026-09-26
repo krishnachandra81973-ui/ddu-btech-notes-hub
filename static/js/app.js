@@ -314,7 +314,27 @@ const App = {
       }
     });
 
-    // Auto-close mobile navbar dropdown if open
+    // Update active mobile sub-navigation links
+    document.querySelectorAll(".sub-nav-link[data-subnav]").forEach(link => {
+      if (link.getAttribute("data-subnav") === currentBaseRoute) {
+        link.classList.add("active");
+        try {
+          link.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+        } catch(e){}
+      } else {
+        link.classList.remove("active");
+      }
+    });
+
+    // Auto-close mobile drawer if open
+    const drawer = document.getElementById("mobile-drawer");
+    const overlay = document.getElementById("mobile-drawer-overlay");
+    if (drawer && drawer.classList.contains("open")) {
+      drawer.classList.remove("open");
+      if (overlay) overlay.classList.remove("open");
+      document.body.style.overflow = "";
+    }
+
     const mobileNavList = document.getElementById("navbar-links-list");
     if (mobileNavList && mobileNavList.classList.contains("mobile-open")) {
       mobileNavList.classList.remove("mobile-open");
@@ -1918,8 +1938,23 @@ const App = {
   },
 
   toggleMobileMenu() {
-    const nav = document.getElementById("navbar-links-list");
-    if (nav) nav.classList.toggle("mobile-open");
+    const drawer = document.getElementById("mobile-drawer");
+    const overlay = document.getElementById("mobile-drawer-overlay");
+    if (drawer && overlay) {
+      const isOpen = drawer.classList.contains("open");
+      if (isOpen) {
+        drawer.classList.remove("open");
+        overlay.classList.remove("open");
+        document.body.style.overflow = "";
+      } else {
+        drawer.classList.add("open");
+        overlay.classList.add("open");
+        document.body.style.overflow = "hidden";
+      }
+    } else {
+      const nav = document.getElementById("navbar-links-list");
+      if (nav) nav.classList.toggle("mobile-open");
+    }
   }
 };
 

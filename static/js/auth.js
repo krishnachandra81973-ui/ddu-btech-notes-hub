@@ -170,6 +170,28 @@ const Auth = {
           dropdown.style.display = "none";
         });
       }
+
+      // Also update Mobile Drawer Auth
+      const mobileDrawerAuth = document.getElementById("mobile-drawer-auth");
+      if (mobileDrawerAuth) {
+        mobileDrawerAuth.innerHTML = `
+          <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+              <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #1e40af, #2563eb); color: white; font-weight: 800; font-size: 1rem; display: flex; align-items: center; justify-content: center; border: 2px solid #d97706; flex-shrink: 0;">
+                ${initial}
+              </div>
+              <div style="overflow: hidden;">
+                <div style="font-weight: 800; font-size: 0.9rem; color: var(--text-main); font-family: 'Outfit', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(this.currentUser.full_name)}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(this.currentUser.email)}</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <a href="#dashboard" onclick="App.toggleMobileMenu()" class="btn-primary btn-sm" style="flex: 1; justify-content: center; text-decoration: none;">My Dashboard</a>
+              <button onclick="Auth.logout(); App.toggleMobileMenu();" class="btn-outline-danger btn-sm">Sign Out</button>
+            </div>
+          </div>
+        `;
+      }
     } else {
       authContainer.innerHTML = `
         <button onclick="Auth.openModal('login')" class="btn-secondary btn-sm">
@@ -179,6 +201,15 @@ const Auth = {
           Student Sign Up
         </button>
       `;
+
+      // Also update Mobile Drawer Auth
+      const mobileDrawerAuth = document.getElementById("mobile-drawer-auth");
+      if (mobileDrawerAuth) {
+        mobileDrawerAuth.innerHTML = `
+          <button onclick="Auth.openModal('login'); App.toggleMobileMenu();" class="btn-primary" style="width: 100%; justify-content: center; padding: 12px; margin-bottom: 8px;">🔑 Student Log In</button>
+          <button onclick="Auth.openModal('register'); App.toggleMobileMenu();" class="btn-secondary" style="width: 100%; justify-content: center; padding: 12px;">✨ Create Student Account</button>
+        `;
+      }
     }
   },
 
