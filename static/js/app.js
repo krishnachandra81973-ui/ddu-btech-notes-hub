@@ -26,8 +26,80 @@ const App = {
     // Handle form submissions for Auth Modal
     this.setupAuthForms();
 
+    // Setup Progressive Web App (PWA) and offline caching
+    this.setupPwa();
+
     // Initial Route
     this.handleRouting();
+  },
+
+  // ------------------- PWA & Offline Support -------------------
+  setupPwa() {
+    // 1. Register Service Worker
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js")
+          .then((reg) => {
+            console.log("📦 [PWA] Service Worker registered with scope:", reg.scope);
+          })
+          .catch((err) => {
+            console.warn("⚠️ [PWA] Service Worker registration failed:", err);
+          });
+      });
+    }
+
+    // 2. Capture beforeinstallprompt event
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      window.deferredPrompt = e;
+      console.log("📲 [PWA] beforeinstallprompt captured.");
+
+      const navBtn = document.getElementById("btn-nav-install");
+      if (navBtn) navBtn.style.display = "inline-flex";
+
+      const pwaCard = document.getElementById("pwa-install-card");
+      if (pwaCard) pwaCard.style.display = "flex";
+
+      const bottomBtn = document.getElementById("btn-bottom-install");
+      if (bottomBtn) bottomBtn.style.display = "flex";
+    });
+
+    // 3. Listen for successful app installation
+    window.addEventListener("appinstalled", () => {
+      console.log("🎉 [PWA] App successfully installed on device!");
+      window.deferredPrompt = null;
+      App.toast("🎉 DDU B.Tech Notes App installed successfully!", "success");
+
+      const navBtn = document.getElementById("btn-nav-install");
+      if (navBtn) navBtn.style.display = "none";
+
+      const pwaCard = document.getElementById("pwa-install-card");
+      if (pwaCard) pwaCard.style.display = "none";
+    });
+
+    // 4. Global window.installPwa function callable from buttons
+    window.installPwa = () => {
+      if (window.deferredPrompt) {
+        window.deferredPrompt.prompt();
+        window.deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === "accepted") {
+            console.log("User accepted PWA installation prompt");
+            App.toast("Installing DDU B.Tech Notes App...", "success");
+          } else {
+            console.log("User dismissed PWA installation prompt");
+          }
+          window.deferredPrompt = null;
+        });
+      } else {
+        // Fallback helper modal for iOS Safari / Unsupported Browsers
+        const modal = document.getElementById("pwa-install-modal");
+        if (modal) {
+          modal.style.display = "flex";
+        } else {
+          alert("📲 To install this app:\n\n• On iPhone / iPad: Tap the Share button (📤) in Safari and tap 'Add to Home Screen' (➕).\n• On Android / PC: Open Chrome menu (⋮) and tap 'Install App' or 'Add to Home Screen'.");
+        }
+      }
+    };
   },
 
   // ------------------- Theme Management -------------------
@@ -161,6 +233,22 @@ const App = {
       }
     });
 
+    // Update active mobile bottom navigation state
+    const currentBaseRoute = hash.split('/')[0] || "home";
+    document.querySelectorAll(".bottom-nav-item[data-nav]").forEach(btn => {
+      if (btn.getAttribute("data-nav") === currentBaseRoute) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+
+    // Auto-close mobile navbar dropdown if open
+    const mobileNavList = document.getElementById("navbar-links-list");
+    if (mobileNavList && mobileNavList.classList.contains("mobile-open")) {
+      mobileNavList.classList.remove("mobile-open");
+    }
+
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     if (hash === "home") {
@@ -246,6 +334,26 @@ const App = {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- PWA Install Promotional Card -->
+          <div id="pwa-install-card" class="pwa-install-card">
+            <div class="pwa-install-info">
+              <div class="pwa-install-icon-wrapper">
+                <img src="/static/icon-192.png" alt="DDU Notes App" class="pwa-install-logo">
+              </div>
+              <div class="pwa-install-text">
+                <div class="pwa-install-badge">⚡ Official Web App (PWA)</div>
+                <h3 class="pwa-install-title">Install DDU B.Tech Notes App</h3>
+                <p class="pwa-install-desc">Install directly on your Mobile (Android/iOS), Tablet, or Laptop for 1-tap instant offline access to all 8 semester notes, PYQs, and syllabi.</p>
+              </div>
+            </div>
+            <div class="pwa-install-actions">
+              <button class="btn-pwa-install" onclick="window.installPwa()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                ⚡ Install App
+              </button>
             </div>
           </div>
 

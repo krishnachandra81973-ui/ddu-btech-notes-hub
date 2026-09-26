@@ -19,6 +19,13 @@
   <link rel="icon" type="image/png" sizes="64x64" href="/static/favicon.png">
   <link rel="shortcut icon" href="/static/favicon.ico">
   <link rel="apple-touch-icon" href="/static/ddu_kn_notes_logo.png">
+
+  <!-- PWA Web App Manifest & Mobile OS Integration -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1e40af">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DDU Notes">
 </head>
 <body>
 
@@ -60,6 +67,12 @@
         <!-- Dark / Light Theme Toggle -->
         <button onclick="App.toggleTheme()" id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Dark/Light Mode">
           🌙
+        </button>
+
+        <!-- Install App Button (PWA) -->
+        <button onclick="window.installPwa()" id="btn-nav-install" class="btn-nav-install" title="Install DDU Notes App on Phone or PC">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span class="nav-install-text">Install App</span>
         </button>
 
         <!-- Dynamic Auth Container -->
@@ -413,6 +426,56 @@
           </button>
         </form>
       </div>
+    </div>
+  <!-- Mobile Bottom Navigation Bar (Active on Mobile Screens) -->
+  <nav class="mobile-bottom-nav" id="mobile-bottom-navigation">
+    <a href="#home" class="bottom-nav-item active" data-nav="home">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </a>
+    <a href="#semesters" class="bottom-nav-item" data-nav="semesters">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+      <span>Semesters</span>
+    </a>
+    <a href="#notes" class="bottom-nav-item" data-nav="notes">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span>Notes</span>
+    </a>
+    <a href="#pyq" class="bottom-nav-item" data-nav="pyq">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>PYQs</span>
+    </a>
+    <button class="bottom-nav-item" onclick="window.installPwa()" id="btn-bottom-install" title="Install App">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>Install</span>
+    </button>
+  </nav>
+
+  <!-- PWA Install Guide Modal for iOS Safari / Unsupported Browsers -->
+  <div id="pwa-install-modal" class="modal" style="display: none;">
+    <div class="modal-backdrop" onclick="document.getElementById('pwa-install-modal').style.display='none'"></div>
+    <div class="modal-card" style="max-width: 440px; text-align: center; padding: 28px 24px;">
+      <div style="font-size: 2.8rem; margin-bottom: 10px;">📲</div>
+      <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 8px;">Install DDU B.Tech Notes App</h3>
+      <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px;">
+        Get 1-tap instant access right from your mobile home screen or laptop desktop, just like a native Android/iOS application!
+      </p>
+      <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; text-align: left; font-size: 0.86rem; line-height: 1.6; margin-bottom: 22px;">
+        <div style="margin-bottom: 12px;">
+          <strong style="color: var(--primary);">🍎 iPhone / iPad (Safari):</strong><br>
+          1. Tap the <strong>Share</strong> button ( <span style="font-size: 1.1rem;">📤</span> ) at bottom of screen.<br>
+          2. Scroll down & select <strong>"Add to Home Screen"</strong> ( <span style="font-size: 1.1rem;">➕</span> ).<br>
+          3. Tap <strong>"Add"</strong> in top-right corner.
+        </div>
+        <div style="border-top: 1px dashed var(--border); padding-top: 10px;">
+          <strong style="color: var(--accent-emerald);">🤖 Android & Chrome / PC:</strong><br>
+          1. Tap the 3-dots menu ( <strong>⋮</strong> ) in top-right.<br>
+          2. Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.
+        </div>
+      </div>
+      <button onclick="document.getElementById('pwa-install-modal').style.display='none'" class="btn-primary" style="width: 100%; padding: 12px; font-weight: 700;">
+        Got it, Thanks!
+      </button>
     </div>
   </div>
 

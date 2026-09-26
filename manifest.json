@@ -1,0 +1,55 @@
+{
+  "short_name": "DDU Notes",
+  "name": "DDU B.Tech Notes Hub - Study Portal",
+  "description": "Complete B.Tech study material, semester notes, official syllabus, and 5-year PYQs for DDU Gorakhpur University students.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b0f19",
+  "theme_color": "#1e40af",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/ddu_kn_notes_logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["education", "books", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Semester Notes",
+      "short_name": "Notes",
+      "description": "Browse semester-wise B.Tech notes",
+      "url": "/#notes",
+      "icons": [{ "src": "/static/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Previous Year Papers",
+      "short_name": "PYQs",
+      "description": "Download 5-year previous year question papers",
+      "url": "/#pyq",
+      "icons": [{ "src": "/static/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Official Syllabus",
+      "short_name": "Syllabus",
+      "description": "Official DDU CBCS scheme syllabus",
+      "url": "/#syllabus",
+      "icons": [{ "src": "/static/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

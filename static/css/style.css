@@ -1612,13 +1612,212 @@ button {
   to { transform: translateX(0); opacity: 1; }
 }
 
-/* Responsive */
-@media (max-width: 1120px) {
+/* ==========================================================================
+   PWA Installation & Multi-Device Mobile/Tablet/Laptop Enhancements
+   ========================================================================== */
+
+/* PWA Install Promotional Card on Home */
+.pwa-install-card {
+  margin: 32px 0 16px;
+  padding: 22px 28px;
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.07), rgba(14, 165, 233, 0.07));
+  border: 1px solid rgba(30, 64, 175, 0.22);
+  border-radius: var(--radius-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 4px 20px rgba(30, 64, 175, 0.06);
+  transition: var(--transition);
+}
+[data-theme="dark"] .pwa-install-card {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(14, 165, 233, 0.08));
+  border-color: rgba(59, 130, 246, 0.28);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+.pwa-install-info {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.pwa-install-icon-wrapper {
+  width: 62px;
+  height: 62px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.pwa-install-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pwa-install-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--primary);
+  background: var(--primary-light);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.pwa-install-title {
+  font-size: 1.18rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 4px;
+  line-height: 1.25;
+}
+.pwa-install-desc {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  max-width: 680px;
+}
+.btn-pwa-install {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border: none;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 12px 24px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.btn-pwa-install:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.45);
+}
+
+/* Navbar Install Button */
+.btn-nav-install {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(14, 165, 233, 0.12));
+  color: var(--primary);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 7px 14px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: var(--transition);
+  height: 38px;
+}
+.btn-nav-install:hover {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.3);
+}
+
+/* Mobile Bottom Navigation Bar (Fixed for Mobile devices <= 768px) */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 64px;
+  background: var(--nav-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  z-index: 999;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 6px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+}
+[data-theme="dark"] .mobile-bottom-nav {
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
+}
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+  text-decoration: none;
+  flex: 1;
+  text-align: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.bottom-nav-item svg {
+  transition: var(--transition);
+}
+.bottom-nav-item:hover,
+.bottom-nav-item.active {
+  color: var(--primary);
+}
+.bottom-nav-item.active svg {
+  transform: scale(1.15);
+  stroke-width: 2.5;
+}
+
+/* Responsive Breakpoints */
+
+/* Laptops / Desktops (Default & max-width: 1200px) */
+@media (max-width: 1200px) {
   .brand-subtitle { display: none; }
   .search-btn-text { display: none; }
   .nav-item a { padding: 6px 9px; font-size: 0.85rem; }
 }
 
+/* Tablet & Smaller Laptops (769px to 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .hero-grid-layout {
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 28px;
+    align-items: center;
+  }
+  .hero-emblem-ring {
+    width: 150px;
+    height: 150px;
+  }
+  .semesters-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 18px;
+  }
+  .notes-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 18px;
+  }
+  .pyq-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 18px;
+  }
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Small Laptops & Tablets (max-width: 960px) */
 @media (max-width: 960px) {
   .hero-grid-layout {
     grid-template-columns: 1fr;
@@ -1651,6 +1850,7 @@ button {
     padding: 16px 20px;
     box-shadow: var(--shadow-lg);
     gap: 6px;
+    z-index: 998;
   }
   .nav-links.mobile-open .nav-item {
     width: 100%;
@@ -1664,9 +1864,129 @@ button {
   .mobile-menu-toggle { display: block; }
 }
 
+/* Mobile Screens (<= 768px) */
 @media (max-width: 768px) {
-  .footer-grid { grid-template-columns: 1fr; }
-  .hero-section { padding: 40px 0 30px; }
-  .brand-title { font-size: 1.05rem; }
-  .brand-logo-img { width: 44px; height: 44px; }
+  body {
+    padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+  }
+  .mobile-bottom-nav {
+    display: flex;
+  }
+  .btn-nav-install {
+    display: none !important; /* Prominently available in bottom nav on mobile */
+  }
+  .pwa-install-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 18px 16px;
+    gap: 14px;
+  }
+  .pwa-install-info {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+  .btn-pwa-install {
+    width: 100%;
+    justify-content: center;
+    padding: 13px 20px;
+  }
+  .semesters-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+  }
+  .notes-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+  }
+  .pyq-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+  }
+  .filter-bar, .chips-container, .branch-tabs, .tabs-list {
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 6px;
+  }
+  .filter-bar::-webkit-scrollbar,
+  .chips-container::-webkit-scrollbar,
+  .branch-tabs::-webkit-scrollbar,
+  .tabs-list::-webkit-scrollbar {
+    display: none;
+  }
+  .hero-buttons {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+  .hero-buttons a,
+  .hero-buttons button {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px;
+  }
+  .stat-card {
+    padding: 12px 14px;
+  }
+  .stat-value {
+    font-size: 1.3rem !important;
+  }
+  .stat-label {
+    font-size: 0.72rem !important;
+  }
+  .hero-emblem-ring {
+    width: 130px;
+    height: 130px;
+  }
+  .footer-grid {
+    grid-template-columns: 1fr;
+  }
+  .hero-section {
+    padding: 30px 0 24px;
+  }
+  .brand-title {
+    font-size: 1.05rem;
+  }
+  .brand-logo-img {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* Extra Small Phones (< 480px) */
+@media (max-width: 480px) {
+  .container {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .brand-title {
+    font-size: 0.95rem;
+  }
+  .brand-naac-badge {
+    display: none;
+  }
+  .brand-logo-img {
+    width: 38px;
+    height: 38px;
+  }
+  .hero-title {
+    font-size: 1.8rem;
+  }
+  .hero-subtitle {
+    font-size: 0.88rem;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .footer-bottom {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
 }

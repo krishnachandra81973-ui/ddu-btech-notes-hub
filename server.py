@@ -344,6 +344,14 @@ class DDURequestHandler(BaseHTTPRequestHandler):
             self.serve_static(os.path.join(STATIC_DIR, "admin.html"))
             return
 
+        if path == "/manifest.json":
+            self.serve_static(os.path.join(BASE_DIR, "manifest.json"))
+            return
+
+        if path == "/sw.js":
+            self.serve_static(os.path.join(BASE_DIR, "sw.js"))
+            return
+
         # 7. Static files and SPA serving
         if path == "/" or path == "":
             self.serve_static(os.path.join(STATIC_DIR, "index.html"))
