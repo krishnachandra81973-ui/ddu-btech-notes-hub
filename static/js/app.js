@@ -426,19 +426,585 @@ const App = {
 
   // ------------------- 1. Home View -------------------
   async renderHome(container) {
+    if (!Auth.currentUser) {
+      // Unauthenticated / Guest View: Grand Centered University Logo Stage + Parallax Overlapping Benefits Sheet
+      this.renderGuestHome(container);
+    } else {
+      // Authenticated Student View: Personalized Dashboard with Active Semester & Bookmarks
+      this.renderStudentHome(container);
+    }
+
+    // Fetch and display latest updates
+    await this.loadHomeUpdates();
+
+    // Sync PWA install state on home render
+    this.updateInstallUi();
+  },
+
+  // 1A. Guest Landing: Grand Centered University Logo Stage + Parallax Overlap Sheet
+  renderGuestHome(container) {
     container.innerHTML = `
-      <!-- Hero Section -->
-      <section class="hero-section">
+      <!-- Sticky Grand University Logo Stage (Top First Screen) -->
+      <section class="guest-welcome-stage" id="guest-welcome-stage">
+        <div class="guest-ambient-glow"></div>
+        <div class="guest-stage-inner">
+          <!-- Large Centered Emblem Ring -->
+          <div class="guest-emblem-ring" title="Deen Dayal Upadhyaya Gorakhpur University Crest">
+            <img src="/static/ddu_official_logo.png?v=3" alt="Deen Dayal Upadhyaya Gorakhpur University Official Crest" class="guest-emblem-img" onerror="this.src='/logo.png'">
+          </div>
+
+          <!-- University Typography -->
+          <h1 class="guest-uni-title-hi">दीनदयाल उपाध्याय गोरखपुर विश्वविद्यालय</h1>
+          <div class="guest-uni-title-en">Deen Dayal Upadhyaya Gorakhpur University</div>
+          <div class="guest-uni-faculty">Faculty of Engineering & Technology • Institute of Engineering & Technology (IET)</div>
+
+          <!-- Accreditation Badges -->
+          <div class="guest-badges-row">
+            <span class="guest-badge-chip guest-badge-gold">🏛️ Estd. 1957 (State University)</span>
+            <span class="guest-badge-chip guest-badge-green">✓ NAAC "A++" Grade Accredited</span>
+            <span class="guest-badge-chip guest-badge-blue">🎓 8 Semesters B.Tech Curriculum</span>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="guest-actions-row">
+            <button onclick="Auth.openModal('register')" class="guest-btn-primary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7.5" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+              ✨ Create Free Student Account
+            </button>
+            <button onclick="Auth.openModal('login')" class="guest-btn-secondary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              🔑 Student Log In
+            </button>
+          </div>
+        </div>
+
+        <!-- Animated Scroll Down Prompter -->
+        <div class="guest-scroll-prompter" onclick="document.getElementById('guest-sheet').scrollIntoView({behavior: 'smooth'})" title="Scroll Down for Website Details & Benefits">
+          <span>Explore Details & Benefits</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </section>
+
+      <!-- Overlapping Sliding Content Sheet (Glides Over University Crest on Scroll) -->
+      <section class="guest-content-sheet" id="guest-sheet">
+        <div class="sheet-grab-bar" title="Elevated Content Sheet"></div>
+
         <div class="container">
+          <!-- Sheet Hero Header -->
+          <div class="guest-sheet-hero">
+            <span class="guest-sheet-tag">🚀 Official Academic Ecosystem</span>
+            <h2 class="guest-sheet-title">The Complete Academic Hub for <span>DDU Engineers</span></h2>
+            <p class="guest-sheet-desc">
+              Welcome to the official study material portal of Deen Dayal Upadhyaya Gorakhpur University. Access verified unit-wise notes, previous 5-year question papers (PYQs), official NEP 2020 syllabus curricula, and instant campus circulars in one unified place.
+            </p>
+          </div>
+
+          <!-- Registration Required Alert Banner -->
+          <div style="background: linear-gradient(135deg, rgba(30, 64, 175, 0.12), rgba(217, 119, 6, 0.14)); border: 1.5px solid rgba(217, 119, 6, 0.45); border-radius: var(--radius-md); padding: 18px 24px; margin-bottom: 40px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <span style="font-size: 2.2rem;">🔐</span>
+              <div>
+                <div style="font-weight: 800; font-size: 1.05rem; color: var(--text-main); font-family: 'Outfit', sans-serif;">
+                  Free Student Registration Required for Full Content Access
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 3px;">
+                  All notes, solved question papers, and syllabus documents require a quick free student registration to read online and download.
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button onclick="Auth.openModal('register')" class="btn-primary" style="font-weight: 800; padding: 10px 20px; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
+                ✨ Create Free Account
+              </button>
+              <button onclick="Auth.openModal('login')" class="btn-secondary" style="font-weight: 700; padding: 10px 18px; font-size: 0.9rem;">
+                🔑 Log In
+              </button>
+            </div>
+          </div>
+
+          <!-- Statistics Counters -->
+          <div class="stats-grid" id="home-stats-container" style="margin-bottom: 45px;">
+            <div class="stat-card">
+              <div class="stat-icon" style="background: rgba(30, 64, 175, 0.15); color: var(--primary);">🎓</div>
+              <div>
+                <div class="stat-value">8 / 8</div>
+                <div class="stat-label">B.Tech Semesters</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background: rgba(14, 165, 233, 0.15); color: var(--accent);">📚</div>
+              <div>
+                <div class="stat-value">28</div>
+                <div class="stat-label">Core & Elective Courses</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald);">📝</div>
+              <div>
+                <div class="stat-value">176+</div>
+                <div class="stat-label">Unit 1–5 Lecture Notes</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-amber);">📄</div>
+              <div>
+                <div class="stat-value">140+</div>
+                <div class="stat-label">PYQ Papers (2021-2025)</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background: rgba(239, 68, 68, 0.15); color: var(--accent-rose);">🏛️</div>
+              <div>
+                <div class="stat-value">100%</div>
+                <div class="stat-label">Free Student Access</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Core Benefits Grid (8 Major Advantages) -->
+          <div class="section-header">
+            <span class="section-tag" style="background: rgba(217, 119, 6, 0.12); color: #d97706; border: 1px solid rgba(217, 119, 6, 0.3);">💎 Key Benefits</span>
+            <h2 class="section-title">Why Students Love DDU Notes Hub</h2>
+            <p class="section-description">
+              Engineered exclusively for engineering students of Deen Dayal Upadhyaya Gorakhpur University with zero distractions, zero fees, and high academic fidelity.
+            </p>
+          </div>
+
+          <div class="guest-benefits-grid">
+            <div class="guest-benefit-card">
+              <div class="guest-benefit-icon-box" style="background: rgba(30, 64, 175, 0.1); color: var(--primary);">📚</div>
+              <h3 class="guest-benefit-title">1st to 8th Sem Lecture Notes</h3>
+              <p class="guest-benefit-desc">Hand-crafted, typed, and unit-wise (Units 1 to 5) study notes matching the university curriculum and syllabus scope.</p>
+              <span class="guest-benefit-badge" style="background: rgba(30, 64, 175, 0.1); color: var(--primary);">Units 1–5 Covered</span>
+            </div>
+
+            <div class="guest-benefit-card">
+              <div class="guest-benefit-icon-box" style="background: rgba(217, 119, 6, 0.1); color: #d97706;">📑</div>
+              <h3 class="guest-benefit-title">5-Year PYQs (2021–2025)</h3>
+              <p class="guest-benefit-desc">Comprehensive repository of university end-term examination papers, repeated derivation patterns, and marking schemes.</p>
+              <span class="guest-benefit-badge" style="background: rgba(217, 119, 6, 0.1); color: #d97706;">2021–2025 Papers</span>
+            </div>
+
+            <div class="guest-benefit-card">
+              <div class="guest-benefit-icon-box" style="background: rgba(16, 185, 129, 0.1); color: #059669;">🏛️</div>
+              <h3 class="guest-benefit-title">Official CBCS & NEP 2020 Syllabus</h3>
+              <p class="guest-benefit-desc">Official syllabi directly issued by Faculty of Engineering & Technology (IET DDUGU) with course outcomes, credits, and book references.</p>
+              <span class="guest-benefit-badge" style="background: rgba(16, 185, 129, 0.1); color: #059669;">Verified PDFs</span>
+            </div>
+
+            <div class="guest-benefit-card">
+              <div class="guest-benefit-icon-box" style="background: rgba(14, 165, 233, 0.1); color: var(--accent);">✍️</div>
+              <h3 class="guest-benefit-title">Student Notes Contributions & Verification</h3>
+              <p class="guest-benefit-desc">Contribute your self-prepared study notes! Once verified by administrator, your name and contributor badge appear on the platform.</p>
+              <span class="guest-benefit-badge" style="background: rgba(14, 165, 233, 0.1); color: var(--accent);">Peer Learning</span>
+            </div>
+
+            <div class="guest-benefit-card">
+              <div class="guest-benefit-icon-box" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">⚡</div>
+              <h3 class="guest-benefit-title">High-Speed In-Browser PDF Reader</h3>
+              <p class="guest-benefit-desc">Read notes smoothly with fullscreen viewing, mobile zoom, page navigation, and 1-tap offline PDF download.</p>
+              <span class="guest-benefit-badge" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">1-Tap Reading</span>
+            </div>
+
+            <div class="guest-benefit-card">
+              <div class="guest-benefit-icon-box" style="background: rgba(239, 68, 68, 0.1); color: #dc2626;">📱</div>
+              <h3 class="guest-benefit-title">1-Tap App Install (PWA)</h3>
+              <p class="guest-benefit-desc">Install directly on your Android, iOS, Windows, or Mac device with offline support and instantaneous home screen access.</p>
+              <span class="guest-benefit-badge" style="background: rgba(239, 68, 68, 0.1); color: #dc2626;">Offline Ready</span>
+            </div>
+
+            <div class="guest-benefit-card">
+              <div class="guest-benefit-icon-box" style="background: rgba(245, 158, 11, 0.1); color: #d97706;">🔖</div>
+              <h3 class="guest-benefit-title">Personalized Student Library</h3>
+              <p class="guest-benefit-desc">Bookmark vital units, track subjects, and access your favorite study materials right before exam night.</p>
+              <span class="guest-benefit-badge" style="background: rgba(245, 158, 11, 0.1); color: #d97706;">Smart Revision</span>
+            </div>
+
+            <div class="guest-benefit-card">
+              <div class="guest-benefit-icon-box" style="background: rgba(16, 185, 129, 0.1); color: #059669;">🛡️</div>
+              <h3 class="guest-benefit-title">Zero Data Leak Security & Privacy</h3>
+              <p class="guest-benefit-desc">Strict session encryption, brute-force defense, role-based access control (RBAC), and zero data sharing with third parties.</p>
+              <span class="guest-benefit-badge" style="background: rgba(16, 185, 129, 0.1); color: #059669;">100% Protected</span>
+            </div>
+          </div>
+
+          <!-- 3-Step "How to Get Started" Guide -->
+          <div class="guest-steps-container">
+            <div style="text-align: center;">
+              <span class="section-tag" style="background: rgba(30, 64, 175, 0.1); color: var(--primary);">Simple 3 Steps</span>
+              <h3 style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); margin: 6px 0;">How to Get Started</h3>
+              <p style="font-size: 0.88rem; color: var(--text-muted);">Unlock full notes, question papers, and syllabus in less than 30 seconds.</p>
+            </div>
+            <div class="guest-steps-grid">
+              <div class="guest-step-card">
+                <div class="guest-step-num">1</div>
+                <div>
+                  <div class="guest-step-title">Create Free Account</div>
+                  <div class="guest-step-desc">Sign up in seconds using your name, email, roll number, and branch. No credit card, 100% free forever.</div>
+                </div>
+              </div>
+              <div class="guest-step-card">
+                <div class="guest-step-num">2</div>
+                <div>
+                  <div class="guest-step-title">Select Branch & Semester</div>
+                  <div class="guest-step-desc">Pick your active semester (1st to 8th) and branch to see all mapped subjects, units, and PYQs.</div>
+                </div>
+              </div>
+              <div class="guest-step-card">
+                <div class="guest-step-num">3</div>
+                <div>
+                  <div class="guest-step-title">Study & Excel</div>
+                  <div class="guest-step-desc">Read PDFs online in browser, download copies for offline study, practice PYQs, and score top marks!</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Supported Engineering Branches -->
+          <div class="section-header" style="margin-bottom: 14px;">
+            <span class="section-tag">Engineering Disciplines</span>
+            <h2 class="section-title">Branches Supported</h2>
+            <p class="section-description">Curriculum aligned with Institute of Engineering & Technology, DDU Gorakhpur University.</p>
+          </div>
+          <div class="guest-branches-grid">
+            <div class="guest-branch-pill">💻 Computer Science & Engineering (CSE)</div>
+            <div class="guest-branch-pill">🤖 CSE (Artificial Intelligence & ML)</div>
+            <div class="guest-branch-pill">📊 CSE (Data Science)</div>
+            <div class="guest-branch-pill">🌐 Information Technology (IT)</div>
+            <div class="guest-branch-pill">⚡ Electronics & Communication (ECE)</div>
+            <div class="guest-branch-pill">🔌 Electrical Engineering (EE)</div>
+            <div class="guest-branch-pill">⚙️ Mechanical Engineering (ME)</div>
+            <div class="guest-branch-pill">🏗️ Civil Engineering (CE)</div>
+          </div>
+
+          <!-- All 8 Semesters Preview Grid -->
+          <div class="section-header">
+            <span class="section-tag">Direct Curriculum Access</span>
+            <h2 class="section-title">All 8 B.Tech Semesters</h2>
+            <p class="section-description">
+              Select your academic semester to view all subjects, unit-wise notes, download PDFs, and practice questions.
+            </p>
+          </div>
+
+          <div class="semester-grid" id="home-semester-grid">
+            ${[1, 2, 3, 4, 5, 6, 7, 8].map(sem => `
+              <div class="semester-card">
+                <div>
+                  <div class="semester-badge">Year ${Math.ceil(sem / 2)} • B.Tech</div>
+                  <h3 class="semester-card-title">${sem === 1 ? '1st' : sem === 2 ? '2nd' : sem === 3 ? '3rd' : `${sem}th`} Semester</h3>
+                  <p class="semester-card-desc">
+                    ${sem === 1 ? 'Applied Mathematics, Engineering Physics, C Programming & Basics.' :
+                      sem === 2 ? 'Data Structures in C, Mathematics-II, Engineering Chemistry & CAD.' :
+                      sem === 3 ? 'Discrete Mathematics, COA, Object Oriented Programming & Digital Logic.' :
+                      sem === 4 ? 'Operating Systems, Automata Theory, Microprocessors & Software Engineering.' :
+                      sem === 5 ? 'DBMS, Design & Analysis of Algorithms, Web Technologies & Electives.' :
+                      sem === 6 ? 'Compiler Design, Computer Networks, Distributed Computing & Practicals.' :
+                      sem === 7 ? 'Artificial Intelligence, Machine Learning, Cloud Systems & Seminars.' :
+                      'Major Capstone Project, Cyber Security, Deep Learning & Viva Voce.'}
+                  </p>
+                </div>
+                <div>
+                  <div class="semester-meta">
+                    <span>${sem <= 3 ? '5 Subjects • 25 Units' : 'Core Syllabus Available'}</span>
+                    <span style="color: #d97706; font-weight: 700;">🔒 Requires Sign Up</span>
+                  </div>
+                  <button onclick="Auth.openModal('register')" class="btn-primary btn-sm" style="width: 100%; margin-top: 14px;">
+                    🔓 Unlock ${sem === 1 ? '1st' : sem === 2 ? '2nd' : sem === 3 ? '3rd' : `${sem}th`} Semester
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Official CBCS Curriculum Repository Section -->
+          <div style="padding: 50px 0 30px;">
+            <div class="section-header">
+              <span class="section-tag" style="background: rgba(217, 119, 6, 0.12); color: #d97706; border: 1px solid rgba(217, 119, 6, 0.3);">🏛️ Official DDUGU Curriculum</span>
+              <h2 class="section-title">Official B.Tech CBCS Syllabus Repository</h2>
+              <p class="section-description">
+                Verified syllabus documents issued by Faculty of Engineering & Technology, Deen Dayal Upadhyaya Gorakhpur University (Session 2024–2026).
+              </p>
+            </div>
+
+            <div class="official-syllabus-grid">
+              <div class="official-syllabus-card">
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                    <span style="font-size: 0.72rem; font-weight: 800; background: var(--primary-light); color: var(--primary); padding: 3px 8px; border-radius: 4px;">4-YEAR B.TECH CSE</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">1.95 MB PDF</span>
+                  </div>
+                  <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">
+                    B.Tech Computer Science & Engineering (Session 2024-25)
+                  </h3>
+                  <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
+                    Comprehensive 4-year degree scheme covering complete semester credits, course learning objectives, contact hours, and recommended textbooks.
+                  </p>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: auto;">
+                  <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_cse_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech CSE Structure & Syllabus 2024-25')" class="btn-primary btn-sm" style="flex: 1;">
+                    👁️ Read Online
+                  </button>
+                  <a href="/static/uploads/ddu_official_btech_cse_structure_syllabus_2024_25.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                    ⬇ Download
+                  </a>
+                </div>
+              </div>
+
+              <div class="official-syllabus-card" style="border-left-color: #0284c7;">
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                    <span style="font-size: 0.72rem; font-weight: 800; background: rgba(14, 165, 233, 0.15); color: var(--accent); padding: 3px 8px; border-radius: 4px;">SPECIALIZATION</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">1.72 MB PDF</span>
+                  </div>
+                  <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">
+                    B.Tech CSE with Artificial Intelligence & Machine Learning (AIML)
+                  </h3>
+                  <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
+                    Specialized curriculum covering Neural Networks, Deep Learning, Natural Language Processing, Computer Vision, and applied AI labs aligned with NEP 2020.
+                  </p>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: auto;">
+                  <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_cse_aiml_syllabus.pdf', 'Official DDU B.Tech CSE (AIML) Syllabus')" class="btn-primary btn-sm" style="flex: 1;">
+                    👁️ Read Online
+                  </button>
+                  <a href="/static/uploads/ddu_official_btech_cse_aiml_syllabus.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                    ⬇ Download
+                  </a>
+                </div>
+              </div>
+
+              <div class="official-syllabus-card" style="border-left-color: #10b981;">
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                    <span style="font-size: 0.72rem; font-weight: 800; background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); padding: 3px 8px; border-radius: 4px;">DATA SCIENCE</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">1.73 MB PDF</span>
+                  </div>
+                  <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">
+                    B.Tech CSE (Artificial Intelligence & Data Science - AI & DS)
+                  </h3>
+                  <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
+                    Advanced degree framework focusing on Big Data Engineering, Statistical Machine Learning, Cloud Analytics, and Predictive Modeling pipelines.
+                  </p>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: auto;">
+                  <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_cse_aids_syllabus.pdf', 'Official DDU B.Tech CSE (AI & DS) Syllabus')" class="btn-primary btn-sm" style="flex: 1;">
+                    👁️ Read Online
+                  </button>
+                  <a href="/static/uploads/ddu_official_btech_cse_aids_syllabus.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                    ⬇ Download
+                  </a>
+                </div>
+              </div>
+
+              <div class="official-syllabus-card" style="border-left-color: #d97706;">
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                    <span style="font-size: 0.72rem; font-weight: 800; background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); padding: 3px 8px; border-radius: 4px;">POSTGRADUATE</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">1.07 MB PDF</span>
+                  </div>
+                  <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">
+                    M.Tech Computer Science & Engineering (CBCS)
+                  </h3>
+                  <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
+                    Postgraduate curriculum offering High-Performance Computing, Distributed Systems, Advanced Research Methodologies, and Thesis work.
+                  </p>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: auto;">
+                  <button onclick="App.openPdfViewer('/static/uploads/ddu_official_mtech_cse_syllabus.pdf', 'Official DDU M.Tech CSE Syllabus')" class="btn-primary btn-sm" style="flex: 1;">
+                    👁️ Read Online
+                  </button>
+                  <a href="/static/uploads/ddu_official_mtech_cse_syllabus.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                    ⬇ Download
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Department of Computer Science & Engineering Showcase -->
+          <div style="padding: 20px 0 40px;">
+            <div class="dept-showcase-box">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+                <div>
+                  <span class="section-tag" style="background: var(--primary-light); color: var(--primary);">Faculty of Engineering & Technology</span>
+                  <h2 style="font-size: 1.85rem; font-weight: 800; color: var(--text-main); margin: 6px 0;">
+                    Department of Computer Science & Engineering (DOCSE)
+                  </h2>
+                  <p style="font-size: 0.92rem; color: var(--text-muted); max-width: 720px;">
+                    Institute of Engineering & Technology (IET), Deen Dayal Upadhyaya Gorakhpur University, Civil Lines, Gorakhpur.
+                  </p>
+                </div>
+                <a href="https://ddugu.ac.in/department/DOCSE" target="_blank" rel="noopener noreferrer" class="btn-secondary btn-sm">
+                  Official University Page ↗
+                </a>
+              </div>
+
+              <p style="font-size: 0.92rem; color: var(--text-muted); line-height: 1.8; margin-bottom: 20px;">
+                Established with campus teaching in 2021, the Department of Computer Science and Engineering has rapidly evolved into an epicenter of technical excellence. With an annual intake expanded to <strong>150+ students</strong>, the department offers specialized undergraduate B.Tech programs in <strong>Artificial Intelligence & Machine Learning (AI/ML)</strong> and <strong>AI & Data Science (AI & DS)</strong> in line with the National Education Policy (NEP) 2020.
+              </p>
+
+              <div class="dept-stats-row">
+                <div class="dept-stat-pill">
+                  <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">150+</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600; margin-top: 4px;">Annual Intake Capacity</div>
+                </div>
+                <div class="dept-stat-pill">
+                  <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-emerald);">300+</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600; margin-top: 4px;">Samsung Innovation Scholars</div>
+                </div>
+                <div class="dept-stat-pill">
+                  <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-amber);">AIR 120</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600; margin-top: 4px;">Top GATE 2025 Rank</div>
+                </div>
+                <div class="dept-stat-pill">
+                  <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent);">34</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600; margin-top: 4px;">NPTEL Elective Tracks</div>
+                </div>
+              </div>
+
+              <!-- Specialized Labs -->
+              <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin-top: 24px;">Advanced Research & Instructional Laboratories:</h4>
+              <div class="lab-grid">
+                <div class="lab-card">
+                  <div style="font-size: 1.3rem; margin-bottom: 6px;">🤖</div>
+                  <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); margin-bottom: 4px;">AI & Machine Learning Lab</div>
+                  <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.5;">GPU clusters for neural network training, computer vision algorithms, and NLP model implementation.</p>
+                </div>
+                <div class="lab-card">
+                  <div style="font-size: 1.3rem; margin-bottom: 6px;">☁️</div>
+                  <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); margin-bottom: 4px;">Cloud Computing & IoT Lab</div>
+                  <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.5;">IoT sensor kits, microcontroller hardware, and distributed cloud computing instances.</p>
+                </div>
+                <div class="lab-card">
+                  <div style="font-size: 1.3rem; margin-bottom: 6px;">📊</div>
+                  <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); margin-bottom: 4px;">Big Data & Data Science Lab</div>
+                  <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.5;">Hadoop/Spark analytical suites, predictive algorithms, and statistical modeling workstations.</p>
+                </div>
+                <div class="lab-card">
+                  <div style="font-size: 1.3rem; margin-bottom: 6px;">🛡️</div>
+                  <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); margin-bottom: 4px;">Cyber Security & Forensics Lab</div>
+                  <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.5;">Ethical hacking sandboxes, network packet visualizers, cryptographic analysis, and digital forensics.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Featured Developer Showcase Banner -->
+          <div style="padding: 20px 0 40px;">
+            <div style="background: linear-gradient(135deg, rgba(30, 64, 175, 0.06), rgba(14, 165, 233, 0.05), rgba(245, 158, 11, 0.04)); border: 1.5px solid var(--border); border-radius: var(--radius-lg); padding: 36px; box-shadow: var(--shadow-md); position: relative; overflow: hidden;">
+              <div style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #1e40af, #0284c7, #f59e0b);"></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 24px;">
+                <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                  <div class="dev-photo-ring" style="width: 82px; height: 82px;">
+                    <div class="dev-photo-inner" style="font-size: 1.8rem;">KN</div>
+                    <div class="dev-badge-verified">✓</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 800; color: var(--primary); letter-spacing: 0.5px;">Architect & Full-Stack Developer</div>
+                    <h3 style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); margin: 2px 0;">KESHAV NARAYAN</h3>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+                      B.Tech Computer Science & Engineering (Specialization: AI & ML) • DDU Gorakhpur University
+                    </div>
+                    <p style="font-size: 0.84rem; color: var(--text-muted); max-width: 650px; margin-top: 6px; line-height: 1.5;">
+                      "Engineered to empower every B.Tech student with free, instantaneous access to verified academic resources, previous year question archives, and university updates."
+                    </p>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                  <a href="#about" class="btn-primary" style="padding: 10px 20px; font-size: 0.88rem;">
+                    📖 Read Full Biography & Vision
+                  </a>
+                  <button onclick="App.openFeedbackModal()" class="btn-secondary" style="padding: 10px 20px; font-size: 0.88rem;">
+                    ✉️ Message / Request Notes
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Latest Daily Updates Teaser -->
+          <div style="padding: 20px 0 50px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 14px;">
+              <div>
+                <span class="section-tag">University Circulars</span>
+                <h2 class="section-title" style="margin-bottom: 4px; font-size: 1.8rem;">Daily Academic Updates</h2>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Real-time notices, exam timetables, admit cards, and results.</p>
+              </div>
+              <a href="#updates" class="btn-secondary">
+                View All Updates →
+              </a>
+            </div>
+
+            <div id="home-updates-list" class="updates-card-list">
+              <p style="color: var(--text-muted);">Loading latest updates...</p>
+            </div>
+          </div>
+
+          <!-- Bottom Grand Call-to-Action Card -->
+          <div class="guest-cta-box">
+            <h3 class="guest-cta-title">Ready to Excel in Your Semester Exams?</h3>
+            <p class="guest-cta-desc">
+              Join your fellow DDU engineering students today. Create your free student account now to get immediate access to all lecture notes, PYQs, and syllabus.
+            </p>
+            <button onclick="Auth.openModal('register')" class="guest-cta-btn-white">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7.5" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+              ✨ Create Free Account (Register Now)
+            </button>
+          </div>
+        </div>
+      </section>
+    `;
+  },
+
+  // 1B. Authenticated Student Dashboard: Personalized shortcuts, active semester & bookmarks
+  renderStudentHome(container) {
+    const user = Auth.currentUser || {};
+    const userName = escapeHtml(user.name || 'Engineer');
+    const userBranch = escapeHtml(user.branch || 'B.Tech CSE');
+    const userSem = user.semester || 1;
+
+    container.innerHTML = `
+      <!-- Student Dashboard Hero -->
+      <section class="hero-section" style="padding-top: 36px;">
+        <div class="container">
+          <!-- Student Greeting Card -->
+          <div style="background: linear-gradient(135deg, rgba(30, 64, 175, 0.12), rgba(14, 165, 233, 0.10)); border: 1.5px solid rgba(37, 99, 235, 0.35); border-radius: var(--radius-lg); padding: 28px 32px; margin-bottom: 30px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; align-items: center; gap: 18px;">
+              <div style="width: 58px; height: 58px; border-radius: 50%; background: linear-gradient(135deg, #1e40af, #0284c7); color: #fff; font-size: 1.6rem; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(30, 64, 175, 0.35);">
+                ${userName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div style="font-size: 0.78rem; font-weight: 800; text-transform: uppercase; color: var(--primary); letter-spacing: 0.5px;">Student Portal Dashboard</div>
+                <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-main); margin: 2px 0;">
+                  Welcome back, ${userName}! 👋
+                </h1>
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px;">
+                  <span style="font-size: 0.82rem; font-weight: 700; background: rgba(30, 64, 175, 0.1); color: var(--primary); padding: 2px 10px; border-radius: 20px;">🎓 ${userBranch}</span>
+                  <span style="font-size: 0.82rem; font-weight: 700; background: rgba(217, 119, 6, 0.12); color: #d97706; padding: 2px 10px; border-radius: 20px;">📅 Semester ${userSem}</span>
+                  <span style="font-size: 0.82rem; font-weight: 700; background: rgba(16, 185, 129, 0.12); color: #059669; padding: 2px 10px; border-radius: 20px;">✓ Registered Student</span>
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <a href="#semester/${userSem}" class="btn-primary" style="padding: 12px 22px; font-weight: 800;">
+                🚀 Open My Semester (${userSem})
+              </a>
+              <button onclick="App.openSubmitNoteModal()" class="btn-secondary" style="padding: 12px 18px; font-weight: 700; border-color: rgba(217, 119, 6, 0.4); color: #d97706;">
+                ➕ Add / Contribute Notes
+              </button>
+            </div>
+          </div>
+
+          <!-- Hero Grid Layout -->
           <div class="hero-grid-layout">
             <!-- Left: Hero Text & Actions -->
             <div class="hero-content-col">
               <div class="hero-badge">
                 <span>🏛️</span> NAAC "A++" Accredited State University • Department of CSE & Engineering
               </div>
-              <h1 class="hero-title">
+              <h2 class="hero-title" style="font-size: 2.3rem;">
                 DDU B.Tech <span>Notes Hub</span>
-              </h1>
+              </h2>
               <div class="hero-subtitle">
                 "The Complete Academic & Study Material Ecosystem for DDU Gorakhpur University Engineers"
               </div>
@@ -483,31 +1049,6 @@ const App = {
               </div>
             </div>
           </div>
-
-          <!-- Student Registration Required Callout for Guests -->
-          ${!Auth.currentUser ? `
-            <div style="background: linear-gradient(135deg, rgba(30, 64, 175, 0.12), rgba(217, 119, 6, 0.14)); border: 1.5px solid rgba(217, 119, 6, 0.45); border-radius: var(--radius-md); padding: 18px 24px; margin-top: 24px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; box-shadow: var(--shadow-sm);">
-              <div style="display: flex; align-items: center; gap: 14px;">
-                <span style="font-size: 2.2rem;">🔐</span>
-                <div>
-                  <div style="font-weight: 800; font-size: 1.05rem; color: var(--text-main); font-family: 'Outfit', sans-serif;">
-                    Free Student Registration Required for Full Content Access
-                  </div>
-                  <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 3px;">
-                    DDU B.Tech unit notes, previous year question papers aur syllabus download karne ke liye apna free student account banayein ya login karein.
-                  </div>
-                </div>
-              </div>
-              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button onclick="Auth.openModal('register')" class="btn-primary" style="font-weight: 800; padding: 10px 20px; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
-                  ✨ Create Free Account (Register)
-                </button>
-                <button onclick="Auth.openModal('login')" class="btn-secondary" style="font-weight: 700; padding: 10px 18px; font-size: 0.9rem;">
-                  🔑 Log In
-                </button>
-              </div>
-            </div>
-          ` : ''}
 
           <!-- PWA Install Promotional Card -->
           <div id="pwa-install-card" class="pwa-install-card" style="display: none;">
@@ -856,8 +1397,10 @@ const App = {
         </div>
       </section>
     `;
+  },
 
-    // Fetch and display latest updates
+  // 1C. Load Home Updates
+  async loadHomeUpdates() {
     try {
       const data = await this.safeFetch("/api/updates");
       const updates = (data.updates || []).slice(0, 3);
@@ -898,9 +1441,6 @@ const App = {
         }
       }
     } catch (e) {}
-    
-    // Sync PWA install state on home render
-    this.updateInstallUi();
   },
 
   // ------------------- 2. Semesters Overview -------------------
