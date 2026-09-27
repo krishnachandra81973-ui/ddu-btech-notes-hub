@@ -2061,36 +2061,81 @@ button {
   /* Compact Navbar Header */
   .nav-container {
     height: 56px !important;
-    padding-left: 12px !important;
-    padding-right: 12px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
     gap: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .brand-link {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    overflow: hidden !important;
   }
   .brand-logo-img {
-    width: 38px !important;
-    height: 38px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    flex-shrink: 0 !important;
     padding: 1.5px !important;
   }
+  .brand-info {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    flex: 1 1 auto !important;
+  }
+  .brand-title-line {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
   .brand-title {
-    font-size: 1rem !important;
+    font-size: 0.95rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
   .brand-subtitle {
     display: none !important;
   }
   .brand-naac-badge {
-    font-size: 0.58rem !important;
-    padding: 1px 5px !important;
+    font-size: 0.55rem !important;
+    padding: 1px 4px !important;
+    flex-shrink: 0 !important;
   }
 
-  /* Compact Top Navbar Actions: Clean round icon buttons */
+  /* Compact Top Navbar Actions: Clean round icon buttons with strict dimensions */
   .desktop-auth-container {
     display: none !important;
+  }
+  .nav-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+    margin-left: auto !important;
   }
   .search-trigger-btn {
     width: 36px !important;
     height: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
     padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
     justify-content: center !important;
     border-radius: 50% !important;
+    flex-shrink: 0 !important;
   }
   .search-btn-text, .search-shortcut-badge {
     display: none !important;
@@ -2098,14 +2143,27 @@ button {
   .theme-toggle-btn {
     width: 36px !important;
     height: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     border-radius: 50% !important;
     font-size: 0.95rem !important;
+    flex-shrink: 0 !important;
   }
   .mobile-menu-toggle {
     width: 36px !important;
     height: 36px !important;
-    border-radius: 50% !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
     padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
   }
   .btn-nav-install {
     display: none !important;
@@ -2318,18 +2376,37 @@ button {
 /* Extra Small Phones (< 480px) */
 @media (max-width: 480px) {
   .container {
-    padding-left: 14px !important;
-    padding-right: 14px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  .nav-container {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    gap: 6px !important;
   }
   .brand-title {
-    font-size: 0.92rem !important;
+    font-size: 0.88rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
   .brand-naac-badge {
     display: none !important;
   }
   .brand-logo-img {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+  }
+  .nav-actions {
+    gap: 4px !important;
+  }
+  .search-trigger-btn, .theme-toggle-btn, .mobile-menu-toggle {
     width: 34px !important;
     height: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
   }
   .hero-title {
     font-size: 1.7rem !important;

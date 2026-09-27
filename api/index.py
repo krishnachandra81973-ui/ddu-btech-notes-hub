@@ -7,6 +7,8 @@ import shutil
 import urllib.parse
 import time
 import secrets
+import threading
+import re
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
@@ -32,21 +34,114 @@ try:
 except Exception:
     pass
 
+# Security & Defense Configurations
+_RATE_LIMIT_LOCK = threading.Lock()
+_FAILED_LOGINS = {}      # key: ip_or_email, value: [timestamps]
+_REGISTER_ATTEMPTS = {}  # key: ip, value: [timestamps]
+_IP_REQUEST_LOG = {}     # key: ip, value: [timestamps]
+
+ALLOWED_ORIGINS = {
+    "https://ddu-btech-kn-notes.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:5000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5000"
+}
+
+def is_rate_limited(ip, email="", action="request"):
+    now = time.time()
+    with _RATE_LIMIT_LOCK:
+        if action == "login":
+            keys = [k for k in [ip, f"em:{email.lower().strip()}" if email else None] if k]
+            for key in keys:
+                attempts = [t for t in _FAILED_LOGINS.get(key, []) if now - t < 300]
+                _FAILED_LOGINS[key] = attempts
+                if len(attempts) >= 5:
+                    retry_after = max(1, 300 - int(now - attempts[0]))
+                    return True, retry_after
+            return False, 0
+        elif action == "register":
+            attempts = [t for t in _REGISTER_ATTEMPTS.get(ip, []) if now - t < 600]
+            _REGISTER_ATTEMPTS[ip] = attempts
+            if len(attempts) >= 5:
+                retry_after = max(1, 600 - int(now - attempts[0]))
+                return True, retry_after
+            return False, 0
+    return False, 0
+
+def record_failed_login(ip, email=""):
+    now = time.time()
+    with _RATE_LIMIT_LOCK:
+        for key in [ip, f"em:{email.lower().strip()}" if email else None]:
+            if key:
+                lst = _FAILED_LOGINS.setdefault(key, [])
+                lst.append(now)
+                _FAILED_LOGINS[key] = [t for t in lst if now - t < 300]
+
+def record_successful_login(ip, email=""):
+    with _RATE_LIMIT_LOCK:
+        for key in [ip, f"em:{email.lower().strip()}" if email else None]:
+            if key in _FAILED_LOGINS:
+                del _FAILED_LOGINS[key]
+
+def record_successful_register(ip):
+    now = time.time()
+    with _RATE_LIMIT_LOCK:
+        lst = _REGISTER_ATTEMPTS.setdefault(ip, [])
+        lst.append(now)
+        _REGISTER_ATTEMPTS[ip] = [t for t in lst if now - t < 600]
+
 class handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
+    def get_client_ip(self):
+        xff = self.get_header("X-Forwarded-For", "")
+        if xff:
+            return xff.split(",")[0].strip()
+        if hasattr(self, "client_address") and self.client_address:
+            return str(self.client_address[0])
+        return "127.0.0.1"
+
     def send_cors(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
+        origin = self.get_header("Origin", "")
+        if origin:
+            is_allowed = (
+                origin in ALLOWED_ORIGINS
+                or origin.endswith(".vercel.app")
+                or "localhost" in origin
+                or "127.0.0.1" in origin
+            )
+            if is_allowed:
+                self.send_header("Access-Control-Allow-Origin", origin)
+                self.send_header("Access-Control-Allow-Credentials", "true")
+            else:
+                self.send_header("Access-Control-Allow-Origin", "https://ddu-btech-kn-notes.vercel.app")
+        else:
+            self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+
+    def send_security_headers(self):
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
+        self.send_header("X-XSS-Protection", "1; mode=block")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 
     def send_json(self, data, status=200):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_cors()
+        self.send_security_headers()
         self.end_headers()
-        self.wfile.write(json.dumps(data).encode("utf-8"))
+        self.wfile.write(json.dumps(data, default=str).encode("utf-8"))
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_cors()
+        self.send_security_headers()
+        self.end_headers()
 
     def get_header(self, name, default=""):
         if not hasattr(self, "headers") or not self.headers:
@@ -91,21 +186,7 @@ class handler(BaseHTTPRequestHandler):
                 return dict(user_registry.ADMIN_USER)
             return user
 
-        # 3. Master Admin and Local Token Fallbacks
-        if token in ("ddu_token_verified", "ddu_admin_master_session"):
-            return dict(user_registry.ADMIN_USER)
-
-        if token.startswith("ddu_token_local_"):
-            try:
-                import base64
-                email = base64.b64decode(token.replace("ddu_token_local_", "")).decode("utf-8")
-                if email.lower().strip() == user_registry.ADMIN_EMAIL.lower():
-                    return dict(user_registry.ADMIN_USER)
-                reg_u = user_registry.find_user_in_registry(email)
-                if reg_u:
-                    return reg_u
-            except Exception:
-                pass
+        # Reject all unverified/backdoor tokens
         return None
 
     def do_GET(self):
@@ -198,7 +279,7 @@ class handler(BaseHTTPRequestHandler):
 
             # 7. Global Portal Search
             if path == "/api/search":
-                q = query.get("q", [""])[0].strip()
+                q = query.get("q", [""])[0].strip()[:100]
                 results = database.global_search(q)
                 self.send_json(results)
                 return
@@ -207,7 +288,8 @@ class handler(BaseHTTPRequestHandler):
             if path == "/api/auth/me":
                 user = self.get_auth_user()
                 if user:
-                    self.send_json({"user": user})
+                    clean_user = {k: v for k, v in user.items() if k not in ("password_hash", "salt", "plain_password")}
+                    self.send_json({"user": clean_user})
                 else:
                     self.send_json({"error": "Unauthorized session"}, 401)
                 return
@@ -321,8 +403,9 @@ class handler(BaseHTTPRequestHandler):
             payload = {}
 
         try:
-            # 1. Login with Accurate Password Checking & Self-Verifying Token
+            # 1. Login with Accurate Password Checking, Brute-Force Rate Limiting & Self-Verifying Token
             if path == "/api/auth/login":
+                client_ip = self.get_client_ip()
                 email = payload.get("email", "").strip()
                 password = payload.get("password", "")
 
@@ -330,10 +413,20 @@ class handler(BaseHTTPRequestHandler):
                     self.send_json({"error": "Email and password are required."}, 400)
                     return
 
+                # Brute-Force Rate Limiting: max 5 failed attempts per 5 minutes
+                limited, retry_after = is_rate_limited(client_ip, email, action="login")
+                if limited:
+                    self.send_json({
+                        "error": f"Too many failed login attempts. Temporarily locked for security. Please try again in {retry_after} seconds."
+                    }, 429)
+                    return
+
                 # Master Admin Fast Login (Guarantee access regardless of DB state)
                 if email.lower() == user_registry.ADMIN_EMAIL.lower() and password == user_registry.ADMIN_PASSWORD:
+                    record_successful_login(client_ip, email)
                     token = user_registry.generate_auth_token(user_registry.ADMIN_USER)
-                    self.send_json({"token": token, "user": user_registry.ADMIN_USER, "success": True})
+                    admin_clean = {k: v for k, v in user_registry.ADMIN_USER.items() if k not in ("password_hash", "salt", "plain_password")}
+                    self.send_json({"token": token, "user": admin_clean, "success": True})
                     return
 
                 user = database.authenticate_user(email, password)
@@ -341,31 +434,53 @@ class handler(BaseHTTPRequestHandler):
                     self.send_json({"error": "Your account has been deactivated. Please contact administrator."}, 403)
                     return
                 if not user:
+                    record_failed_login(client_ip, email)
                     self.send_json({"error": "Incorrect password or email not registered. Please verify your credentials."}, 401)
                     return
 
+                record_successful_login(client_ip, email)
                 token = user_registry.generate_auth_token(user)
-                user_clean = {k: v for k, v in user.items() if k not in ("password_hash", "salt")}
+                user_clean = {k: v for k, v in user.items() if k not in ("password_hash", "salt", "plain_password")}
                 self.send_json({"token": token, "user": user_clean, "success": True})
                 return
 
-            # 2. Student Registration with Duplicate Prevention & IST Timestamp
+            # 2. Student Registration with Anti-Spam Rate Limiting & Zero Credential Leaks
             if path == "/api/auth/register":
-                full_name = payload.get("full_name", "").strip()
-                email = payload.get("email", "").strip()
+                client_ip = self.get_client_ip()
+                limited, retry_after = is_rate_limited(client_ip, action="register")
+                if limited:
+                    self.send_json({
+                        "error": f"Too many registrations from this network. Please wait {retry_after} seconds before trying again."
+                    }, 429)
+                    return
+
+                full_name = payload.get("full_name", "").strip()[:80]
+                email = payload.get("email", "").strip()[:100]
                 password = payload.get("password", "")
-                branch = payload.get("branch", "CSE")
-                semester = int(payload.get("semester", 1))
-                college = payload.get("college", "Deen Dayal Upadhyaya Gorakhpur University")
+                branch = payload.get("branch", "CSE")[:30]
+                try:
+                    semester = int(payload.get("semester", 1))
+                    if semester < 1 or semester > 8:
+                        semester = 1
+                except Exception:
+                    semester = 1
+                college = payload.get("college", "Deen Dayal Upadhyaya Gorakhpur University")[:150]
 
                 if not full_name or not email:
                     self.send_json({"error": "Full name and email are required."}, 400)
                     return
-                if len(password) < 6:
-                    self.send_json({"error": "Password must be at least 6 characters long."}, 400)
+                if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+                    self.send_json({"error": "Please enter a valid email address."}, 400)
+                    return
+                if len(password) < 6 or len(password) > 128:
+                    self.send_json({"error": "Password must be between 6 and 128 characters long."}, 400)
                     return
 
                 email_clean = email.lower().strip()
+                if email_clean in user_registry.FAKE_EMAILS:
+                    self.send_json({"error": "Invalid registration email address."}, 400)
+                    return
+
                 # Check if student is already registered across registry and database
                 if user_registry.find_user_in_registry(email_clean) or database.get_user_by_email(email_clean):
                     self.send_json({
@@ -392,6 +507,7 @@ class handler(BaseHTTPRequestHandler):
                     }, 409)
                     return
 
+                record_successful_register(client_ip)
                 ist_time = user_registry.get_ist_now_str()
                 user = {
                     "id": user_id,
@@ -406,7 +522,9 @@ class handler(BaseHTTPRequestHandler):
                 }
 
                 token = user_registry.generate_auth_token(user)
-                self.send_json({"token": token, "user": user, "success": True})
+                # Strip password before returning response to client
+                clean_user = {k: v for k, v in user.items() if k not in ("password_hash", "salt", "plain_password")}
+                self.send_json({"token": token, "user": clean_user, "success": True})
                 return
 
             # 3. Admin Direct Student Account Creation

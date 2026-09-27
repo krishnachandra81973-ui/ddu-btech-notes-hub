@@ -52,13 +52,81 @@ def email_to_doc_id(email):
     clean = email.lower().strip()
     return re.sub(r'[^a-zA-Z0-9_]', '_', clean)
 
+def _get_derived_keys(secret_str):
+    k_enc = hashlib.sha256((secret_str + ":enc:ddu_2026").encode("utf-8")).digest()
+    k_mac = hashlib.sha256((secret_str + ":mac:ddu_2026").encode("utf-8")).digest()
+    return k_enc, k_mac
+
+def encrypt_sensitive_string(plain_text):
+    """
+    Encrypts sensitive data (passwords) using authenticated symmetric encryption:
+    16-byte random IV + HMAC-SHA256 MAC tag + CTR PRF keystream ciphertext.
+    Resulting ciphertext is indistinguishable from random bytes.
+    """
+    if not plain_text:
+        return ""
+    s_plain = str(plain_text)
+    if s_plain.startswith("enc_v1:"):
+        return s_plain
+    k_enc, k_mac = _get_derived_keys(SECRET_KEY)
+    raw = s_plain.encode("utf-8")
+    iv = secrets.token_bytes(16)
+    keystream = b""
+    block_num = 0
+    while len(keystream) < len(raw):
+        keystream += hashlib.sha256(k_enc + iv + block_num.to_bytes(4, "big")).digest()
+        block_num += 1
+    ciphertext = bytes(b ^ k for b, k in zip(raw, keystream[:len(raw)]))
+    tag = hmac.new(k_mac, iv + ciphertext, hashlib.sha256).digest()[:16]
+    blob = iv + tag + ciphertext
+    return "enc_v1:" + base64.urlsafe_b64encode(blob).decode("utf-8").rstrip("=")
+
+def decrypt_sensitive_string(cipher_text):
+    """
+    Decrypts authenticated ciphertext. Returns original plaintext if MAC matches,
+    or handles legacy plaintext strings seamlessly.
+    """
+    if not cipher_text:
+        return ""
+    s_cipher = str(cipher_text)
+    if not s_cipher.startswith("enc_v1:"):
+        return s_cipher
+    try:
+        raw_b64 = s_cipher[7:]
+        rem = len(raw_b64) % 4
+        if rem > 0:
+            raw_b64 += "=" * (4 - rem)
+        blob = base64.urlsafe_b64decode(raw_b64.encode("utf-8"))
+        if len(blob) < 32:
+            return s_cipher
+        iv = blob[:16]
+        tag = blob[16:32]
+        ciphertext = blob[32:]
+        k_enc, k_mac = _get_derived_keys(SECRET_KEY)
+        expected_tag = hmac.new(k_mac, iv + ciphertext, hashlib.sha256).digest()[:16]
+        if not secrets.compare_digest(tag, expected_tag):
+            return "[Encrypted - Tampered/Invalid Key]"
+        keystream = b""
+        block_num = 0
+        while len(keystream) < len(ciphertext):
+            keystream += hashlib.sha256(k_enc + iv + block_num.to_bytes(4, "big")).digest()
+            block_num += 1
+        plain = bytes(b ^ k for b, k in zip(ciphertext, keystream[:len(ciphertext)]))
+        return plain.decode("utf-8")
+    except Exception:
+        return s_cipher
+
 def user_dict_to_firestore(u):
-    """Converts a standard user dict to Firestore document schema"""
+    """Converts a standard user dict to Firestore document schema, encrypting passwords"""
     fields = {}
     for k, v in u.items():
         if v is None:
             continue
-        if isinstance(v, bool):
+        if k == "plain_password" and v:
+            # Store password encrypted in Firestore so it is never exposed in plaintext
+            enc_v = encrypt_sensitive_string(v)
+            fields[k] = {"stringValue": enc_v}
+        elif isinstance(v, bool):
             fields[k] = {"booleanValue": v}
         elif isinstance(v, int):
             fields[k] = {"integerValue": str(v)}
@@ -69,7 +137,7 @@ def user_dict_to_firestore(u):
     return {"fields": fields}
 
 def firestore_doc_to_user_dict(doc):
-    """Converts a Firestore document schema back to standard user dict"""
+    """Converts a Firestore document schema back to standard user dict, decrypting passwords"""
     fields = doc.get("fields", {})
     user = {}
     for k, fval in fields.items():
@@ -84,6 +152,10 @@ def firestore_doc_to_user_dict(doc):
             user[k] = fval["booleanValue"]
         elif "doubleValue" in fval:
             user[k] = fval["doubleValue"]
+
+    # Decrypt password if stored encrypted
+    if user.get("plain_password"):
+        user["plain_password"] = decrypt_sensitive_string(user["plain_password"])
     return user
 
 # ----------------- Firestore REST Operations -----------------
@@ -162,6 +234,9 @@ def load_registry(fetch_remote=True):
         try:
             with open(path, "r", encoding="utf-8") as f:
                 users = json.load(f)
+                for u in users:
+                    if u.get("plain_password"):
+                        u["plain_password"] = decrypt_sensitive_string(u["plain_password"])
         except Exception:
             users = []
 
@@ -172,6 +247,8 @@ def load_registry(fetch_remote=True):
                 repo_users = json.load(f)
                 known_emails = {u.get("email", "").lower().strip() for u in users}
                 for ru in repo_users:
+                    if ru.get("plain_password"):
+                        ru["plain_password"] = decrypt_sensitive_string(ru["plain_password"])
                     if ru.get("email", "").lower().strip() not in known_emails:
                         users.append(ru)
         except Exception:
@@ -211,13 +288,21 @@ def load_registry(fetch_remote=True):
 def save_registry(users, sync_remote=False):
     # Filter fake accounts before saving
     cleaned_users = [u for u in users if u.get("email", "").lower().strip() not in FAKE_EMAILS]
+    # Encrypt passwords before serializing to disk JSON
+    disk_users = []
+    for u in cleaned_users:
+        du = dict(u)
+        if du.get("plain_password") and du.get("role") != "ADMIN":
+            du["plain_password"] = encrypt_sensitive_string(du["plain_password"])
+        disk_users.append(du)
+
     for target in [TMP_REGISTRY, REPO_REGISTRY]:
         try:
             target_dir = os.path.dirname(target)
             if target_dir:
                 os.makedirs(target_dir, exist_ok=True)
             with open(target, "w", encoding="utf-8") as f:
-                json.dump(cleaned_users, f, indent=2)
+                json.dump(disk_users, f, indent=2)
         except Exception:
             pass
 
@@ -395,20 +480,5 @@ def verify_auth_token(token_str):
         except Exception:
             return None
 
-    # 2. Admin Hardcoded Verification fallback
-    if token_str in ("ddu_token_verified", "ddu_admin_master_session"):
-        return ADMIN_USER
-
-    # 3. Base64 local fallback
-    if token_str.startswith("ddu_token_local_"):
-        try:
-            email = base64.b64decode(token_str.replace("ddu_token_local_", "")).decode("utf-8")
-            if email.lower().strip() == ADMIN_EMAIL.lower():
-                return ADMIN_USER
-            reg_user = find_user_in_registry(email)
-            if reg_user:
-                return reg_user
-        except Exception:
-            pass
-
+    # Strictly require valid HMAC-SHA256 signature - reject all backdoors or unsigned tokens
     return None

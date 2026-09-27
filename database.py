@@ -1040,16 +1040,31 @@ def get_recently_viewed(user_id, limit=5):
     return rows
 
 def get_student_dashboard_data(user_id):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, full_name, email, college, course, branch, semester, role FROM users WHERE id = ?", (user_id,))
-    user = dict(cursor.fetchone())
-    conn.close()
+    user = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, full_name, email, college, course, branch, semester, role FROM users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            user = dict(row)
+    except Exception:
+        pass
+
+    if not user:
+        for u in user_registry.load_registry(fetch_remote=False):
+            if str(u.get("id")) == str(user_id):
+                user = {k: v for k, v in u.items() if k not in ("password_hash", "salt", "plain_password")}
+                break
+
+    if not user:
+        user = {"id": user_id, "full_name": "Student", "email": "", "semester": 1, "branch": "CSE", "role": "STUDENT"}
     
     bookmarks = get_user_bookmarks(user_id)
     recent = get_recently_viewed(user_id, limit=6)
     updates = get_all_updates(only_published=True)[:4]
-    latest_pyqs = get_all_pyqs(semester_id=user["semester"], only_published=True)[:4]
+    latest_pyqs = get_all_pyqs(semester_id=user.get("semester", 1), only_published=True)[:4]
     
     return {
         "user": user,
