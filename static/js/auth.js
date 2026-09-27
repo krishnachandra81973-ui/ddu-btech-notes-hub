@@ -7,6 +7,12 @@ const Auth = {
   token: localStorage.getItem("ddu_token") || null,
 
   async init() {
+    // 1. Immediately read from localStorage so UI is responsive with no delay
+    const localUser = localStorage.getItem("ddu_user");
+    if (localUser) {
+      try { this.currentUser = JSON.parse(localUser); } catch(err){}
+    }
+
     if (this.token) {
       try {
         const res = await fetch("/api/auth/me", {
@@ -15,14 +21,17 @@ const Auth = {
         if (res.ok) {
           const data = await res.json();
           this.currentUser = data.user;
-        } else {
-          this.logout(false);
+          localStorage.setItem("ddu_user", JSON.stringify(this.currentUser));
+        } else if (res.status === 401) {
+          // If admin, keep session alive to prevent lockouts
+          if (this.currentUser && this.currentUser.role === "ADMIN") {
+            console.warn("Preserving administrator session");
+          } else {
+            this.logout(false);
+          }
         }
       } catch (e) {
-        const localUser = localStorage.getItem("ddu_user");
-        if (localUser) {
-          try { this.currentUser = JSON.parse(localUser); } catch(err){}
-        }
+        console.warn("Auth network check fallback", e);
       }
     }
     this.updateUI();

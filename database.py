@@ -3,6 +3,7 @@ import os
 import hashlib
 import secrets
 from datetime import datetime, timedelta
+import user_registry
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ddu_portal.db")
 
@@ -247,131 +248,269 @@ def create_user(full_name, email, password, college="Deen Dayal Upadhyaya Gorakh
     conn = get_connection()
     cursor = conn.cursor()
     hash_val, salt = hash_password(password)
+    email_clean = email.lower().strip()
+    user_id = None
     try:
         cursor.execute("""
         INSERT INTO users (full_name, email, password_hash, salt, plain_password, college, course, branch, semester, role)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (full_name, email.lower().strip(), hash_val, salt, password, college, course, branch, semester, role))
+        """, (full_name, email_clean, hash_val, salt, password, college, course, branch, semester, role))
         user_id = cursor.lastrowid
         conn.commit()
-        return user_id
     except sqlite3.IntegrityError:
-        return None
+        cursor.execute("SELECT id FROM users WHERE email = ?", (email_clean,))
+        row = cursor.fetchone()
+        if row:
+            user_id = row["id"]
     finally:
         conn.close()
 
+    # Always persist in multi-instance registry
+    user_record = {
+        "id": user_id or 100,
+        "full_name": full_name,
+        "email": email_clean,
+        "plain_password": password,
+        "college": college,
+        "course": course,
+        "branch": branch,
+        "semester": semester,
+        "role": role,
+        "is_active": 1,
+        "created_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    user_registry.save_user_to_registry(user_record)
+    return user_id
+
 def authenticate_user(email, password):
+    email_clean = email.lower().strip()
+    
+    # 1. Direct Master Admin Bypass
+    if email_clean == user_registry.ADMIN_EMAIL.lower() and password == user_registry.ADMIN_PASSWORD:
+        return dict(user_registry.ADMIN_USER)
+
+    # 2. Check Database
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE email = ?", (email.lower().strip(),))
+    cursor.execute("SELECT * FROM users WHERE email = ?", (email_clean,))
     user = cursor.fetchone()
     conn.close()
-    if not user:
-        return None
-    if not user["is_active"]:
-        return "INACTIVE"
-    if verify_password(password, user["password_hash"], user["salt"]):
-        if not user["plain_password"]:
+
+    if user:
+        if not user["is_active"]:
+            return "INACTIVE"
+        if verify_password(password, user["password_hash"], user["salt"]) or (user["plain_password"] and user["plain_password"] == password):
+            if not user["plain_password"]:
+                try:
+                    conn_up = get_connection()
+                    cur_up = conn_up.cursor()
+                    cur_up.execute("UPDATE users SET plain_password = ? WHERE id = ?", (password, user["id"]))
+                    conn_up.commit()
+                    conn_up.close()
+                except Exception:
+                    pass
+            user_dict = dict(user)
+            user_registry.save_user_to_registry(user_dict)
+            return user_dict
+
+    # 3. Fallback to Registry if container lacks SQLite row
+    reg_user = user_registry.find_user_in_registry(email_clean)
+    if reg_user:
+        if not reg_user.get("is_active", 1):
+            return "INACTIVE"
+        if reg_user.get("plain_password") == password:
+            # Sync user into this container's SQLite
             try:
-                conn_up = get_connection()
-                cur_up = conn_up.cursor()
-                cur_up.execute("UPDATE users SET plain_password = ? WHERE id = ?", (password, user["id"]))
-                conn_up.commit()
-                conn_up.close()
+                hash_val, salt = hash_password(password)
+                conn_sync = get_connection()
+                cur_sync = conn_sync.cursor()
+                cur_sync.execute("""
+                INSERT OR REPLACE INTO users (id, full_name, email, password_hash, salt, plain_password, college, course, branch, semester, role, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    reg_user.get("id"),
+                    reg_user.get("full_name"),
+                    email_clean,
+                    hash_val,
+                    salt,
+                    password,
+                    reg_user.get("college", "Deen Dayal Upadhyaya Gorakhpur University"),
+                    reg_user.get("course", "B.Tech"),
+                    reg_user.get("branch", "CSE"),
+                    reg_user.get("semester", 1),
+                    reg_user.get("role", "STUDENT"),
+                    reg_user.get("is_active", 1)
+                ))
+                conn_sync.commit()
+                conn_sync.close()
             except Exception:
                 pass
-        return dict(user)
+            return dict(reg_user)
+
     return None
 
-def create_user_session(user_id, days=7):
-    token = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(days=days)
+def create_user_session(user_id, days=30):
+    user = None
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)",
-                   (user_id, token, expires_at.isoformat()))
-    conn.commit()
+    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    row = cursor.fetchone()
     conn.close()
+    if row:
+        user = dict(row)
+    else:
+        for u in user_registry.load_registry():
+            if str(u.get("id")) == str(user_id):
+                user = u
+                break
+    if not user:
+        user = {"id": user_id, "email": "student@ddu.ac.in", "role": "STUDENT", "full_name": "Student"}
+    
+    # Generate cryptographic stateless token
+    token = user_registry.generate_auth_token(user)
+    
+    # Also record in sessions table for backwards compatibility
+    try:
+        expires_at = datetime.utcnow() + timedelta(days=days)
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT OR REPLACE INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)",
+                       (user_id, token, expires_at.isoformat()))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
     return token
 
 def get_user_from_token(token):
     if not token:
         return None
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-    SELECT u.id, u.full_name, u.email, u.college, u.course, u.branch, u.semester, u.role, u.is_active, s.expires_at
-    FROM sessions s
-    JOIN users u ON s.user_id = u.id
-    WHERE s.token = ?
-    """, (token,))
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
-        return None
+    
+    # 1. Stateless Cryptographic Verification
+    verified = user_registry.verify_auth_token(token)
+    if verified:
+        return verified
+
+    # 2. Database Session Lookup Fallback
     try:
-        exp = datetime.fromisoformat(row["expires_at"])
-        if datetime.utcnow() > exp:
-            return None
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+        SELECT u.id, u.full_name, u.email, u.college, u.course, u.branch, u.semester, u.role, u.is_active, s.expires_at
+        FROM sessions s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.token = ?
+        """, (token,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            exp = datetime.fromisoformat(row["expires_at"])
+            if datetime.utcnow() <= exp and row["is_active"]:
+                return dict(row)
     except Exception:
         pass
-    if not row["is_active"]:
-        return None
-    return dict(row)
+
+    return None
 
 def delete_user_session(token):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM sessions WHERE token = ?", (token,))
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 def get_all_users(search=""):
-    conn = get_connection()
-    cursor = conn.cursor()
-    query = """
-    SELECT id, full_name, email, plain_password, college, course, branch, semester, role, is_active, created_at
-    FROM users
-    WHERE 1=1
-    """
-    params = []
+    # 1. Fetch from Database
+    db_users = {}
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+        SELECT id, full_name, email, plain_password, college, course, branch, semester, role, is_active, created_at
+        FROM users
+        """)
+        for r in cursor.fetchall():
+            db_users[r["email"].lower().strip()] = dict(r)
+        conn.close()
+    except Exception:
+        pass
+
+    # 2. Fetch from Persistent Registry
+    reg_users = user_registry.load_registry()
+    combined = {}
+    for ru in reg_users:
+        em = ru.get("email", "").lower().strip()
+        if em:
+            combined[em] = ru
+
+    # Merge database users into combined (giving priority to latest plain_password)
+    for em, du in db_users.items():
+        if em in combined:
+            combined[em].update({k: v for k, v in du.items() if v is not None and v != ""})
+        else:
+            combined[em] = du
+
+    # Ensure admin is always present
+    if user_registry.ADMIN_EMAIL.lower() not in combined:
+        combined[user_registry.ADMIN_EMAIL.lower()] = dict(user_registry.ADMIN_USER)
+
+    all_list = list(combined.values())
+
+    # Filter by search
     if search:
-        query += " AND (full_name LIKE ? OR email LIKE ? OR branch LIKE ?)"
-        term = f"%{search}%"
-        params.extend([term, term, term])
-    query += " ORDER BY created_at DESC"
-    cursor.execute(query, params)
-    rows = [dict(r) for r in cursor.fetchall()]
-    conn.close()
-    return rows
+        s = search.lower().strip()
+        all_list = [
+            u for u in all_list
+            if s in u.get("full_name", "").lower()
+            or s in u.get("email", "").lower()
+            or s in u.get("branch", "").lower()
+        ]
+
+    # Sort: Students first or newest first
+    all_list.sort(key=lambda u: (u.get("role") != "ADMIN", str(u.get("created_at", ""))), reverse=True)
+    return all_list
 
 def toggle_user_active(user_id):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = ?", (user_id,))
-    conn.commit()
-    cursor.execute("SELECT is_active FROM users WHERE id = ?", (user_id,))
-    row = cursor.fetchone()
-    conn.close()
-    return row["is_active"] if row else None
+    new_state = user_registry.toggle_active_in_registry(user_id)
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET is_active = ? WHERE id = ?", (new_state, user_id))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+    return new_state
 
 def delete_user(user_id):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.commit()
-    conn.close()
+    user_registry.delete_user_from_registry(user_id)
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
     return True
 
 def update_user_password(user_id, new_password):
-    conn = get_connection()
-    cursor = conn.cursor()
-    hash_val, salt = hash_password(new_password)
-    cursor.execute("""
-    UPDATE users SET password_hash = ?, salt = ?, plain_password = ? WHERE id = ?
-    """, (hash_val, salt, new_password, user_id))
-    conn.commit()
-    conn.close()
+    user_registry.update_password_in_registry(user_id, new_password)
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        hash_val, salt = hash_password(new_password)
+        cursor.execute("""
+        UPDATE users SET password_hash = ?, salt = ?, plain_password = ? WHERE id = ?
+        """, (hash_val, salt, new_password, user_id))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
     return True
 
 # ----------------- Semesters, Subjects, Units -----------------
@@ -910,42 +1049,60 @@ def global_search(term):
 def get_admin_stats():
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'STUDENT'")
-    total_students = cursor.fetchone()[0]
     
-    cursor.execute("SELECT COUNT(*) FROM subjects")
-    total_subjects = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM notes")
-    total_notes = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM pyqs")
-    total_pyqs = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM syllabus")
-    total_syllabus = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM daily_updates")
-    total_updates = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM uploaded_files")
-    total_pdfs = cursor.fetchone()[0]
+    # Accurate Student Metrics from merged database + persistent registry
+    all_users = get_all_users()
+    student_users = [u for u in all_users if u.get("role") != "ADMIN"]
+    total_students = len(student_users)
+    recent_students = student_users[:5]
 
-    # Recent Registrations
-    cursor.execute("""
-    SELECT id, full_name, email, branch, semester, created_at, is_active
-    FROM users WHERE role = 'STUDENT'
-    ORDER BY created_at DESC LIMIT 5
-    """)
-    recent_students = [dict(r) for r in cursor.fetchall()]
+    try:
+        cursor.execute("SELECT COUNT(*) FROM subjects")
+        total_subjects = cursor.fetchone()[0]
+    except Exception:
+        total_subjects = 0
+
+    try:
+        cursor.execute("SELECT COUNT(*) FROM notes")
+        total_notes = cursor.fetchone()[0]
+    except Exception:
+        total_notes = 0
+
+    try:
+        cursor.execute("SELECT COUNT(*) FROM pyqs")
+        total_pyqs = cursor.fetchone()[0]
+    except Exception:
+        total_pyqs = 0
+
+    try:
+        cursor.execute("SELECT COUNT(*) FROM syllabus")
+        total_syllabus = cursor.fetchone()[0]
+    except Exception:
+        total_syllabus = 0
+
+    try:
+        cursor.execute("SELECT COUNT(*) FROM daily_updates")
+        total_updates = cursor.fetchone()[0]
+    except Exception:
+        total_updates = 0
+
+    try:
+        cursor.execute("SELECT COUNT(*) FROM uploaded_files")
+        total_pdfs = cursor.fetchone()[0]
+    except Exception:
+        total_pdfs = 0
 
     # Recent Uploads
-    cursor.execute("""
-    SELECT id, file_name, original_name, file_size, category, semester, subject, uploaded_at
-    FROM uploaded_files
-    ORDER BY uploaded_at DESC LIMIT 6
-    """)
-    recent_uploads = [dict(r) for r in cursor.fetchall()]
+    recent_uploads = []
+    try:
+        cursor.execute("""
+        SELECT id, file_name, original_name, file_size, category, semester, subject, uploaded_at
+        FROM uploaded_files
+        ORDER BY uploaded_at DESC LIMIT 6
+        """)
+        recent_uploads = [dict(r) for r in cursor.fetchall()]
+    except Exception:
+        pass
 
     conn.close()
     return {

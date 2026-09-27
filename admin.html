@@ -72,6 +72,15 @@
     const AdminApp = {
       async init() {
         App.initTheme();
+        const localUser = localStorage.getItem("ddu_user");
+        if (localUser) {
+          try {
+            Auth.currentUser = JSON.parse(localUser);
+          } catch(e) {}
+        }
+        if (Auth.currentUser && Auth.currentUser.role === "ADMIN") {
+          this.renderState();
+        }
         await Auth.init();
         this.renderState();
       },

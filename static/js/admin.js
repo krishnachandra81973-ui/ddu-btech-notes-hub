@@ -143,8 +143,21 @@ const Admin = {
     try {
       const res = await fetch("/api/admin/stats", { headers: Auth.getAuthHeaders() });
       const data = await res.json();
-      const stats = data.stats;
+      const stats = data.stats || {
+        total_students: 0,
+        total_notes: 0,
+        total_subjects: 0,
+        total_pyqs: 0,
+        total_syllabus: 0,
+        total_updates: 0,
+        total_pdfs: 0,
+        recent_students: [],
+        recent_uploads: []
+      };
       this.statsData = stats;
+
+      const recentStudents = stats.recent_students || [];
+      const recentUploads = stats.recent_uploads || [];
 
       container.innerHTML = `
         <div>
@@ -154,6 +167,7 @@ const Admin = {
               <p style="color: var(--text-muted); font-size: 0.9rem;">Live analytics, active uploads, and real-time portal statistics.</p>
             </div>
             <div style="display: flex; gap: 10px;">
+              <button onclick="Admin.openAddStudentModal()" class="btn-secondary btn-sm">+ Register Student</button>
               <button onclick="Admin.openAddNoteModal()" class="btn-primary btn-sm">+ Add New Note</button>
               <button onclick="Admin.openAddUpdateModal()" class="btn-secondary btn-sm">+ Post Notice</button>
             </div>
@@ -164,42 +178,42 @@ const Admin = {
             <div class="stat-card">
               <div class="stat-icon" style="background: rgba(30, 64, 175, 0.15);">👥</div>
               <div>
-                <div class="stat-value">${stats.total_students}</div>
+                <div class="stat-value">${stats.total_students || 0}</div>
                 <div class="stat-label">Students</div>
               </div>
             </div>
             <div class="stat-card">
               <div class="stat-icon" style="background: rgba(14, 165, 233, 0.15); color: var(--accent);">📚</div>
               <div>
-                <div class="stat-value">${stats.total_notes}</div>
+                <div class="stat-value">${stats.total_notes || 0}</div>
                 <div class="stat-label">Total Notes</div>
               </div>
             </div>
             <div class="stat-card">
               <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald);">📖</div>
               <div>
-                <div class="stat-value">${stats.total_subjects}</div>
+                <div class="stat-value">${stats.total_subjects || 0}</div>
                 <div class="stat-label">Subjects</div>
               </div>
             </div>
             <div class="stat-card">
               <div class="stat-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-amber);">📝</div>
               <div>
-                <div class="stat-value">${stats.total_pyqs}</div>
+                <div class="stat-value">${stats.total_pyqs || 0}</div>
                 <div class="stat-label">PYQ Papers</div>
               </div>
             </div>
             <div class="stat-card">
               <div class="stat-icon" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;">📑</div>
               <div>
-                <div class="stat-value">${stats.total_syllabus}</div>
+                <div class="stat-value">${stats.total_syllabus || 0}</div>
                 <div class="stat-label">Syllabus Files</div>
               </div>
             </div>
             <div class="stat-card">
               <div class="stat-icon" style="background: rgba(239, 68, 68, 0.15); color: var(--accent-rose);">📢</div>
               <div>
-                <div class="stat-value">${stats.total_updates}</div>
+                <div class="stat-value">${stats.total_updates || 0}</div>
                 <div class="stat-label">Campus Notices</div>
               </div>
             </div>
@@ -219,7 +233,7 @@ const Admin = {
                     <tr><th>Name</th><th>Branch</th><th>Sem</th><th>Status</th></tr>
                   </thead>
                   <tbody>
-                    ${stats.recent_students.map(s => `
+                    ${recentStudents.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 16px;">No student registrations yet.</td></tr>` : recentStudents.map(s => `
                       <tr>
                         <td style="font-weight: 600;">${escapeHtml(s.full_name)}<div style="font-size: 0.72rem; color: var(--text-muted);">${escapeHtml(s.email)}</div></td>
                         <td>${escapeHtml(s.branch)}</td>
@@ -248,7 +262,7 @@ const Admin = {
                     <tr><th>File Name</th><th>Category</th><th>Size</th><th>Action</th></tr>
                   </thead>
                   <tbody>
-                    ${stats.recent_uploads.map(f => `
+                    ${recentUploads.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 16px;">No uploads found.</td></tr>` : recentUploads.map(f => `
                       <tr>
                         <td style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600;">
                           ${escapeHtml(f.original_name)}
@@ -610,19 +624,42 @@ const Admin = {
   async renderStudentsTab(container) {
     try {
       const res = await fetch("/api/admin/users", { headers: Auth.getAuthHeaders() });
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          container.innerHTML = `
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 40px 20px; text-align: center; max-width: 500px; margin: 40px auto;">
+              <div style="font-size: 2.5rem; margin-bottom: 12px;">🔒</div>
+              <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">Admin Authorization Required</h3>
+              <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 20px;">Please re-authenticate with administrator credentials to view registered students.</p>
+              <button onclick="AdminApp.logout(); AdminApp.renderState();" class="btn-primary">Log In as Administrator</button>
+            </div>
+          `;
+          return;
+        }
+      }
       const data = await res.json();
       const users = data.users || [];
+      const studentCount = users.filter(u => u.role !== "ADMIN").length;
 
       container.innerHTML = `
         <div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
             <div>
-              <h2 style="font-size: 1.6rem; font-weight: 800;">Registered Student Accounts</h2>
-              <p style="color: var(--text-muted); font-size: 0.88rem;">View student credentials, registration timestamps, and administrative controls.</p>
+              <h2 style="font-size: 1.6rem; font-weight: 800;">Registered Student Accounts (${studentCount})</h2>
+              <p style="color: var(--text-muted); font-size: 0.88rem;">Live student credentials, registration timestamps, and administrative controls.</p>
             </div>
-            <div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button onclick="Admin.openAddStudentModal()" class="btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+                + Register Student
+              </button>
+              <button onclick="Admin.syncStudents()" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;" title="Refresh student data">
+                🔄 Sync Accounts
+              </button>
+              <button onclick="Admin.exportStudents()" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;" title="Export student data">
+                📥 Export JSON
+              </button>
               <button onclick="Admin.revealAllPasswords()" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
-                👁️ Toggle All Passwords
+                👁️ Toggle Passwords
               </button>
             </div>
           </div>
@@ -645,10 +682,16 @@ const Admin = {
                   </tr>
                 </thead>
                 <tbody>
-                  ${users.map(u => `
+                  ${users.length === 0 ? `
+                    <tr>
+                      <td colspan="6" style="text-align: center; padding: 30px; color: var(--text-muted);">
+                        No students registered yet. Click <strong>+ Register Student</strong> to add an account manually.
+                      </td>
+                    </tr>
+                  ` : users.map(u => `
                     <tr>
                       <td>
-                        <div style="font-weight: 700; font-size: 0.95rem;">${escapeHtml(u.full_name)}</div>
+                        <div style="font-weight: 700; font-size: 0.95rem;">${escapeHtml(u.full_name)} ${u.role === 'ADMIN' ? '<span style="font-size: 0.68rem; background: var(--primary); color: white; padding: 1px 6px; border-radius: 4px; vertical-align: middle;">ADMIN</span>' : ''}</div>
                         <div style="font-size: 0.78rem; color: var(--text-muted);">${escapeHtml(u.email)}</div>
                       </td>
                       <td>
@@ -1403,6 +1446,124 @@ const Admin = {
       }
     });
     App.toast(anyHidden ? "Student passwords revealed." : "Student passwords hidden.", "info");
+  },
+
+  openAddStudentModal() {
+    let modal = document.getElementById("admin-add-student-modal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "admin-add-student-modal";
+      modal.className = "modal-overlay";
+      modal.innerHTML = `
+        <div class="modal-box" style="max-width: 500px; padding: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+            <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--text-main);">+ Register New Student</h3>
+            <button type="button" onclick="document.getElementById('admin-add-student-modal').style.display='none'" class="modal-close" style="font-size: 1.4rem; background: none; border: none; cursor: pointer; color: var(--text-muted);">&times;</button>
+          </div>
+          <form id="admin-create-student-form" onsubmit="Admin.handleCreateStudent(event)">
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">Full Name *</label>
+              <input type="text" name="full_name" required placeholder="e.g. Rahul Sharma" class="form-control" style="width: 100%;">
+            </div>
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">Student Email *</label>
+              <input type="email" name="email" required placeholder="e.g. rahul@ddu.ac.in" class="form-control" style="width: 100%;">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+              <div>
+                <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">Branch</label>
+                <select name="branch" class="form-control" style="width: 100%;">
+                  <option value="CSE">CSE</option>
+                  <option value="IT">IT</option>
+                  <option value="ECE">ECE</option>
+                  <option value="ME">ME</option>
+                  <option value="CE">CE</option>
+                  <option value="EE">EE</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">Semester</label>
+                <select name="semester" class="form-control" style="width: 100%;">
+                  <option value="1">Semester 1</option>
+                  <option value="2">Semester 2</option>
+                  <option value="3">Semester 3</option>
+                  <option value="4">Semester 4</option>
+                  <option value="5">Semester 5</option>
+                  <option value="6">Semester 6</option>
+                  <option value="7">Semester 7</option>
+                  <option value="8">Semester 8</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+              <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">Account Password *</label>
+              <input type="text" name="password" required value="StudentPassword123!" class="form-control" style="width: 100%;">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+              <button type="button" onclick="document.getElementById('admin-add-student-modal').style.display='none'" class="btn-secondary">Cancel</button>
+              <button type="submit" class="btn-primary">Create Student Account</button>
+            </div>
+          </form>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+    modal.style.display = "flex";
+  },
+
+  async handleCreateStudent(e) {
+    e.preventDefault();
+    const form = e.target;
+    const payload = {
+      full_name: form.full_name.value.trim(),
+      email: form.email.value.trim(),
+      branch: form.branch.value,
+      semester: parseInt(form.semester.value, 10),
+      password: form.password.value
+    };
+    try {
+      const res = await fetch("/api/admin/users/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...Auth.getAuthHeaders() },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        App.toast("Student account created successfully!", "success");
+        document.getElementById("admin-add-student-modal").style.display = "none";
+        form.reset();
+        this.renderStudentsTab(document.getElementById("admin-tab-content"));
+      } else {
+        alert(data.error || "Failed to create student account.");
+      }
+    } catch(err) {
+      alert("Error: " + err.message);
+    }
+  },
+
+  syncStudents() {
+    App.toast("Refreshing student accounts...", "info");
+    this.renderStudentsTab(document.getElementById("admin-tab-content"));
+  },
+
+  async exportStudents() {
+    try {
+      const res = await fetch("/api/admin/users", { headers: Auth.getAuthHeaders() });
+      const data = await res.json();
+      const users = data.users || [];
+      const blob = new Blob([JSON.stringify(users, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ddu_student_accounts_${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      App.toast("Student accounts exported successfully!", "success");
+    } catch(err) {
+      alert("Export failed: " + err.message);
+    }
   },
 
   // Generic File Upload helper
