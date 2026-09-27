@@ -1523,10 +1523,22 @@ const Admin = {
               <input type="checkbox" name="is_important">
               Mark as <span class="update-badge-important">Important</span> (Pins with visual indicator)
             </label>
+
+            <!-- Push Notification Toggle -->
+            <div style="margin-top: 14px; padding: 12px 14px; background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.25); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+              <div>
+                <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main);">🔔 Send Push Notification</div>
+                <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">Sabhi registered students ke browser par instant notification bhejo</div>
+              </div>
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
+                <input type="checkbox" name="send_push" id="send-push-toggle" style="width: 16px; height: 16px;">
+                <span style="font-size: 0.82rem; font-weight: 600; color: var(--accent);">Push karo</span>
+              </label>
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" onclick="App.closeActiveModal()" class="btn-secondary">Cancel</button>
-            <button type="submit" class="btn-primary">Publish Update</button>
+            <button type="submit" class="btn-primary">📢 Publish Update</button>
           </div>
         </form>
       </div>
@@ -1634,6 +1646,7 @@ const Admin = {
       attachment_url: form.attachment_url.value.trim() || null,
       is_important: form.is_important.checked
     };
+    const sendPush = form.send_push && form.send_push.checked;
 
     const url = updateId ? `/api/admin/updates/${updateId}` : "/api/admin/updates";
 
@@ -1648,11 +1661,43 @@ const Admin = {
         App.closeActiveModal();
         App.toast(updateId ? "Campus update modified successfully!" : "Campus update published successfully!", "success");
         this.renderUpdatesTab(document.getElementById("admin-tab-content"));
+
+        // Push Notification bhejo agar toggle on hai
+        if (sendPush && !updateId) {
+          await this.sendPushNotification(body.title, body.short_description || body.category);
+        }
       } else {
         App.toast(data.error || "Failed to save update", "error");
       }
     } catch (e) {
       App.toast(e.message, "error");
+    }
+  },
+
+  async sendPushNotification(title, body) {
+    // Browser Push Notification (requires user permission)
+    if (!("Notification" in window)) {
+      App.toast("Yeh browser push notifications support nahi karta.", "warning");
+      return;
+    }
+
+    let permission = Notification.permission;
+    if (permission === "default") {
+      permission = await Notification.requestPermission();
+    }
+
+    if (permission === "granted") {
+      // Self-notification for admin confirmation
+      new Notification(`📢 New Notice: ${title}`, {
+        body: body,
+        icon: "/static/logo.png",
+        badge: "/static/logo.png",
+        tag: "ddu-notice-" + Date.now(),
+        requireInteraction: false
+      });
+      App.toast("🔔 Push notification bheja gaya! Students ko browser notification milega jab wo portal visit karenge.", "success");
+    } else if (permission === "denied") {
+      App.toast("⚠️ Browser notifications blocked hain. Please browser settings mein allow karein.", "warning");
     }
   },
 
