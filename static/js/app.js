@@ -37,36 +37,58 @@ const App = {
   isAppInstalled() {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
       || window.navigator.standalone === true 
-      || document.referrer.includes('android-app://')
-      || localStorage.getItem('ddu_pwa_installed') === 'true';
+      || document.referrer.includes('android-app://');
     return Boolean(isStandalone);
+  },
+
+  dismissInstallBanner() {
+    sessionStorage.setItem('ddu_pwa_banner_dismissed', 'true');
+    const banner = document.getElementById("mobile-install-banner");
+    if (banner) banner.style.display = "none";
+  },
+
+  showInstallGuideModal() {
+    const modal = document.getElementById("pwa-install-modal");
+    if (modal) {
+      modal.style.display = "flex";
+    } else {
+      alert("📲 To install this app on your phone:\n\n• On iPhone / iPad (Safari): Tap the Share button (📤) at the bottom and select 'Add to Home Screen' (➕).\n• On Android (Chrome) / PC: Tap the browser menu (⋮) and tap 'Install App' or 'Add to Home Screen'.");
+    }
   },
 
   updateInstallUi() {
     const installed = this.isAppInstalled();
+    const bannerDismissed = sessionStorage.getItem('ddu_pwa_banner_dismissed') === 'true';
 
+    // 1. Mobile top floating banner
+    const mobileBanner = document.getElementById("mobile-install-banner");
+    if (mobileBanner) {
+      if (installed || bannerDismissed) {
+        mobileBanner.style.display = "none";
+      } else {
+        mobileBanner.style.display = "flex";
+      }
+    }
+
+    // 2. Desktop/Tablet PWA card
     const pwaCard = document.getElementById("pwa-install-card");
     if (pwaCard) {
-      if (installed) {
-        pwaCard.style.display = "none";
-      } else if (window.deferredPrompt) {
-        pwaCard.style.display = "flex";
-      } else {
-        pwaCard.style.display = "none";
-      }
+      pwaCard.style.display = installed ? "none" : "flex";
     }
 
+    // 3. Navbar install button (Always show unless running as installed app)
     const navBtn = document.getElementById("btn-nav-install");
     if (navBtn) {
-      if (installed) {
-        navBtn.style.display = "none";
-      } else if (window.deferredPrompt) {
-        navBtn.style.display = "inline-flex";
-      } else {
-        navBtn.style.display = "none";
-      }
+      navBtn.style.display = installed ? "none" : "inline-flex";
     }
 
+    // 4. Sub-navigation install pill
+    const subNavInstall = document.getElementById("sub-nav-install-link");
+    if (subNavInstall) {
+      subNavInstall.style.display = installed ? "none" : "inline-flex";
+    }
+
+    // 5. Mobile bottom bar install button
     const bottomInstall = document.getElementById("btn-bottom-install");
     const bottomUpdates = document.getElementById("btn-bottom-updates");
     if (bottomInstall && bottomUpdates) {
@@ -83,31 +105,19 @@ const App = {
   setupPwa() {
     // 1. Immediately detect if running inside installed standalone app
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true || document.referrer.includes('android-app://')) {
-      localStorage.setItem('ddu_pwa_installed', 'true');
       console.log('📲 Running in installed standalone PWA mode');
     }
 
-    // 2. Check modern getInstalledRelatedApps API
-    if ('getInstalledRelatedApps' in navigator) {
-      navigator.getInstalledRelatedApps().then(apps => {
-        if (apps && apps.length > 0) {
-          localStorage.setItem('ddu_pwa_installed', 'true');
-          this.updateInstallUi();
-        }
-      }).catch(() => {});
-    }
-
-    // 3. Listen for display mode changes (e.g. user opens as standalone app)
+    // 2. Listen for display mode changes (e.g. user opens as standalone app)
     try {
       window.matchMedia('(display-mode: standalone)').addEventListener('change', (evt) => {
         if (evt.matches) {
-          localStorage.setItem('ddu_pwa_installed', 'true');
           this.updateInstallUi();
         }
       });
     } catch(e) {}
 
-    // 4. Register Service Worker
+    // 3. Register Service Worker
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("/sw.js")
@@ -120,7 +130,7 @@ const App = {
       });
     }
 
-    // 5. Capture beforeinstallprompt event
+    // 4. Capture beforeinstallprompt event
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       window.deferredPrompt = e;
@@ -128,19 +138,18 @@ const App = {
       this.updateInstallUi();
     });
 
-    // 6. Listen for successful app installation
+    // 5. Listen for successful app installation
     window.addEventListener("appinstalled", () => {
       console.log("🎉 [PWA] App successfully installed on device!");
-      localStorage.setItem("ddu_pwa_installed", "true");
       window.deferredPrompt = null;
       this.updateInstallUi();
       App.toast("🎉 DDU B.Tech Notes App installed successfully!", "success");
     });
 
-    // 7. Initial UI sync
+    // 6. Initial UI sync
     this.updateInstallUi();
 
-    // 8. Global window.installPwa function callable from buttons
+    // 7. Global window.installPwa function callable from buttons
     window.installPwa = () => {
       if (this.isAppInstalled()) {
         App.toast("✅ App is already installed on your device!", "info");
@@ -149,26 +158,23 @@ const App = {
       }
 
       if (window.deferredPrompt) {
-        window.deferredPrompt.prompt();
-        window.deferredPrompt.userChoice.then((choiceResult) => {
-          if (choiceResult.outcome === "accepted") {
-            console.log("User accepted PWA installation prompt");
-            localStorage.setItem("ddu_pwa_installed", "true");
+        try {
+          window.deferredPrompt.prompt();
+          window.deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult && choiceResult.outcome === "accepted") {
+              App.toast("Installing DDU B.Tech Notes App...", "success");
+            }
+            window.deferredPrompt = null;
             this.updateInstallUi();
-            App.toast("Installing DDU B.Tech Notes App...", "success");
-          } else {
-            console.log("User dismissed PWA installation prompt");
-          }
-          window.deferredPrompt = null;
-        });
+          }).catch(() => {
+            this.showInstallGuideModal();
+          });
+        } catch (e) {
+          this.showInstallGuideModal();
+        }
       } else {
         // Fallback helper modal for iOS Safari / Unsupported Browsers
-        const modal = document.getElementById("pwa-install-modal");
-        if (modal) {
-          modal.style.display = "flex";
-        } else {
-          alert("📲 To install this app:\n\n• On iPhone / iPad: Tap the Share button (📤) in Safari and tap 'Add to Home Screen' (➕).\n• On Android / PC: Open Chrome menu (⋮) and tap 'Install App' or 'Add to Home Screen'.");
-        }
+        this.showInstallGuideModal();
       }
     };
   },
@@ -1888,10 +1894,36 @@ const App = {
 
         if (res.success) {
           Auth.closeModal();
+          const errBox = document.getElementById("register-error-msg");
+          if (errBox) errBox.style.display = "none";
           App.toast("Account registered successfully! Welcome to DDU Notes Hub.", "success");
           window.location.hash = "#dashboard";
         } else {
-          App.toast(res.error, "error");
+          const errBox = document.getElementById("register-error-msg");
+          if (errBox) {
+            if (res.already_registered) {
+              errBox.innerHTML = `
+                <div style="background: rgba(239, 68, 68, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 12px; margin-bottom: 14px; color: #dc2626; font-size: 0.85rem; line-height: 1.5;">
+                  <div style="font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 5px;">
+                    <span>⚠️</span> Yeh Email Pehle Se Registered Hai!
+                  </div>
+                  Aapka student account pehle se bana hua hai, isliye dobara registration nahi ho sakta.
+                  <button type="button" onclick="Auth.switchTab('login'); const el=document.querySelector('#auth-login-section input[name=email]'); if(el) el.value='${escapeHtml(email)}';" class="btn-primary btn-sm" style="margin-top: 8px; width: 100%; justify-content: center; padding: 8px; font-weight: 700;">
+                    🔑 Click Here to Log In
+                  </button>
+                </div>
+              `;
+              errBox.style.display = "block";
+            } else {
+              errBox.innerHTML = `
+                <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px; padding: 10px; margin-bottom: 14px; color: #dc2626; font-size: 0.84rem;">
+                  ${escapeHtml(res.error || "Registration failed. Please try again.")}
+                </div>
+              `;
+              errBox.style.display = "block";
+            }
+          }
+          App.toast(res.error || "Registration failed.", "error");
         }
       };
     }

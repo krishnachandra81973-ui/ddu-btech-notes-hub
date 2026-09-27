@@ -655,8 +655,11 @@ const Admin = {
               <button onclick="Admin.syncStudents()" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;" title="Refresh student data">
                 🔄 Sync Accounts
               </button>
-              <button onclick="Admin.exportStudents()" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;" title="Export student data">
-                📥 Export JSON
+              <button onclick="Admin.exportStudents()" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;" title="Export student data in JSON">
+                📥 JSON
+              </button>
+              <button onclick="Admin.exportStudentsCsv()" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;" title="Export student data in CSV (Excel)">
+                📊 Export CSV
               </button>
               <button onclick="Admin.revealAllPasswords()" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
                 👁️ Toggle Passwords
@@ -674,7 +677,7 @@ const Admin = {
                 <thead>
                   <tr>
                     <th>Student Name & Email</th>
-                    <th>Branch & Sem</th>
+                    <th>Branch, Sem & College</th>
                     <th>Account Password</th>
                     <th>Signed Up Date & Time</th>
                     <th>Account Status</th>
@@ -697,6 +700,7 @@ const Admin = {
                       <td>
                         <div style="font-weight: 600;">${escapeHtml(u.branch || 'B.Tech CSE')}</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted);">Semester ${u.semester}</div>
+                        <div style="font-size: 0.71rem; color: var(--text-muted); opacity: 0.85;">🏛️ ${escapeHtml(u.college || 'DDU Gorakhpur University')}</div>
                       </td>
                       <td style="white-space: nowrap;">
                         <div style="display: flex; align-items: center; gap: 6px;">
@@ -1563,6 +1567,43 @@ const Admin = {
       App.toast("Student accounts exported successfully!", "success");
     } catch(err) {
       alert("Export failed: " + err.message);
+    }
+  },
+
+  async exportStudentsCsv() {
+    try {
+      const res = await fetch("/api/admin/users", { headers: Auth.getAuthHeaders() });
+      const data = await res.json();
+      const users = (data.users || []).filter(u => u.role !== 'ADMIN');
+      if (users.length === 0) {
+        App.toast("No student accounts found to export.", "info");
+        return;
+      }
+      const headers = ["ID", "Full Name", "Email", "Password", "Branch", "Semester", "College", "Registration Time (IST)", "Status"];
+      const rows = users.map(u => [
+        u.id || "",
+        `"${(u.full_name || "").replace(/"/g, '""')}"`,
+        `"${(u.email || "").replace(/"/g, '""')}"`,
+        `"${(u.plain_password || "").replace(/"/g, '""')}"`,
+        `"${(u.branch || "CSE").replace(/"/g, '""')}"`,
+        u.semester || 1,
+        `"${(u.college || "Deen Dayal Upadhyaya Gorakhpur University").replace(/"/g, '""')}"`,
+        `"${(u.created_at || "").replace(/"/g, '""')}"`,
+        u.is_active ? "Active" : "Disabled"
+      ]);
+      const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ddu_students_list_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      App.toast("Student accounts CSV exported successfully!", "success");
+    } catch (err) {
+      alert("CSV export failed: " + err.message);
     }
   },
 

@@ -2,7 +2,7 @@ import sqlite3
 import os
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import user_registry
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ddu_portal.db")
@@ -243,31 +243,64 @@ def ensure_db_schema():
 
 # ----------------- Auth & User Queries -----------------
 
+def get_ist_now_str():
+    """Returns current date and time formatted in Indian Standard Time (IST, UTC+5:30)"""
+    utc_now = datetime.now(timezone.utc)
+    ist_tz = timezone(timedelta(hours=5, minutes=30))
+    ist_now = utc_now.astimezone(ist_tz)
+    return ist_now.strftime("%Y-%m-%d %I:%M:%S %p (IST)")
+
+def get_user_by_email(email):
+    if not email:
+        return None
+    email_clean = email.lower().strip()
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE LOWER(email) = ?", (email_clean,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return dict(row)
+    except Exception:
+        pass
+    reg_user = user_registry.find_user_in_registry(email_clean)
+    if reg_user:
+        return reg_user
+    return None
+
 def create_user(full_name, email, password, college="Deen Dayal Upadhyaya Gorakhpur University",
                 course="B.Tech", branch="CSE", semester=1, role="STUDENT"):
+    email_clean = email.lower().strip()
+
+    # 1. Reject duplicate email immediately (cannot sign up twice)
+    if user_registry.find_user_in_registry(email_clean) or get_user_by_email(email_clean):
+        return None
+
     conn = get_connection()
     cursor = conn.cursor()
     hash_val, salt = hash_password(password)
-    email_clean = email.lower().strip()
     user_id = None
+    ist_time = get_ist_now_str()
     try:
         cursor.execute("""
-        INSERT INTO users (full_name, email, password_hash, salt, plain_password, college, course, branch, semester, role)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (full_name, email_clean, hash_val, salt, password, college, course, branch, semester, role))
+        INSERT INTO users (full_name, email, password_hash, salt, plain_password, college, course, branch, semester, role, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (full_name, email_clean, hash_val, salt, password, college, course, branch, semester, role, ist_time))
         user_id = cursor.lastrowid
         conn.commit()
     except sqlite3.IntegrityError:
-        cursor.execute("SELECT id FROM users WHERE email = ?", (email_clean,))
-        row = cursor.fetchone()
-        if row:
-            user_id = row["id"]
-    finally:
         conn.close()
+        return None
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
-    # Always persist in multi-instance registry
+    # Always persist in multi-instance registry with allow_update=False
     user_record = {
-        "id": user_id or 100,
+        "id": user_id or int(datetime.now().timestamp()),
         "full_name": full_name,
         "email": email_clean,
         "plain_password": password,
@@ -277,9 +310,9 @@ def create_user(full_name, email, password, college="Deen Dayal Upadhyaya Gorakh
         "semester": semester,
         "role": role,
         "is_active": 1,
-        "created_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        "created_at": ist_time
     }
-    user_registry.save_user_to_registry(user_record)
+    user_registry.save_user_to_registry(user_record, allow_update=False)
     return user_id
 
 def authenticate_user(email, password):

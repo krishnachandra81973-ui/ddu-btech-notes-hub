@@ -72,7 +72,11 @@ const Auth = {
       });
       const data = await res.json();
       if (!res.ok) {
-        return { success: false, error: data.error || "Registration failed." };
+        return {
+          success: false,
+          error: data.error || "Registration failed.",
+          already_registered: data.already_registered || res.status === 409
+        };
       }
       this.token = data.token;
       this.currentUser = data.user;
@@ -242,6 +246,8 @@ const Auth = {
 
     if (loginTab) loginTab.classList.toggle("active", tab === "login");
     if (regTab) regTab.classList.toggle("active", tab === "register");
+    const errBox = document.getElementById("register-error-msg");
+    if (errBox) errBox.style.display = "none";
   }
 };
 

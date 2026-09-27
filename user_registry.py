@@ -1,6 +1,7 @@
 import os
 import json
 import time
+from datetime import datetime, timedelta, timezone
 import base64
 import hmac
 import hashlib
@@ -30,6 +31,13 @@ ADMIN_USER = {
     "is_active": 1,
     "created_at": "2026-09-26 16:58:15"
 }
+
+def get_ist_now_str():
+    """Returns current date and time formatted in Indian Standard Time (IST, UTC+5:30)"""
+    utc_now = datetime.now(timezone.utc)
+    ist_tz = timezone(timedelta(hours=5, minutes=30))
+    ist_now = utc_now.astimezone(ist_tz)
+    return ist_now.strftime("%Y-%m-%d %I:%M:%S %p (IST)")
 
 def get_registry_path():
     if not os.path.exists(TMP_REGISTRY):
@@ -83,12 +91,14 @@ def save_registry(users):
         except Exception:
             pass
 
-def save_user_to_registry(user_dict):
+def save_user_to_registry(user_dict, allow_update=True):
     users = load_registry()
     email_clean = user_dict.get("email", "").lower().strip()
     updated = False
     for i, u in enumerate(users):
         if u.get("email", "").lower().strip() == email_clean:
+            if not allow_update:
+                return None  # Prevent duplicate overwrite
             users[i].update(user_dict)
             updated = True
             break
@@ -97,7 +107,7 @@ def save_user_to_registry(user_dict):
             max_id = max([u.get("id", 0) for u in users if isinstance(u.get("id"), int)] or [100])
             user_dict["id"] = max_id + 1
         if "created_at" not in user_dict or not user_dict["created_at"]:
-            user_dict["created_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+            user_dict["created_at"] = get_ist_now_str()
         if "is_active" not in user_dict:
             user_dict["is_active"] = 1
         users.append(user_dict)

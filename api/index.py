@@ -349,7 +349,7 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"token": token, "user": user_clean, "success": True})
                 return
 
-            # 2. Student Registration with Persistent Storage & Immediate Verification
+            # 2. Student Registration with Duplicate Prevention & IST Timestamp
             if path == "/api/auth/register":
                 full_name = payload.get("full_name", "").strip()
                 email = payload.get("email", "").strip()
@@ -365,9 +365,18 @@ class handler(BaseHTTPRequestHandler):
                     self.send_json({"error": "Password must be at least 6 characters long."}, 400)
                     return
 
+                email_clean = email.lower().strip()
+                # Check if student is already registered across registry and database
+                if user_registry.find_user_in_registry(email_clean) or database.get_user_by_email(email_clean):
+                    self.send_json({
+                        "error": "This email address is already registered! Please log in to your account.",
+                        "already_registered": True
+                    }, 409)
+                    return
+
                 user_id = database.create_user(
                     full_name=full_name,
-                    email=email,
+                    email=email_clean,
                     password=password,
                     college=college,
                     course="B.Tech",
@@ -376,16 +385,24 @@ class handler(BaseHTTPRequestHandler):
                     role="STUDENT"
                 )
 
+                if not user_id:
+                    self.send_json({
+                        "error": "This email address is already registered! Please log in to your account.",
+                        "already_registered": True
+                    }, 409)
+                    return
+
+                ist_time = user_registry.get_ist_now_str()
                 user = {
-                    "id": user_id or int(time.time()),
+                    "id": user_id,
                     "full_name": full_name,
-                    "email": email.lower().strip(),
+                    "email": email_clean,
                     "plain_password": password,
                     "branch": branch,
                     "semester": semester,
                     "college": college,
                     "role": "STUDENT",
-                    "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
+                    "created_at": ist_time
                 }
 
                 token = user_registry.generate_auth_token(user)
@@ -407,9 +424,15 @@ class handler(BaseHTTPRequestHandler):
                 if not full_name or not email:
                     self.send_json({"error": "Full name and email are required."}, 400)
                     return
+
+                email_clean = email.lower().strip()
+                if user_registry.find_user_in_registry(email_clean) or database.get_user_by_email(email_clean):
+                    self.send_json({"error": "A student account with this email is already registered."}, 409)
+                    return
+
                 user_id = database.create_user(
                     full_name=full_name,
-                    email=email,
+                    email=email_clean,
                     password=password,
                     college=college,
                     course="B.Tech",
@@ -417,6 +440,10 @@ class handler(BaseHTTPRequestHandler):
                     semester=semester,
                     role="STUDENT"
                 )
+                if not user_id:
+                    self.send_json({"error": "A student account with this email is already registered."}, 409)
+                    return
+
                 self.send_json({"success": True, "message": "Student account created successfully.", "user_id": user_id})
                 return
 
