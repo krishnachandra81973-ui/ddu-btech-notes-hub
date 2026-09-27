@@ -304,6 +304,26 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json(dash_data)
                 return
 
+            # Student: My Submitted Notes
+            if path == "/api/student/notes/my-submissions":
+                user = self.get_auth_user()
+                if not user:
+                    self.send_json({"error": "Unauthorized session"}, 401)
+                    return
+                submissions = database.get_student_submissions(user["id"])
+                self.send_json({"submissions": submissions})
+                return
+
+            # Admin: Pending Note Submissions Awaiting Verification
+            if path == "/api/admin/notes/pending":
+                user = self.get_auth_user()
+                if not user or user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+                pending = database.get_pending_notes()
+                self.send_json({"notes": pending})
+                return
+
             # 10. Admin Stats Overview
             if path == "/api/admin/stats":
                 user = self.get_auth_user()
@@ -588,6 +608,87 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"success": True, "bookmarked": bookmarked})
                 return
 
+            # 4b. Student Submit Note (Pending Admin Verification)
+            if path == "/api/student/notes/submit":
+                user = self.get_auth_user()
+                if not user:
+                    self.send_json({"error": "Please log in to submit study notes."}, 401)
+                    return
+
+                title = (payload.get("title") or "").strip()
+                subject_id = payload.get("subject_id")
+                unit_id = payload.get("unit_id") or payload.get("unit_number") or 1
+                description = (payload.get("description") or "").strip() or "Detailed notes will be shared in PDF format shortly."
+                file_url = (payload.get("file_url") or "").strip()
+                file_name = (payload.get("file_name") or title).strip()
+                file_size = (payload.get("file_size") or "PDF Document").strip()
+
+                if not title or len(title) < 3:
+                    self.send_json({"error": "Note title must be at least 3 characters long."}, 400)
+                    return
+                if not subject_id:
+                    self.send_json({"error": "Please select a valid subject."}, 400)
+                    return
+                if not file_url:
+                    self.send_json({"error": "PDF file or document link is required."}, 400)
+                    return
+
+                try:
+                    sub_id_int = int(subject_id)
+                except Exception:
+                    self.send_json({"error": "Invalid subject ID format."}, 400)
+                    return
+
+                try:
+                    unit_id_int = int(unit_id) if unit_id else None
+                except Exception:
+                    unit_id_int = 1
+
+                note_id = database.create_student_note_submission(
+                    student_id=user["id"],
+                    student_name=user.get("full_name") or "Student Contributor",
+                    student_email=user.get("email") or "",
+                    subject_id=sub_id_int,
+                    unit_id=unit_id_int,
+                    title=title,
+                    description=description,
+                    file_url=file_url,
+                    file_name=file_name,
+                    file_size=file_size
+                )
+                self.send_json({
+                    "success": True,
+                    "message": "Note submitted successfully! It will be verified by the Admin before appearing publicly.",
+                    "note_id": note_id
+                })
+                return
+
+            # 4c. Admin Verify Note ("Tick" / Approve or Reject)
+            if path in ("/api/admin/notes/verify", "/api/admin/notes/approve"):
+                current_user = self.get_auth_user()
+                if not current_user or current_user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+
+                note_id = payload.get("note_id")
+                action = (payload.get("action") or "approve").lower()
+                if not note_id:
+                    self.send_json({"error": "Note ID is required."}, 400)
+                    return
+                if action not in ("approve", "reject"):
+                    self.send_json({"error": "Action must be 'approve' or 'reject'."}, 400)
+                    return
+
+                try:
+                    database.verify_student_note(int(note_id), action=action)
+                except Exception as e:
+                    self.send_json({"error": f"Verification failed: {str(e)}"}, 500)
+                    return
+
+                msg = "Note verified and published live to student portal!" if action == "approve" else "Note marked as rejected."
+                self.send_json({"success": True, "message": msg, "action": action, "note_id": note_id})
+                return
+
             # 5. Admin Reset Student Password
             if path == "/api/admin/users/reset-password":
                 current_user = self.get_auth_user()
@@ -774,10 +875,13 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"success": True, "message": "Campus update published", "update_id": new_id})
                 return
 
-            # 13. Admin File Upload (Permanent Cloud Hosting via GitHub API & jsdelivr CDN)
-            if path == "/api/admin/upload":
+            # 13. File Upload (Permanent Cloud Hosting via GitHub API & jsdelivr CDN)
+            if path in ("/api/admin/upload", "/api/student/upload"):
                 current_user = self.get_auth_user()
-                if not current_user or current_user.get("role") != "ADMIN":
+                if not current_user:
+                    self.send_json({"error": "Authentication required to upload files."}, 401)
+                    return
+                if path == "/api/admin/upload" and current_user.get("role") != "ADMIN":
                     self.send_json({"error": "Admin access required"}, 403)
                     return
 

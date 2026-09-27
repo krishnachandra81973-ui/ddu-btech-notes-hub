@@ -199,6 +199,11 @@ def ensure_custom_notes_synced(conn):
                 file_size = n.get("file_size", "PDF Document")
                 is_important = n.get("is_important", 0)
                 is_published = n.get("is_published", 1)
+                is_verified = n.get("is_verified", 1)
+                status = n.get("status", "APPROVED")
+                contributed_by_id = n.get("contributed_by_id")
+                contributed_by_name = n.get("contributed_by_name")
+                contributed_by_email = n.get("contributed_by_email")
                 download_count = n.get("download_count", 0)
                 created_at = n.get("created_at")
 
@@ -220,20 +225,21 @@ def ensure_custom_notes_synced(conn):
                         UPDATE notes
                         SET subject_id = ?, unit_id = ?, title = ?, description = ?,
                             file_url = ?, file_name = ?, file_size = ?,
-                            is_important = ?, is_published = ?
+                            is_important = ?, is_published = ?, is_verified = ?, status = ?,
+                            contributed_by_id = ?, contributed_by_name = ?, contributed_by_email = ?
                         WHERE id = ?
-                    """, (subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, note_id))
+                    """, (subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, note_id))
                 else:
                     if created_at:
                         cursor.execute("""
-                            INSERT INTO notes (id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, download_count, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (note_id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, download_count, created_at))
+                            INSERT INTO notes (id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, download_count, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (note_id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, download_count, created_at))
                     else:
                         cursor.execute("""
-                            INSERT INTO notes (id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, download_count)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (note_id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, download_count))
+                            INSERT INTO notes (id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, download_count)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (note_id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, download_count))
             conn.commit()
         except Exception:
             pass

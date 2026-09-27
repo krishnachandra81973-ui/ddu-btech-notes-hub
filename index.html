@@ -87,6 +87,7 @@
           <li class="nav-item"><a href="#semesters" title="B.Tech 1st to 8th Semesters">Semesters</a></li>
           <li class="nav-item"><a href="#syllabus" title="Official CBCS Syllabus">Syllabus</a></li>
           <li class="nav-item"><a href="#notes" title="Unit-Wise Lecture Notes">Notes</a></li>
+          <li class="nav-item"><a href="javascript:void(0)" onclick="App.openSubmitNoteModal()" title="Add / Contribute Study Notes" style="color: var(--accent-amber); font-weight: 700;">+ Add Notes</a></li>
           <li class="nav-item"><a href="#pyq" title="Previous Year Question Papers (2021-2025)">PYQ Papers</a></li>
           <li class="nav-item"><a href="#updates" title="Academic Notices & Updates">Updates</a></li>
           <li class="nav-item"><a href="#about" title="About DDU & Developer Profile">About</a></li>
@@ -131,6 +132,7 @@
       <a href="#semesters" class="sub-nav-link" data-subnav="semesters">🎓 Semesters</a>
       <a href="#syllabus" class="sub-nav-link" data-subnav="syllabus">📖 Syllabus</a>
       <a href="#notes" class="sub-nav-link" data-subnav="notes">📝 Notes</a>
+      <a href="javascript:void(0)" onclick="App.openSubmitNoteModal()" class="sub-nav-link" style="color: var(--accent-amber); font-weight: 700;">➕ Add Notes</a>
       <a href="#pyq" class="sub-nav-link" data-subnav="pyq">📑 PYQs</a>
       <a href="#updates" class="sub-nav-link" data-subnav="updates">📢 Updates</a>
       <a href="#about" class="sub-nav-link" data-subnav="about">👨‍💻 About</a>
@@ -163,6 +165,7 @@
       <a href="#semesters" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>🎓</span> B.Tech Semesters (1st to 8th)</a>
       <a href="#syllabus" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>📖</span> Official CBCS Syllabus</a>
       <a href="#notes" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>📝</span> Unit-Wise Lecture Notes</a>
+      <button onclick="App.openSubmitNoteModal(); App.toggleMobileMenu();" class="mobile-drawer-link" style="width: 100%; text-align: left; background: none; border: none; font-family: inherit; font-size: inherit; cursor: pointer; color: var(--accent-amber); font-weight: 700;"><span>➕</span> Add / Contribute Notes</button>
       <a href="#pyq" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>📑</span> 5-Year PYQs (2021-2025)</a>
       <a href="#updates" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>📢</span> Academic Notices & Circulars</a>
       <a href="#about" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>👨‍💻</span> About Developer (Keshav Sir)</a>

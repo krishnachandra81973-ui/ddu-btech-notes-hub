@@ -305,11 +305,26 @@ class DDURequestHandler(BaseHTTPRequestHandler):
             self.send_json({"history": data})
             return
 
+        # Student Submitted Notes
+        if path == "/api/student/notes/my-submissions":
+            user = self.get_auth_user()
+            if not user:
+                self.send_error_json("Authentication required", status=401)
+                return
+            data = db.get_student_submissions(user["id"])
+            self.send_json({"submissions": data})
+            return
+
         # 5. ADMIN Protected Endpoints (Strict Verification)
         if path.startswith("/api/admin/"):
             admin_user = self.get_auth_user()
             if not admin_user or admin_user.get("role") != "ADMIN":
                 self.send_error_json("Access Forbidden. Admin privilege required.", status=403)
+                return
+
+            if path == "/api/admin/notes/pending":
+                pending = db.get_pending_notes()
+                self.send_json({"notes": pending})
                 return
 
             if path == "/api/admin/stats":
@@ -480,11 +495,77 @@ class DDURequestHandler(BaseHTTPRequestHandler):
             self.send_json({"success": True, "is_bookmarked": is_bookmarked})
             return
 
+        if path == "/api/student/notes/submit":
+            user = self.get_auth_user()
+            if not user:
+                self.send_error_json("Please login to submit study notes.", status=401)
+                return
+            body = self.read_json_body()
+            title = (body.get("title") or "").strip()
+            subject_id = body.get("subject_id")
+            unit_id = body.get("unit_id") or body.get("unit_number") or 1
+            description = (body.get("description") or "").strip() or "Detailed notes will be shared in PDF format shortly."
+            file_url = (body.get("file_url") or "").strip()
+            file_name = (body.get("file_name") or title).strip()
+            file_size = (body.get("file_size") or "PDF Document").strip()
+
+            if not title or len(title) < 3:
+                self.send_error_json("Note title must be at least 3 characters long.", status=400)
+                return
+            if not subject_id:
+                self.send_error_json("Please select a valid subject.", status=400)
+                return
+            if not file_url:
+                self.send_error_json("PDF file or document link is required.", status=400)
+                return
+
+            note_id = db.create_student_note_submission(
+                student_id=user["id"],
+                student_name=user.get("full_name") or "Student Contributor",
+                student_email=user.get("email") or "",
+                subject_id=int(subject_id),
+                unit_id=int(unit_id) if unit_id else None,
+                title=title,
+                description=description,
+                file_url=file_url,
+                file_name=file_name,
+                file_size=file_size
+            )
+            self.send_json({
+                "success": True,
+                "message": "Note submitted successfully! It will be verified by the Admin before appearing publicly.",
+                "note_id": note_id
+            })
+            return
+
+        if path == "/api/student/upload":
+            user = self.get_auth_user()
+            if not user:
+                self.send_error_json("Authentication required to upload files.", status=401)
+                return
+            self.handle_multipart_upload()
+            return
+
         # 3. ADMIN Protected Endpoints (Strict Verification)
         if path.startswith("/api/admin/"):
             admin_user = self.get_auth_user()
             if not admin_user or admin_user.get("role") != "ADMIN":
                 self.send_error_json("Access Forbidden. Admin privilege required.", status=403)
+                return
+
+            if path in ("/api/admin/notes/verify", "/api/admin/notes/approve"):
+                body = self.read_json_body()
+                note_id = body.get("note_id")
+                action = (body.get("action") or "approve").lower()
+                if not note_id:
+                    self.send_error_json("note_id is required", status=400)
+                    return
+                if action not in ("approve", "reject"):
+                    self.send_error_json("Action must be 'approve' or 'reject'.", status=400)
+                    return
+                db.verify_student_note(int(note_id), action=action)
+                msg = "Note verified and published live to student portal!" if action == "approve" else "Note marked as rejected."
+                self.send_json({"success": True, "message": msg, "action": action, "note_id": note_id})
                 return
 
             if path == "/api/admin/upload":

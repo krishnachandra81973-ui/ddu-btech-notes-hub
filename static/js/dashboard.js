@@ -29,14 +29,16 @@ const Dashboard = {
     `;
 
     try {
-      const res = await fetch("/api/student/dashboard", {
-        headers: Auth.getAuthHeaders()
-      });
-      if (!res.ok) {
+      const [dashRes, subRes] = await Promise.all([
+        fetch("/api/student/dashboard", { headers: Auth.getAuthHeaders() }),
+        fetch("/api/student/notes/my-submissions", { headers: Auth.getAuthHeaders() })
+      ]);
+      if (!dashRes.ok) {
         throw new Error("Failed to load dashboard data");
       }
-      const data = await res.json();
-      this.renderDashboardView(container, data);
+      const data = await dashRes.json();
+      const subData = subRes.ok ? await subRes.json() : { submissions: [] };
+      this.renderDashboardView(container, data, subData.submissions || []);
     } catch (err) {
       container.innerHTML = `
         <div style="padding: 40px; text-align: center;">
@@ -47,7 +49,7 @@ const Dashboard = {
     }
   },
 
-  renderDashboardView(container, data) {
+  renderDashboardView(container, data, submissions = []) {
     const { user, bookmarks, recent_notes, latest_updates, recent_papers } = data;
     
     container.innerHTML = `
@@ -66,9 +68,12 @@ const Dashboard = {
               <strong>${escapeHtml(user.branch)}</strong> • Semester ${user.semester} • ${escapeHtml(user.college)}
             </p>
           </div>
-          <div style="display: flex; gap: 10px;">
-            <a href="#semester/${user.semester}" class="btn-primary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="App.openSubmitNoteModal()" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 700;">
+              <span>+</span> Add / Contribute Note
+            </button>
+            <a href="#semester/${user.semester}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
               My Semester Notes
             </a>
             <a href="#syllabus" class="btn-secondary">
@@ -78,7 +83,7 @@ const Dashboard = {
         </div>
 
         <!-- Quick Stats Cards -->
-        <div class="stats-grid" style="margin-bottom: 36px;">
+        <div class="stats-grid" style="margin-bottom: 36px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
           <div class="stat-card">
             <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald);">
               🔖
@@ -86,6 +91,15 @@ const Dashboard = {
             <div>
               <div class="stat-value">${bookmarks.length}</div>
               <div class="stat-label">Bookmarked Notes</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(14, 165, 233, 0.15); color: var(--accent-cyan);">
+              📝
+            </div>
+            <div>
+              <div class="stat-value">${submissions.length}</div>
+              <div class="stat-label">My Contributions</div>
             </div>
           </div>
           <div class="stat-card">
@@ -99,20 +113,11 @@ const Dashboard = {
           </div>
           <div class="stat-card">
             <div class="stat-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-amber);">
-              📝
+              📑
             </div>
             <div>
               <div class="stat-value">${recent_papers.length}</div>
               <div class="stat-label">Available PYQs</div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon" style="background: rgba(239, 68, 68, 0.15); color: var(--accent-rose);">
-              📢
-            </div>
-            <div>
-              <div class="stat-value">${latest_updates.length}</div>
-              <div class="stat-label">Campus Notices</div>
             </div>
           </div>
         </div>
@@ -167,6 +172,64 @@ const Dashboard = {
                       </div>
                     </div>
                   `).join('')}
+                </div>
+              `}
+            </div>
+
+            <!-- My Contributed Notes Section -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; margin-bottom: 30px; box-shadow: var(--shadow-sm);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                  <h3 style="font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                    <span>📝</span> My Contributed Notes
+                  </h3>
+                  <p style="font-size: 0.8rem; color: var(--text-muted); margin: 2px 0 0 0;">Track verification & live status of notes submitted by you</p>
+                </div>
+                <button onclick="App.openSubmitNoteModal()" class="btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700;">
+                  <span>+</span> Submit New Note
+                </button>
+              </div>
+
+              ${submissions.length === 0 ? `
+                <div style="text-align: center; padding: 26px 20px; color: var(--text-muted); font-size: 0.88rem; background: var(--bg-main); border-radius: var(--radius-sm); border: 1px dashed var(--border);">
+                  <div style="font-size: 2rem; margin-bottom: 8px;">📚</div>
+                  <div style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Aapne abhi tak koi study note contribute nahi kiya hai.</div>
+                  <p style="font-size: 0.8rem; max-width: 440px; margin: 0 auto 14px;">Apne handwritten ya digitized notes submit karein — admin verification ("tick") ke baad pure DDU ke students ke saath share honge!</p>
+                  <button onclick="App.openSubmitNoteModal()" class="btn-secondary btn-sm">+ Share Notes Now</button>
+                </div>
+              ` : `
+                <div class="notes-pill-list">
+                  ${submissions.map(s => {
+                    let statusBadge = '';
+                    if (s.status === 'APPROVED' || s.is_verified === 1) {
+                      statusBadge = '<span style="background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><span>✅</span> Verified & Live on Portal</span>';
+                    } else if (s.status === 'REJECTED') {
+                      statusBadge = '<span style="background: rgba(239, 68, 68, 0.15); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><span>❌</span> Rejected / Needs Revision</span>';
+                    } else {
+                      statusBadge = '<span style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><span>⏳</span> Pending Admin Verification</span>';
+                    }
+                    return `
+                      <div class="note-row" style="padding: 12px 16px;">
+                        <div class="note-info">
+                          <span class="subject-code-tag">${escapeHtml(s.subject_code || 'NOTE')}</span>
+                          <div>
+                            <div style="font-weight: 700; font-size: 0.92rem;">${escapeHtml(s.title)}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                              ${escapeHtml(s.subject_name || '')} • ${s.unit_number ? `Unit ${s.unit_number}` : 'General'} • ${s.created_at || ''}
+                            </div>
+                            <div style="margin-top: 6px;">
+                              ${statusBadge}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="note-actions">
+                          <button onclick="App.openPdfViewer('${s.file_url}', '${escapeHtml(s.title)}', ${s.id})" class="btn-secondary btn-sm">
+                            Preview
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
                 </div>
               `}
             </div>

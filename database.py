@@ -115,10 +115,16 @@ def init_db():
         file_size TEXT,
         is_important INTEGER DEFAULT 0,
         is_published INTEGER DEFAULT 1,
+        is_verified INTEGER DEFAULT 1,
+        status TEXT DEFAULT 'APPROVED', -- 'PENDING', 'APPROVED', 'REJECTED'
+        contributed_by_id INTEGER DEFAULT NULL,
+        contributed_by_name TEXT DEFAULT NULL,
+        contributed_by_email TEXT DEFAULT NULL,
         download_count INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
-        FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE SET NULL
+        FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE SET NULL,
+        FOREIGN KEY (contributed_by_id) REFERENCES users(id) ON DELETE SET NULL
     );
     """)
 
@@ -233,6 +239,20 @@ def ensure_db_schema():
         conn.commit()
     except Exception:
         pass
+
+    for col, col_type in [
+        ("is_verified", "INTEGER DEFAULT 1"),
+        ("status", "TEXT DEFAULT 'APPROVED'"),
+        ("contributed_by_id", "INTEGER DEFAULT NULL"),
+        ("contributed_by_name", "TEXT DEFAULT NULL"),
+        ("contributed_by_email", "TEXT DEFAULT NULL")
+    ]:
+        try:
+            cursor.execute(f"ALTER TABLE notes ADD COLUMN {col} {col_type};")
+            conn.commit()
+        except Exception:
+            pass
+
     try:
         cursor.execute("UPDATE users SET plain_password = 'AdminPassword123!' WHERE email = 'admin@ddunotes.ac.in' AND (plain_password IS NULL OR plain_password = '');")
         # Ensure any leftover dummy accounts are removed
@@ -645,7 +665,7 @@ def get_subject_detail(subject_id):
 
 # ----------------- Notes Queries & CRUD -----------------
 
-def get_notes(semester_id=None, subject_id=None, unit_number=None, branch=None, search=None, only_published=True):
+def get_notes(semester_id=None, subject_id=None, unit_number=None, branch=None, search=None, only_published=True, status=None):
     conn = get_connection()
     try:
         notes_registry.ensure_custom_notes_synced(conn)
@@ -663,7 +683,10 @@ def get_notes(semester_id=None, subject_id=None, unit_number=None, branch=None, 
     """
     params = []
     if only_published:
-        query += " AND n.is_published = 1"
+        query += " AND n.is_published = 1 AND (n.is_verified = 1 OR n.is_verified IS NULL)"
+    if status:
+        query += " AND n.status = ?"
+        params.append(status)
     if semester_id:
         query += " AND sub.semester_id = ?"
         params.append(semester_id)
@@ -767,6 +790,148 @@ def delete_note(note_id):
         notes_registry.remove_custom_note(note_id)
     except Exception:
         pass
+    return True
+
+def create_student_note_submission(student_id, student_name, student_email, subject_id, unit_id, title, description, file_url, file_name, file_size):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # 1. Validate subject
+    cursor.execute("SELECT id FROM subjects WHERE id = ?", (subject_id,))
+    if not cursor.fetchone():
+        cursor.execute("SELECT id FROM subjects ORDER BY id ASC LIMIT 1")
+        fallback_sub = cursor.fetchone()
+        if fallback_sub:
+            subject_id = fallback_sub[0]
+        else:
+            conn.close()
+            return None
+
+    # 2. Validate unit
+    actual_unit_id = None
+    if unit_id:
+        cursor.execute("SELECT id FROM units WHERE id = ? AND subject_id = ?", (unit_id, subject_id))
+        row = cursor.fetchone()
+        if row:
+            actual_unit_id = row[0]
+        else:
+            cursor.execute("SELECT id FROM units WHERE subject_id = ? AND unit_number = ?", (subject_id, unit_id))
+            row2 = cursor.fetchone()
+            if row2:
+                actual_unit_id = row2[0]
+            else:
+                cursor.execute("SELECT id FROM units WHERE subject_id = ? ORDER BY unit_number ASC LIMIT 1", (subject_id,))
+                row3 = cursor.fetchone()
+                if row3:
+                    actual_unit_id = row3[0]
+
+    # 3. Validate student user foreign key
+    valid_student_id = None
+    if student_id:
+        cursor.execute("SELECT id FROM users WHERE id = ?", (student_id,))
+        if cursor.fetchone():
+            valid_student_id = student_id
+
+    cursor.execute("""
+    INSERT INTO notes (
+        subject_id, unit_id, title, description, file_url, file_name, file_size,
+        is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 'PENDING', ?, ?, ?)
+    """, (subject_id, actual_unit_id, title, description, file_url, file_name, file_size, valid_student_id, student_name, student_email))
+    note_id = cursor.lastrowid
+    conn.commit()
+    try:
+        cursor.execute("""
+        SELECT n.*, sub.name as subject_name, sub.code as subject_code, sub.semester_id,
+               sem.number as semester_number, u.unit_number, u.title as unit_title
+        FROM notes n
+        JOIN subjects sub ON n.subject_id = sub.id
+        JOIN semesters sem ON sub.semester_id = sem.id
+        LEFT JOIN units u ON n.unit_id = u.id
+        WHERE n.id = ?
+        """, (note_id,))
+        created_row = dict(cursor.fetchone())
+        notes_registry.record_custom_note(created_row)
+    except Exception:
+        pass
+    conn.close()
+    return note_id
+
+def get_pending_notes():
+    conn = get_connection()
+    try:
+        notes_registry.ensure_custom_notes_synced(conn)
+    except Exception:
+        pass
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT n.*, sub.name as subject_name, sub.code as subject_code, sub.semester_id,
+           sem.number as semester_number, u.unit_number, u.title as unit_title
+    FROM notes n
+    JOIN subjects sub ON n.subject_id = sub.id
+    JOIN semesters sem ON sub.semester_id = sem.id
+    LEFT JOIN units u ON n.unit_id = u.id
+    WHERE n.status = 'PENDING' OR (n.is_verified = 0 AND (n.status IS NULL OR n.status != 'REJECTED'))
+    ORDER BY n.id DESC
+    """)
+    rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return rows
+
+def get_student_submissions(student_id):
+    conn = get_connection()
+    try:
+        notes_registry.ensure_custom_notes_synced(conn)
+    except Exception:
+        pass
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT n.*, sub.name as subject_name, sub.code as subject_code, sub.semester_id,
+           sem.number as semester_number, u.unit_number, u.title as unit_title
+    FROM notes n
+    JOIN subjects sub ON n.subject_id = sub.id
+    JOIN semesters sem ON sub.semester_id = sem.id
+    LEFT JOIN units u ON n.unit_id = u.id
+    WHERE n.contributed_by_id = ?
+    ORDER BY n.id DESC
+    """, (student_id,))
+    rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return rows
+
+def verify_student_note(note_id, action="approve"):
+    conn = get_connection()
+    cursor = conn.cursor()
+    if action == "approve":
+        cursor.execute("""
+        UPDATE notes
+        SET is_verified = 1, is_published = 1, status = 'APPROVED'
+        WHERE id = ?
+        """, (note_id,))
+    elif action == "reject":
+        cursor.execute("""
+        UPDATE notes
+        SET is_verified = 0, is_published = 0, status = 'REJECTED'
+        WHERE id = ?
+        """, (note_id,))
+    conn.commit()
+    try:
+        cursor.execute("""
+        SELECT n.*, sub.name as subject_name, sub.code as subject_code, sub.semester_id,
+               sem.number as semester_number, u.unit_number, u.title as unit_title
+        FROM notes n
+        JOIN subjects sub ON n.subject_id = sub.id
+        JOIN semesters sem ON sub.semester_id = sem.id
+        LEFT JOIN units u ON n.unit_id = u.id
+        WHERE n.id = ?
+        """, (note_id,))
+        row = cursor.fetchone()
+        if row:
+            notes_registry.record_custom_note(dict(row))
+    except Exception:
+        pass
+    conn.close()
     return True
 
 # ----------------- Subject CRUD -----------------
@@ -1213,6 +1378,12 @@ def get_admin_stats():
     except Exception:
         total_pdfs = 0
 
+    try:
+        cursor.execute("SELECT COUNT(*) FROM notes WHERE status = 'PENDING' OR (is_verified = 0 AND (status IS NULL OR status != 'REJECTED'))")
+        pending_notes_count = cursor.fetchone()[0]
+    except Exception:
+        pending_notes_count = 0
+
     # Recent Uploads
     recent_uploads = []
     try:
@@ -1234,6 +1405,7 @@ def get_admin_stats():
         "total_syllabus": total_syllabus,
         "total_updates": total_updates,
         "total_pdfs": total_pdfs or (total_notes + total_pyqs + total_syllabus),
+        "pending_notes_count": pending_notes_count,
         "recent_students": recent_students,
         "recent_uploads": recent_uploads
     }

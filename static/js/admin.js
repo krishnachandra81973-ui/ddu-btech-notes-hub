@@ -49,6 +49,9 @@ const Admin = {
           <button onclick="Admin.switchTab('notes')" class="admin-nav-item ${this.currentTab === 'notes' ? 'active' : ''}">
             📚 Notes Management
           </button>
+          <button onclick="Admin.switchTab('submissions')" class="admin-nav-item ${this.currentTab === 'submissions' ? 'active' : ''}">
+            📬 Student Submissions <span id="admin-pending-badge" style="display:none; margin-left: 6px; padding: 2px 7px; border-radius: 99px; font-size: 0.7rem; font-weight: 800; background: var(--accent-amber); color: #000;">0</span>
+          </button>
           <button onclick="Admin.switchTab('subjects')" class="admin-nav-item ${this.currentTab === 'subjects' ? 'active' : ''}">
             📖 Subjects & Branches
           </button>
@@ -123,6 +126,8 @@ const Admin = {
       await this.renderDashboardTab(content);
     } else if (this.currentTab === "notes") {
       await this.renderNotesTab(content);
+    } else if (this.currentTab === "submissions") {
+      await this.renderSubmissionsTab(content);
     } else if (this.currentTab === "subjects") {
       await this.renderSubjectsTab(content);
     } else if (this.currentTab === "syllabus") {
@@ -158,6 +163,18 @@ const Admin = {
 
       const recentStudents = stats.recent_students || [];
       const recentUploads = stats.recent_uploads || [];
+      const pendingCount = stats.pending_notes_count || 0;
+
+      // Update sidebar badge
+      const pendingBadge = document.getElementById("admin-pending-badge");
+      if (pendingBadge) {
+        if (pendingCount > 0) {
+          pendingBadge.innerText = pendingCount;
+          pendingBadge.style.display = "inline-block";
+        } else {
+          pendingBadge.style.display = "none";
+        }
+      }
 
       container.innerHTML = `
         <div>
@@ -172,6 +189,25 @@ const Admin = {
               <button onclick="Admin.openAddUpdateModal()" class="btn-secondary btn-sm">+ Post Notice</button>
             </div>
           </div>
+
+          ${pendingCount > 0 ? `
+            <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.6rem;">📬</span>
+                <div>
+                  <div style="font-weight: 800; color: var(--accent-amber); font-size: 0.98rem;">
+                    ${pendingCount} New Student Study Note Submission${pendingCount > 1 ? 's' : ''} Awaiting Your Verification
+                  </div>
+                  <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
+                    Students have contributed notes. Review their PDF and 1-click verify (tick) them to publish live on the portal.
+                  </div>
+                </div>
+              </div>
+              <button onclick="Admin.switchTab('submissions')" class="btn-primary btn-sm" style="background: var(--accent-amber); color: #000; font-weight: 800; border: none; padding: 8px 16px;">
+                Review Submissions (${pendingCount}) →
+              </button>
+            </div>
+          ` : ''}
 
           <!-- KPI Cards -->
           <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 30px;">
@@ -217,6 +253,15 @@ const Admin = {
                 <div class="stat-label">Campus Notices</div>
               </div>
             </div>
+            ${pendingCount > 0 ? `
+              <div class="stat-card" style="border-color: rgba(245, 158, 11, 0.5); cursor: pointer;" onclick="Admin.switchTab('submissions')">
+                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: var(--accent-amber);">📬</div>
+                <div>
+                  <div class="stat-value" style="color: var(--accent-amber);">${pendingCount}</div>
+                  <div class="stat-label" style="font-weight: 700; color: var(--accent-amber);">Pending Submissions</div>
+                </div>
+              </div>
+            ` : ''}
           </div>
 
           <!-- Two Column Activity Grid -->
@@ -333,6 +378,7 @@ const Admin = {
                         <div style="font-size: 0.75rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                           ${escapeHtml(n.description || 'No description')}
                         </div>
+                        ${n.contributed_by_name ? `<div style="font-size: 0.72rem; color: #10b981; margin-top: 3px; font-weight: 600;">🌟 Student: ${escapeHtml(n.contributed_by_name)}</div>` : ''}
                         ${n.is_important ? `<span class="update-badge-important" style="font-size: 0.65rem; margin-top: 4px; display: inline-block;">Important</span>` : ''}
                       </td>
                       <td>
@@ -349,12 +395,21 @@ const Admin = {
                         <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">${n.file_size || 'PDF'}</div>
                       </td>
                       <td>
-                        <span style="padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; ${n.is_published ? 'background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald);' : 'background: rgba(239, 68, 68, 0.15); color: var(--accent-rose);'}">
-                          ${n.is_published ? 'Published' : 'Draft'}
-                        </span>
+                        ${n.is_verified === 0 ? `
+                          <span style="padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(245, 158, 11, 0.15); color: var(--accent-amber);">
+                            Pending Review
+                          </span>
+                        ` : `
+                          <span style="padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; ${n.is_published ? 'background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald);' : 'background: rgba(239, 68, 68, 0.15); color: var(--accent-rose);'}">
+                            ${n.is_published ? 'Published' : 'Draft'}
+                          </span>
+                        `}
                       </td>
                       <td>
                         <div style="display: flex; gap: 6px;">
+                          ${n.is_verified === 0 ? `
+                            <button onclick="Admin.verifySubmission(${n.id}, 'approve')" class="btn-primary btn-sm" style="background: #10b981; border-color: #10b981; padding: 4px 8px; font-size: 0.75rem;" title="Verify now">✓ Verify</button>
+                          ` : ''}
                           <button onclick="Admin.openEditNoteModal(${JSON.stringify(n).replace(/"/g, '&quot;')})" class="btn-secondary btn-sm">Edit</button>
                           <button onclick="Admin.deleteNote(${n.id})" class="btn-outline-danger btn-sm">Delete</button>
                         </div>
@@ -369,6 +424,156 @@ const Admin = {
       `;
     } catch (e) {
       container.innerHTML = `<p style="color: var(--accent-rose);">Failed to load notes: ${e.message}</p>`;
+    }
+  },
+
+  // ------------------- 2b. Student Submissions Tab -------------------
+  async renderSubmissionsTab(container) {
+    container.innerHTML = `<p style="color: var(--text-muted);"><span class="spinner"></span> Loading pending submissions...</p>`;
+    try {
+      const res = await fetch("/api/admin/notes/pending", { headers: Auth.getAuthHeaders() });
+      const data = await res.json();
+      const submissions = data.pending_notes || [];
+
+      // Update sidebar badge
+      const pendingBadge = document.getElementById("admin-pending-badge");
+      if (pendingBadge) {
+        if (submissions.length > 0) {
+          pendingBadge.innerText = submissions.length;
+          pendingBadge.style.display = "inline-block";
+        } else {
+          pendingBadge.style.display = "none";
+        }
+      }
+
+      container.innerHTML = `
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <h2 style="font-size: 1.6rem; font-weight: 800;">📬 Student Notes Submissions & Verification</h2>
+              <p style="color: var(--text-muted); font-size: 0.88rem;">
+                Students submit notes here. Review the content and PDF, then <strong>Tick / Verify</strong> to publish immediately to the live portal.
+              </p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button onclick="Admin.renderSubmissionsTab(document.getElementById('admin-tab-content'))" class="btn-secondary btn-sm">
+                🔄 Refresh
+              </button>
+            </div>
+          </div>
+
+          ${submissions.length === 0 ? `
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 48px 24px; text-align: center;">
+              <div style="font-size: 3rem; margin-bottom: 12px;">🎉</div>
+              <h3 style="font-weight: 700; font-size: 1.2rem; margin-bottom: 8px;">All Caught Up!</h3>
+              <p style="color: var(--text-muted); max-width: 480px; margin: 0 auto; font-size: 0.9rem;">
+                There are currently no pending student notes waiting for verification. When students contribute notes from their portal, they will appear here for your one-click approval.
+              </p>
+            </div>
+          ` : `
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; box-shadow: var(--shadow-sm);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <div style="font-weight: 700; color: var(--accent-amber);">
+                  ⏳ ${submissions.length} Note Submission${submissions.length > 1 ? 's' : ''} Pending Your Review
+                </div>
+                <input type="text" id="submissions-filter-input" onkeyup="Admin.filterTable('submissions-filter-input', 'submissions-admin-table')" placeholder="Search submissions..." class="form-control" style="max-width: 320px;">
+              </div>
+
+              <div class="table-responsive">
+                <table class="modern-table" id="submissions-admin-table">
+                  <thead>
+                    <tr>
+                      <th>Title & Remarks</th>
+                      <th>Subject & Semester</th>
+                      <th>Unit</th>
+                      <th>Submitted By</th>
+                      <th>PDF / Link</th>
+                      <th>Verify Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${submissions.map(s => `
+                      <tr>
+                        <td style="max-width: 260px;">
+                          <div style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${escapeHtml(s.title)}</div>
+                          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
+                            ${escapeHtml(s.description || 'No description provided.')}
+                          </div>
+                          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">
+                            🕒 Submitted: ${s.created_at ? new Date(s.created_at).toLocaleDateString() : 'Recent'}
+                          </div>
+                        </td>
+                        <td>
+                          <span class="subject-code-tag">${escapeHtml(s.subject_code || 'SUB')}</span>
+                          <div style="font-weight: 600; font-size: 0.82rem; margin-top: 4px;">${escapeHtml(s.subject_name || 'Subject')}</div>
+                          <div style="font-size: 0.75rem; color: var(--text-muted);">Sem ${s.semester_number || 1} • ${escapeHtml(s.branch || 'B.Tech')}</div>
+                        </td>
+                        <td>
+                          <span style="font-weight: 700; font-size: 0.85rem;">${s.unit_number ? `Unit ${s.unit_number}` : 'General'}</span>
+                          ${s.unit_title ? `<div style="font-size: 0.72rem; color: var(--text-muted);">${escapeHtml(s.unit_title)}</div>` : ''}
+                        </td>
+                        <td>
+                          <div style="font-weight: 700; color: var(--text-main); font-size: 0.88rem;">
+                            👤 ${escapeHtml(s.contributed_by_name || 'Student')}
+                          </div>
+                          <div style="font-size: 0.75rem; color: var(--text-muted);">
+                            ${escapeHtml(s.contributed_by_email || '')}
+                          </div>
+                        </td>
+                        <td>
+                          ${s.file_url ? `
+                            <button onclick="App.openPdfViewer('${s.file_url}', '${escapeHtml(s.title)}')" class="btn-secondary btn-sm" style="font-size: 0.75rem; padding: 5px 10px; display: inline-flex; align-items: center; gap: 4px;">
+                              📄 View PDF
+                            </button>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">${s.file_size || 'PDF'}</div>
+                          ` : `<span style="font-size: 0.8rem; color: var(--text-muted);">No file</span>`}
+                        </td>
+                        <td>
+                          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button onclick="Admin.verifySubmission(${s.id}, 'approve')" class="btn-primary btn-sm" style="background: #10b981; border-color: #10b981; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px;" title="Verify and publish immediately">
+                              ✓ Verify & Publish (Tick)
+                            </button>
+                            <button onclick="Admin.verifySubmission(${s.id}, 'reject')" class="btn-outline-danger btn-sm" style="font-weight: 600; display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px;" title="Reject submission">
+                              ✕ Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `}
+        </div>
+      `;
+    } catch (e) {
+      container.innerHTML = `<p style="color: var(--accent-rose);">Failed to load student submissions: ${e.message}</p>`;
+    }
+  },
+
+  async verifySubmission(noteId, action) {
+    if (action === 'reject') {
+      if (!confirm("Are you sure you want to reject this student note submission?")) return;
+    }
+    try {
+      const res = await fetch("/api/admin/notes/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...Auth.getAuthHeaders() },
+        body: JSON.stringify({ note_id: noteId, action })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        App.toast(action === 'approve' ? "✓ Note verified and published live to the portal!" : "Submission rejected.", action === 'approve' ? "success" : "info");
+        const content = document.getElementById("admin-tab-content");
+        if (content) {
+          await this.renderSubmissionsTab(content);
+        }
+      } else {
+        App.toast(data.error || "Failed to process verification", "error");
+      }
+    } catch (err) {
+      App.toast("Error: " + err.message, "error");
     }
   },
 

@@ -913,6 +913,9 @@ const App = {
               </div>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button onclick="App.openSubmitNoteModal(${sub.id})" class="btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 5px; font-weight: 700;">
+                <span>+</span> Add Notes
+              </button>
               ${sub.syllabus ? `
                 <button onclick="App.openPdfViewer('${sub.syllabus.file_url}', 'Syllabus: ${escapeHtml(sub.name)}')" class="btn-secondary btn-sm">
                   📋 View Syllabus
@@ -965,6 +968,12 @@ const App = {
                             <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
                               ${n.file_size || 'PDF'}
                             </div>
+                            ${n.contributed_by_name ? `
+                              <div style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 7px; border-radius: 99px; margin-top: 3px; font-weight: 600;">
+                                <span>🌟 Contributed by ${escapeHtml(n.contributed_by_name)}</span>
+                                <span style="font-weight: 800;">✓ Verified</span>
+                              </div>
+                            ` : ''}
                           </div>
                           ${n.is_important ? `<span class="update-badge-important">Important</span>` : ''}
                         </div>
@@ -1145,12 +1154,17 @@ const App = {
   async renderNotes(container) {
     container.innerHTML = `
       <div class="container" style="padding: 40px 20px 80px;">
-        <div class="section-header">
-          <span class="section-tag">Repository</span>
-          <h1 class="section-title">B.Tech Notes & Study Materials</h1>
-          <p class="section-description">
-            Search and filter notes by semester, branch, subject, and unit modules.
-          </p>
+        <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+          <div>
+            <span class="section-tag">Repository</span>
+            <h1 class="section-title">B.Tech Notes & Study Materials</h1>
+            <p class="section-description">
+              Search and filter notes by semester, branch, subject, and unit modules.
+            </p>
+          </div>
+          <button onclick="App.openSubmitNoteModal()" class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 700; padding: 10px 18px; border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">
+            <span style="font-size: 1.15rem; line-height: 1;">+</span> Add / Contribute Notes
+          </button>
         </div>
 
         <!-- Filter Bar -->
@@ -1212,6 +1226,12 @@ const App = {
               <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
                 ${escapeHtml(n.subject_name)} • Sem ${n.semester_number} • ${n.unit_number ? `Unit ${n.unit_number}` : 'General'} • ${n.file_size || 'PDF'}
               </div>
+              ${n.contributed_by_name ? `
+                <div style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 99px; margin-top: 4px; font-weight: 600;">
+                  <span>🌟 Contributed by ${escapeHtml(n.contributed_by_name)}</span>
+                  <span style="font-weight: 800; color: var(--accent-emerald);">✓ Verified</span>
+                </div>
+              ` : ''}
             </div>
             ${n.is_important ? `<span class="update-badge-important">Important</span>` : ''}
           </div>
@@ -2031,6 +2051,210 @@ const App = {
     } else {
       const nav = document.getElementById("navbar-links-list");
       if (nav) nav.classList.toggle("mobile-open");
+    }
+  },
+
+  async openSubmitNoteModal(preselectedSubjectId = null) {
+    if (!Auth.currentUser) {
+      this.toast("Please log in or sign up as a student to contribute study notes.", "info");
+      Auth.openModal("login");
+      return;
+    }
+
+    // Fetch subjects if not cached
+    let subjects = this.cachedSubjects || [];
+    if (subjects.length === 0) {
+      try {
+        const res = await fetch("/api/subjects");
+        const data = await res.json();
+        subjects = data.subjects || [];
+        this.cachedSubjects = subjects;
+      } catch (e) {
+        subjects = [];
+      }
+    }
+
+    const subOptions = subjects.map(s => `
+      <option value="${s.id}" ${preselectedSubjectId && s.id === parseInt(preselectedSubjectId) ? 'selected' : ''}>
+        [Sem ${s.semester_number}] ${escapeHtml(s.code)} - ${escapeHtml(s.name)}
+      </option>
+    `).join('');
+
+    const modalHtml = `
+      <div class="modal-box" style="max-width: 620px;">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.4rem;">📝</span>
+            <div>
+              <h3 class="modal-title">Contribute / Add Study Notes</h3>
+              <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">Share handwritten or digital notes with your fellow students</p>
+            </div>
+          </div>
+          <button onclick="App.closeActiveModal()" class="modal-close-btn">✕</button>
+        </div>
+
+        <div style="background: rgba(14, 165, 233, 0.08); border-left: 3px solid var(--accent-cyan); padding: 10px 14px; font-size: 0.8rem; color: var(--text-main); margin: 16px 20px 0; border-radius: var(--radius-sm);">
+          <span>🛡️ <strong>Admin Verification:</strong> Aapka submitted note Admin dwara verify ("tick") hone ke baad hi public portal par publish hoga. Note ke upar aapka naam ba-izzat <em>Contributed by</em> badge me show hoga!</span>
+        </div>
+
+        <form onsubmit="App.handleStudentNoteSubmit(event)">
+          <div class="modal-body" style="padding-top: 14px;">
+            <div class="form-group">
+              <label class="form-label">Note Title *</label>
+              <input type="text" name="title" required placeholder="e.g. Unit 2: Stack & Queue Solved Derivations" class="form-control">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Subject *</label>
+                <select name="subject_id" required class="form-control">
+                  <option value="">Select Subject...</option>
+                  ${subOptions}
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Unit Number *</label>
+                <select name="unit_number" class="form-control">
+                  <option value="1">Unit 1</option>
+                  <option value="2">Unit 2</option>
+                  <option value="3">Unit 3</option>
+                  <option value="4">Unit 4</option>
+                  <option value="5">Unit 5</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Brief Description / Topics Covered</label>
+              <textarea name="description" rows="2" class="form-control" placeholder="Mention key topics, solved examples or chapter details..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Attach PDF Document *</label>
+              <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <input type="file" id="student-note-file" accept=".pdf" class="form-control" style="flex-grow: 1;">
+                <button type="button" id="student-upload-btn" onclick="App.uploadStudentPdf('student-note-file', 'student-note-url')" class="btn-secondary btn-sm" style="white-space: nowrap;">
+                  Upload PDF
+                </button>
+              </div>
+              <input type="text" name="file_url" id="student-note-url" required placeholder="/static/uploads/... or Google Drive shareable link" class="form-control" style="font-size: 0.8rem; background: var(--bg-main);">
+              <small style="color: var(--text-muted); font-size: 0.74rem; display: block; margin-top: 4px;">
+                💡 <strong>Tip:</strong> Aap seedhe <strong>Upload PDF</strong> daba sakte hain ya fir apna <strong>Google Drive share link</strong> paste kar sakte hain (Set link to 'Anyone with the link can view').
+              </small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" onclick="App.closeActiveModal()" class="btn-secondary">Cancel</button>
+            <button type="submit" id="student-submit-btn" class="btn-primary" style="font-weight: 700;">
+              Submit Note for Verification
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    this.showGenericModal(modalHtml);
+  },
+
+  async uploadStudentPdf(fileInputId, targetUrlInputId) {
+    const input = document.getElementById(fileInputId);
+    if (!input || !input.files || input.files.length === 0) {
+      this.toast("Please select a PDF file first.", "warning");
+      return;
+    }
+    const file = input.files[0];
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      this.toast("Only PDF files (.pdf) are allowed.", "error");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      this.toast("File size exceeds 15 MB limit.", "error");
+      return;
+    }
+
+    const btn = document.getElementById("student-upload-btn");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Uploading...";
+    }
+    this.toast("Uploading PDF securely...", "info");
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("category", "Student_Contribution");
+
+    try {
+      const res = await fetch("/api/student/upload", {
+        method: "POST",
+        headers: Auth.getAuthHeaders(),
+        body: formData
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+
+      const target = document.getElementById(targetUrlInputId);
+      if (target) target.value = data.file_url;
+      this.toast(`PDF uploaded successfully: ${data.original_name} (${data.file_size})`, "success");
+    } catch (err) {
+      this.toast(err.message, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Upload PDF";
+      }
+    }
+  },
+
+  async handleStudentNoteSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const btn = document.getElementById("student-submit-btn");
+
+    const title = form.title.value.trim();
+    const subject_id = parseInt(form.subject_id.value);
+    const unit_id = parseInt(form.unit_number.value);
+    const description = (form.description.value || "").trim();
+    const file_url = form.file_url.value.trim();
+
+    if (!title || !subject_id || !file_url) {
+      this.toast("Please fill all required fields.", "warning");
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Submitting...";
+    }
+
+    try {
+      const res = await fetch("/api/student/notes/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...Auth.getAuthHeaders() },
+        body: JSON.stringify({
+          title,
+          subject_id,
+          unit_id,
+          description: description || "Detailed notes will be shared in PDF format shortly.",
+          file_url,
+          file_name: title
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to submit note");
+
+      this.closeActiveModal();
+      this.toast("🎉 Note submitted successfully! Admin verify karne ke baad ye public portal par live ho jayega.", "success");
+      
+      if (window.location.hash === "#dashboard" && typeof Dashboard !== "undefined" && Dashboard.render) {
+        Dashboard.render(document.getElementById("main-content"));
+      }
+    } catch (err) {
+      this.toast(err.message, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Submit Note for Verification";
+      }
     }
   }
 };
