@@ -22,7 +22,7 @@
       "purpose": "any maskable"
     },
     {
-      "src": "/static/ddu_kn_notes_logo.png",
+      "src": "/logo.png",
       "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any"

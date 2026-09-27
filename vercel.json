@@ -26,6 +26,10 @@
       "use": "@vercel/static"
     },
     {
+      "src": "*.ico",
+      "use": "@vercel/static"
+    },
+    {
       "src": "sitemap.xml",
       "use": "@vercel/static"
     },
@@ -39,6 +43,30 @@
     }
   ],
   "routes": [
+    {
+      "src": "/favicon.ico",
+      "dest": "/favicon.ico",
+      "headers": {
+        "content-type": "image/x-icon",
+        "cache-control": "public, max-age=0, must-revalidate"
+      }
+    },
+    {
+      "src": "/favicon.png",
+      "dest": "/favicon.png",
+      "headers": {
+        "content-type": "image/png",
+        "cache-control": "public, max-age=0, must-revalidate"
+      }
+    },
+    {
+      "src": "/logo.png",
+      "dest": "/logo.png",
+      "headers": {
+        "content-type": "image/png",
+        "cache-control": "public, max-age=0, must-revalidate"
+      }
+    },
     {
       "src": "/sitemap.xml",
       "dest": "/sitemap.xml",

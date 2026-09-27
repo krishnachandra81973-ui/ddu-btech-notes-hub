@@ -413,7 +413,7 @@ const App = {
               <div class="hero-emblem-card">
                 <div class="hero-emblem-glow"></div>
                 <div class="hero-emblem-ring">
-                  <img src="/static/ddu_official_logo.png" alt="Deen Dayal Upadhyaya Gorakhpur University Official Crest" class="hero-emblem-img">
+                  <img src="/static/ddu_official_logo.png?v=3" alt="Deen Dayal Upadhyaya Gorakhpur University Official Crest" class="hero-emblem-img" onerror="this.src='/logo.png'">
                 </div>
                 <div class="hero-emblem-info">
                   <div class="hero-emblem-title">दीनदयाल उपाध्याय गोरखपुर विश्वविद्यालय</div>

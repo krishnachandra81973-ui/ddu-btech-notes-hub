@@ -86,6 +86,10 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 mime_type = "text/css"
             elif filepath.endswith(".pdf"):
                 mime_type = "application/pdf"
+            elif filepath.endswith(".ico"):
+                mime_type = "image/x-icon"
+            elif filepath.endswith(".png"):
+                mime_type = "image/png"
             else:
                 mime_type = "text/html"
 
@@ -361,8 +365,12 @@ class DDURequestHandler(BaseHTTPRequestHandler):
             file_to_serve = os.path.join(STATIC_DIR, rel_path)
             self.serve_static(file_to_serve)
         else:
-            # Fallback to index.html for SPA hash/history routes
-            self.serve_static(os.path.join(STATIC_DIR, "index.html"))
+            base_file = os.path.join(BASE_DIR, path.lstrip("/"))
+            if os.path.exists(base_file) and os.path.isfile(base_file):
+                self.serve_static(base_file)
+            else:
+                # Fallback to index.html for SPA hash/history routes
+                self.serve_static(os.path.join(STATIC_DIR, "index.html"))
 
     # ------------------- POST Requests -------------------
     def do_POST(self):
