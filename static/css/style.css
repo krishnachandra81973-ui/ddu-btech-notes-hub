@@ -294,15 +294,16 @@ button {
 .search-trigger-btn {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 11px;
+  gap: 8px;
+  padding: 0 14px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 20px;
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 500;
   height: 38px;
+  min-width: 150px;
   cursor: pointer;
   transition: var(--transition);
 }
@@ -310,18 +311,12 @@ button {
 .search-trigger-btn:hover {
   border-color: var(--primary);
   color: var(--text-main);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.search-shortcut-badge {
-  font-size: 0.7rem;
-  padding: 1px 5px;
-  background: var(--bg-main);
-  border: 1px solid var(--border);
-  border-radius: 4px;
+.search-btn-text {
   color: var(--text-muted);
-  font-family: inherit;
-  font-weight: 600;
+  font-size: 0.84rem;
 }
 
 .theme-toggle-btn {
