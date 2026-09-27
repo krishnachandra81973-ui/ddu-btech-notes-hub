@@ -13,16 +13,16 @@
     "created_at": "2026-09-26 16:58:15"
   },
   {
-    "id": 26,
+    "id": 27,
     "full_name": "Security Check Student",
-    "email": "sec_test_1790523990@gmail.com",
-    "plain_password": "enc_v1:KueeWke-aSJP8R-aGG20c4ogH0MPnoHrNqfofl086vUZoUFWKL1P8Rnz2TOavqilQja7",
+    "email": "sec_test_1790524564@gmail.com",
+    "plain_password": "enc_v1:0vyZA6wxdVKCLeiYGxYRqq1-VVkGeR9-k4Y0yWOwg-j5325s_vyrWnYlWfmAkg9lLdsI",
     "college": "Deen Dayal Upadhyaya Gorakhpur University",
     "course": "B.Tech",
     "branch": "CSE",
     "semester": 1,
     "role": "STUDENT",
     "is_active": 1,
-    "created_at": "2026-09-27 09:16:30 PM (IST)"
+    "created_at": "2026-09-27 09:26:04 PM (IST)"
   }
 ]

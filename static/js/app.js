@@ -13,6 +13,7 @@ const App = {
 
     // Setup global listeners
     window.addEventListener("hashchange", () => this.handleRouting());
+    window.addEventListener("auth:changed", () => this.handleRouting());
     document.addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
@@ -282,6 +283,50 @@ const App = {
     return {};
   },
 
+  // ------------------- Content Lock Gate Component -------------------
+  renderLockGate(container, title = "Study Material Access Locked", desc = "") {
+    container.innerHTML = `
+      <div class="container" style="padding: 40px 20px 80px;">
+        <div class="content-lock-gate" style="background: var(--bg-card); border: 2px dashed rgba(217, 119, 6, 0.45); border-radius: var(--radius-lg); padding: 50px 24px; text-align: center; max-width: 680px; margin: 30px auto; box-shadow: var(--shadow-md);">
+          <div style="width: 76px; height: 76px; background: rgba(217, 119, 6, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 2.3rem; border: 2px solid #d97706; box-shadow: 0 4px 15px rgba(217, 119, 6, 0.2);">
+            🔒
+          </div>
+          <div style="font-size: 0.8rem; font-weight: 800; color: var(--accent-amber); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;">
+            DDU B.Tech Students Access Gate
+          </div>
+          <h2 style="font-size: 1.7rem; font-weight: 800; color: var(--text-main); margin-bottom: 12px; font-family: 'Outfit', sans-serif;">
+            ${escapeHtml(title)}
+          </h2>
+          <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 26px; max-width: 540px; margin-left: auto; margin-right: auto;">
+            ${escapeHtml(desc || "DDU Gorakhpur University B.Tech engineering notes, previous year question papers aur syllabus dekhne ke liye kripya pehle Apna Free Student Account banayein (Register karein).")}
+          </p>
+          
+          <div style="display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin-bottom: 28px;">
+            <button onclick="Auth.openModal('register')" class="btn-primary" style="padding: 13px 26px; font-weight: 800; font-size: 0.98rem; border-radius: var(--radius-md); box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35); display: inline-flex; align-items: center; gap: 8px;">
+              <span>✨</span> Create Free Student Account (Register)
+            </button>
+            <button onclick="Auth.openModal('login')" class="btn-secondary" style="padding: 13px 22px; font-weight: 700; font-size: 0.98rem; border-radius: var(--radius-md); display: inline-flex; align-items: center; gap: 6px;">
+              <span>🔑</span> Already Registered? Log In
+            </button>
+          </div>
+
+          <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 18px 22px; text-align: left; display: inline-block; max-width: 520px; width: 100%;">
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+              <span>🎯</span> Student Registration ke Fayde:
+            </div>
+            <ul style="font-size: 0.82rem; color: var(--text-muted); padding-left: 20px; margin: 0; line-height: 1.8;">
+              <li><strong>1st to 8th Semester</strong> ke sabhi verified unit-wise notes</li>
+              <li><strong>5 Saal ke Previous Year Question Papers (2021-2025)</strong> PDF download</li>
+              <li><strong>Official CBCS Syllabus</strong> aur marks distribution scheme</li>
+              <li>Important topics aur derivations ko <strong>Bookmark</strong> karne ki suvidha</li>
+              <li>Khud ke handwritten notes <strong>Contribute</strong> karke verify karwane ka feature</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
   // ------------------- Router -------------------
   handleRouting() {
     const hash = window.location.hash.slice(1) || "home";
@@ -335,6 +380,23 @@ const App = {
     }
 
     window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // Check Registration / Auth Access Gate for protected routes
+    const protectedContentRoutes = ["notes", "pyq", "syllabus"];
+    if (protectedContentRoutes.includes(hash) && !Auth.currentUser) {
+      let title = "B.Tech Lecture Notes & Study Materials Locked";
+      let desc = "DDU Gorakhpur University B.Tech semester notes dekhne ke liye kripya pahle Apna Free Student Account banayein (Register karein).";
+      if (hash === "pyq") {
+        title = "Previous Year Question Papers (2021-2025) Locked";
+        desc = "DDU B.Tech 5-year end-term examination question papers aur answer keys download karne ke liye kripya pehle Register karein.";
+      } else if (hash === "syllabus") {
+        title = "Official CBCS Syllabus Curricula Locked";
+        desc = "Official university course scheme aur syllabus download karne ke liye kripya pehle Register karein.";
+      }
+      this.renderLockGate(container, title, desc);
+      Auth.openModal("register");
+      return;
+    }
 
     if (hash === "home") {
       this.renderHome(container);
@@ -421,6 +483,31 @@ const App = {
               </div>
             </div>
           </div>
+
+          <!-- Student Registration Required Callout for Guests -->
+          ${!Auth.currentUser ? `
+            <div style="background: linear-gradient(135deg, rgba(30, 64, 175, 0.12), rgba(217, 119, 6, 0.14)); border: 1.5px solid rgba(217, 119, 6, 0.45); border-radius: var(--radius-md); padding: 18px 24px; margin-top: 24px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; box-shadow: var(--shadow-sm);">
+              <div style="display: flex; align-items: center; gap: 14px;">
+                <span style="font-size: 2.2rem;">🔐</span>
+                <div>
+                  <div style="font-weight: 800; font-size: 1.05rem; color: var(--text-main); font-family: 'Outfit', sans-serif;">
+                    Free Student Registration Required for Full Content Access
+                  </div>
+                  <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 3px;">
+                    DDU B.Tech unit notes, previous year question papers aur syllabus download karne ke liye apna free student account banayein ya login karein.
+                  </div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button onclick="Auth.openModal('register')" class="btn-primary" style="font-weight: 800; padding: 10px 20px; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
+                  ✨ Create Free Account (Register)
+                </button>
+                <button onclick="Auth.openModal('login')" class="btn-secondary" style="font-weight: 700; padding: 10px 18px; font-size: 0.9rem;">
+                  🔑 Log In
+                </button>
+              </div>
+            </div>
+          ` : ''}
 
           <!-- PWA Install Promotional Card -->
           <div id="pwa-install-card" class="pwa-install-card" style="display: none;">
@@ -900,7 +987,27 @@ const App = {
         })
       );
 
-      subjectsEl.innerHTML = detailedSubjects.map(sub => `
+      subjectsEl.innerHTML = `
+        ${!Auth.currentUser ? `
+          <div style="background: linear-gradient(135deg, rgba(30, 64, 175, 0.1), rgba(217, 119, 6, 0.14)); border: 1.5px solid rgba(217, 119, 6, 0.45); border-radius: var(--radius-md); padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 1.8rem;">🔐</span>
+              <div>
+                <div style="font-weight: 800; color: var(--accent-amber); font-size: 0.98rem; font-family: 'Outfit', sans-serif;">
+                  Semester ${semNumber} Notes & PDFs Access Locked
+                </div>
+                <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
+                  Unit-wise lecture notes aur PDFs access karne ke liye kripya pehle Apna Free Student Account banayein ya Login karein.
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button onclick="Auth.openModal('register')" class="btn-primary btn-sm" style="font-weight: 800; padding: 8px 16px;">✨ Free Register</button>
+              <button onclick="Auth.openModal('login')" class="btn-secondary btn-sm" style="font-weight: 700; padding: 8px 14px;">🔑 Log In</button>
+            </div>
+          </div>
+        ` : ''}
+        ${detailedSubjects.map(sub => `
         <div class="subject-card">
           <div class="subject-header">
             <div class="subject-title-area">
@@ -952,7 +1059,19 @@ const App = {
 
                   <!-- Notes for this unit -->
                   <div class="notes-pill-list">
-                    ${unitNotes.length === 0 ? `
+                    ${!Auth.currentUser ? `
+                      <div style="background: rgba(217, 119, 6, 0.08); border: 1px dashed rgba(217, 119, 6, 0.4); border-radius: var(--radius-sm); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                          <span>🔒</span>
+                          <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-main);">
+                            ${unitNotes.length} study note${unitNotes.length === 1 ? '' : 's'} available (Locked)
+                          </span>
+                        </div>
+                        <button onclick="Auth.openModal('register'); App.toast('Unit notes aur PDF dekhne ke liye kripya pehle Register / Login karein.', 'warning');" class="btn-primary btn-sm" style="font-size: 0.75rem; padding: 5px 12px; font-weight: 700;">
+                          Register to Unlock →
+                        </button>
+                      </div>
+                    ` : unitNotes.length === 0 ? `
                       <div style="font-size: 0.8rem; color: var(--text-muted); font-style: italic; padding: 4px 0;">
                         Notes currently being curated for Unit ${u.unit_number}.
                       </div>
@@ -981,9 +1100,9 @@ const App = {
                           <button onclick="App.openPdfViewer('${n.file_url}', '${escapeHtml(n.title)}', ${n.id})" class="btn-secondary btn-sm">
                             View PDF
                           </button>
-                          <a href="${this.getDownloadUrl(n.file_url)}" ${this.isGoogleDriveUrl(n.file_url) ? 'target="_blank" rel="noopener noreferrer"' : 'download'} onclick="App.recordDownload(${n.id})" class="btn-primary btn-sm">
+                          <button onclick="App.downloadFile('${n.file_url}', '${escapeHtml(n.title)}', ${n.id})" class="btn-primary btn-sm">
                             Download
-                          </a>
+                          </button>
                           <button onclick="App.toggleBookmark(${n.id})" title="Save note" style="padding: 6px; font-size: 1.1rem; color: var(--accent-amber);">
                             ★
                           </button>
@@ -998,7 +1117,7 @@ const App = {
             `}
           </div>
         </div>
-      `).join('');
+      `).join('')}`;
 
     } catch (e) {
       const el = document.getElementById("semester-subjects-container");
@@ -1008,6 +1127,16 @@ const App = {
 
   // ------------------- 4. Syllabus Section -------------------
   async renderSyllabus(container) {
+    if (!Auth.currentUser) {
+      this.renderLockGate(
+        container,
+        "Official CBCS Syllabus Curricula Locked",
+        "Official university course schemes aur syllabus download karne ke liye kripya pehle Apna Free Student Account banayein (Register karein)."
+      );
+      Auth.openModal("register");
+      return;
+    }
+
     container.innerHTML = `
       <div class="container" style="padding: 40px 20px 80px;">
         <div class="section-header">
@@ -1044,7 +1173,7 @@ const App = {
               </div>
               <div style="display: flex; gap: 8px;">
                 <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_cse_structure_syllabus_2024_25.pdf', 'B.Tech CSE Structure & Syllabus 2024-25')" class="btn-primary btn-sm" style="flex: 1;">👁️ View</button>
-                <a href="/static/uploads/ddu_official_btech_cse_structure_syllabus_2024_25.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">⬇ Download</a>
+                <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_cse_structure_syllabus_2024_25.pdf', 'B.Tech CSE Structure & Syllabus 2024-25')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">⬇ Download</button>
               </div>
             </div>
 
@@ -1056,7 +1185,7 @@ const App = {
               </div>
               <div style="display: flex; gap: 8px;">
                 <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_cse_aiml_syllabus.pdf', 'B.Tech CSE (AIML) Syllabus')" class="btn-primary btn-sm" style="flex: 1;">👁️ View</button>
-                <a href="/static/uploads/ddu_official_btech_cse_aiml_syllabus.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">⬇ Download</a>
+                <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_cse_aiml_syllabus.pdf', 'B.Tech CSE (AIML) Syllabus')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">⬇ Download</button>
               </div>
             </div>
 
@@ -1068,7 +1197,7 @@ const App = {
               </div>
               <div style="display: flex; gap: 8px;">
                 <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_cse_aids_syllabus.pdf', 'B.Tech CSE (AI & DS) Syllabus')" class="btn-primary btn-sm" style="flex: 1;">👁️ View</button>
-                <a href="/static/uploads/ddu_official_btech_cse_aids_syllabus.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">⬇ Download</a>
+                <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_cse_aids_syllabus.pdf', 'B.Tech CSE (AI & DS) Syllabus')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">⬇ Download</button>
               </div>
             </div>
 
@@ -1080,7 +1209,7 @@ const App = {
               </div>
               <div style="display: flex; gap: 8px;">
                 <button onclick="App.openPdfViewer('/static/uploads/ddu_official_mtech_cse_syllabus.pdf', 'M.Tech CSE Syllabus')" class="btn-primary btn-sm" style="flex: 1;">👁️ View</button>
-                <a href="/static/uploads/ddu_official_mtech_cse_syllabus.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">⬇ Download</a>
+                <button onclick="App.downloadFile('/static/uploads/ddu_official_mtech_cse_syllabus.pdf', 'M.Tech CSE Syllabus')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">⬇ Download</button>
               </div>
             </div>
           </div>
@@ -1139,9 +1268,9 @@ const App = {
             <button onclick="App.openPdfViewer('${s.file_url}', '${escapeHtml(s.title)}')" class="btn-secondary">
               View Online
             </button>
-            <a href="${this.getDownloadUrl(s.file_url)}" ${this.isGoogleDriveUrl(s.file_url) ? 'target="_blank" rel="noopener noreferrer"' : 'download'} class="btn-primary">
+            <button onclick="App.downloadFile('${s.file_url}', '${escapeHtml(s.title)}')" class="btn-primary">
               Download PDF
-            </a>
+            </button>
           </div>
         </div>
       `).join('');
@@ -1152,6 +1281,16 @@ const App = {
 
   // ------------------- 5. All Notes Explorer -------------------
   async renderNotes(container) {
+    if (!Auth.currentUser) {
+      this.renderLockGate(
+        container,
+        "B.Tech Lecture Notes & Study Materials Locked",
+        "DDU Gorakhpur University B.Tech semester notes dekhne ke liye kripya pahle Apna Free Student Account banayein (Register karein)."
+      );
+      Auth.openModal("register");
+      return;
+    }
+
     container.innerHTML = `
       <div class="container" style="padding: 40px 20px 80px;">
         <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
@@ -1239,9 +1378,9 @@ const App = {
             <button onclick="App.openPdfViewer('${n.file_url}', '${escapeHtml(n.title)}', ${n.id})" class="btn-secondary btn-sm">
               View PDF
             </button>
-            <a href="${this.getDownloadUrl(n.file_url)}" ${this.isGoogleDriveUrl(n.file_url) ? 'target="_blank" rel="noopener noreferrer"' : 'download'} onclick="App.recordDownload(${n.id})" class="btn-primary btn-sm">
+            <button onclick="App.downloadFile('${n.file_url}', '${escapeHtml(n.title)}', ${n.id})" class="btn-primary btn-sm">
               Download
-            </a>
+            </button>
             <button onclick="App.toggleBookmark(${n.id})" title="Save note" style="padding: 6px; font-size: 1.1rem; color: var(--accent-amber);">
               ★
             </button>
@@ -1255,6 +1394,16 @@ const App = {
 
   // ------------------- 6. Previous Year Papers (PYQs) -------------------
   async renderPyq(container) {
+    if (!Auth.currentUser) {
+      this.renderLockGate(
+        container,
+        "Previous Year Question Papers (2021-2025) Locked",
+        "DDU B.Tech 5-year end-term examination question papers aur answer keys download karne ke liye kripya pehle Apna Free Student Account banayein (Register karein)."
+      );
+      Auth.openModal("register");
+      return;
+    }
+
     container.innerHTML = `
       <div class="container" style="padding: 40px 20px 80px;">
         <div class="section-header">
@@ -1347,9 +1496,9 @@ const App = {
               <button onclick="App.openPdfViewer('${p.file_url}', '${escapeHtml(p.paper_title)}')" class="btn-secondary btn-sm">
                 View PDF
               </button>
-              <a href="${this.getDownloadUrl(p.file_url)}" ${this.isGoogleDriveUrl(p.file_url) ? 'target="_blank" rel="noopener noreferrer"' : 'download'} class="btn-primary btn-sm">
+              <button onclick="App.downloadFile('${p.file_url}', '${escapeHtml(p.paper_title)}')" class="btn-primary btn-sm">
                 Download
-              </a>
+              </button>
             </div>
           </td>
         </tr>
@@ -1808,6 +1957,12 @@ const App = {
 
   // ------------------- PDF Viewer Modal -------------------
   openPdfViewer(fileUrl, title = "Document Preview", noteId = null) {
+    if (!Auth.currentUser) {
+      Auth.openModal("register");
+      App.toast("Study notes aur PDF dekhne ke liye kripya pahle Register / Login karein.", "warning");
+      return;
+    }
+
     const modal = document.getElementById("pdf-viewer-modal");
     if (!modal) return;
     const titleEl = document.getElementById("pdf-viewer-title");
@@ -1875,6 +2030,29 @@ const App = {
     }
 
     modal.classList.add("active");
+  },
+
+  // ------------------- Secure File Download -------------------
+  downloadFile(fileUrl, title = "Document", noteId = null) {
+    if (!Auth.currentUser) {
+      Auth.openModal("register");
+      App.toast("PDF download karne ke liye kripya pahle Register / Login karein.", "warning");
+      return;
+    }
+    if (noteId) {
+      this.recordDownload(noteId);
+    }
+    const downloadUrl = this.getDownloadUrl(fileUrl);
+    if (this.isGoogleDriveUrl(fileUrl)) {
+      window.open(downloadUrl, "_blank");
+    } else {
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = "";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   },
 
   async recordDownload(noteId) {
@@ -1947,7 +2125,12 @@ const App = {
           if (res.user.role === "ADMIN") {
             window.location.hash = "#admin";
           } else {
-            window.location.hash = "#dashboard";
+            const currentHash = window.location.hash.slice(1);
+            if (["notes", "pyq", "syllabus"].includes(currentHash) || currentHash.startsWith("semester/")) {
+              App.handleRouting();
+            } else {
+              window.location.hash = "#dashboard";
+            }
           }
         } else {
           App.toast(res.error, "error");
@@ -1985,8 +2168,13 @@ const App = {
 
         if (res.success) {
           Auth.closeModal();
-          App.toast("Account registered successfully! Welcome to DDU Notes Hub.", "success");
-          window.location.hash = "#dashboard";
+          App.toast("Aapka account safalta-poorvak ban gaya! Sabhi notes aur study material unlock ho gaye hain.", "success");
+          const currentHash = window.location.hash.slice(1);
+          if (["notes", "pyq", "syllabus"].includes(currentHash) || currentHash.startsWith("semester/")) {
+            App.handleRouting();
+          } else {
+            window.location.hash = "#dashboard";
+          }
         } else {
           App.toast(res.error, "error");
         }
@@ -2056,8 +2244,8 @@ const App = {
 
   async openSubmitNoteModal(preselectedSubjectId = null) {
     if (!Auth.currentUser) {
-      this.toast("Please log in or sign up as a student to contribute study notes.", "info");
-      Auth.openModal("login");
+      this.toast("Study notes contribute karne ke liye kripya pahle Register / Login karein.", "warning");
+      Auth.openModal("register");
       return;
     }
 
