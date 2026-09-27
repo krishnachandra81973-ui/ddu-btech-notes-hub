@@ -5,6 +5,8 @@ import os
 import sys
 import shutil
 import urllib.parse
+import time
+import secrets
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
@@ -30,6 +32,9 @@ except Exception:
     pass
 
 class handler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        pass
+
     def send_cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
@@ -78,110 +83,98 @@ class handler(BaseHTTPRequestHandler):
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
 
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        self.end_headers()
-
         try:
-            conn = sqlite3.connect(DB_PATH)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-
+            # 1. Semesters
             if path == "/api/semesters":
-                cur.execute("SELECT * FROM semesters ORDER BY semester_number ASC")
-                rows = [dict(r) for r in cur.fetchall()]
-                self.wfile.write(json.dumps({"semesters": rows}).encode("utf-8"))
-                conn.close()
+                semesters = database.get_semesters()
+                self.send_json({"semesters": semesters})
                 return
 
+            # 2. Subjects
             if path == "/api/subjects":
                 sem_id = query.get("semester_id", [None])[0]
-                if sem_id:
-                    cur.execute("SELECT * FROM subjects WHERE semester_id = ? ORDER BY id ASC", (int(sem_id),))
-                else:
-                    cur.execute("SELECT * FROM subjects ORDER BY semester_id, id ASC")
-                rows = [dict(r) for r in cur.fetchall()]
-                self.wfile.write(json.dumps({"subjects": rows}).encode("utf-8"))
-                conn.close()
+                branch = query.get("branch", [None])[0]
+                subjects = database.get_subjects(
+                    semester_id=int(sem_id) if sem_id else None,
+                    branch=branch
+                )
+                self.send_json({"subjects": subjects})
                 return
 
             if path.startswith("/api/subjects/"):
-                sub_id = int(path.split("/api/subjects/")[1].split("/")[0])
-                cur.execute("SELECT s.*, sem.semester_number, sem.title as semester_title FROM subjects s JOIN semesters sem ON s.semester_id = sem.id WHERE s.id = ?", (sub_id,))
-                sub = cur.fetchone()
-                if sub:
-                    sub_dict = dict(sub)
-                    cur.execute("SELECT * FROM units WHERE subject_id = ? ORDER BY unit_number ASC", (sub_id,))
-                    sub_dict["units"] = [dict(u) for u in cur.fetchall()]
-                    self.wfile.write(json.dumps({"subject": sub_dict}).encode("utf-8"))
-                else:
-                    self.wfile.write(json.dumps({"error": "Not found"}).encode("utf-8"))
-                conn.close()
-                return
+                sub_id_str = path.split("/api/subjects/")[1].split("/")[0]
+                if sub_id_str.isdigit():
+                    sub = database.get_subject_detail(int(sub_id_str))
+                    if sub:
+                        self.send_json({"subject": sub})
+                        return
+                    else:
+                        self.send_json({"error": "Subject not found"}, 404)
+                        return
 
+            # 3. Notes
             if path == "/api/notes":
                 sem_id = query.get("semester_id", [None])[0]
                 sub_id = query.get("subject_id", [None])[0]
-                sql = "SELECT n.*, s.name as subject_name, s.code as subject_code, sem.semester_number FROM notes n JOIN subjects s ON n.subject_id = s.id JOIN semesters sem ON n.semester_id = sem.id WHERE n.is_published = 1"
-                params = []
-                if sem_id:
-                    sql += " AND n.semester_id = ?"
-                    params.append(int(sem_id))
-                if sub_id:
-                    sql += " AND n.subject_id = ?"
-                    params.append(int(sub_id))
-                sql += " ORDER BY n.id DESC"
-                cur.execute(sql, params)
-                rows = [dict(r) for r in cur.fetchall()]
-                self.wfile.write(json.dumps({"notes": rows}).encode("utf-8"))
-                conn.close()
+                unit_num = query.get("unit_number", [None])[0]
+                branch = query.get("branch", [None])[0]
+                search = query.get("search", [None])[0]
+                notes = database.get_notes(
+                    semester_id=int(sem_id) if sem_id else None,
+                    subject_id=int(sub_id) if sub_id else None,
+                    unit_number=int(unit_num) if unit_num else None,
+                    branch=branch,
+                    search=search,
+                    only_published=True
+                )
+                self.send_json({"notes": notes})
                 return
 
+            # 4. Syllabus
             if path == "/api/syllabus":
-                cur.execute("SELECT syl.*, s.name as subject_name, s.code as subject_code, sem.semester_number FROM syllabus syl LEFT JOIN subjects s ON syl.subject_id = s.id LEFT JOIN semesters sem ON syl.semester_id = sem.id WHERE syl.is_published = 1 ORDER BY syl.id DESC")
-                rows = [dict(r) for r in cur.fetchall()]
-                self.wfile.write(json.dumps({"syllabus": rows}).encode("utf-8"))
-                conn.close()
+                sem_id = query.get("semester_id", [None])[0]
+                sub_id = query.get("subject_id", [None])[0]
+                syllabus = database.get_all_syllabus(
+                    semester_id=int(sem_id) if sem_id else None,
+                    subject_id=int(sub_id) if sub_id else None,
+                    only_published=True
+                )
+                self.send_json({"syllabus": syllabus})
                 return
 
+            # 5. PYQs
             if path == "/api/pyqs":
-                cur.execute("SELECT p.*, s.name as subject_name, s.code as subject_code, sem.semester_number FROM pyqs p JOIN subjects s ON p.subject_id = s.id JOIN semesters sem ON p.semester_id = sem.id WHERE p.is_published = 1 ORDER BY p.exam_year DESC, p.id DESC")
-                rows = [dict(r) for r in cur.fetchall()]
-                self.wfile.write(json.dumps({"pyqs": rows}).encode("utf-8"))
-                conn.close()
+                sem_id = query.get("semester_id", [None])[0]
+                sub_id = query.get("subject_id", [None])[0]
+                branch = query.get("branch", [None])[0]
+                exam_year = query.get("exam_year", [None])[0]
+                pyqs = database.get_all_pyqs(
+                    semester_id=int(sem_id) if sem_id else None,
+                    subject_id=int(sub_id) if sub_id else None,
+                    branch=branch,
+                    exam_year=int(exam_year) if exam_year else None,
+                    only_published=True
+                )
+                self.send_json({"pyqs": pyqs})
                 return
 
+            # 6. Daily Updates
             if path == "/api/updates":
-                cur.execute("SELECT * FROM daily_updates WHERE is_published = 1 ORDER BY is_pinned DESC, date_posted DESC, id DESC")
-                rows = [dict(r) for r in cur.fetchall()]
-                self.wfile.write(json.dumps({"updates": rows}).encode("utf-8"))
-                conn.close()
+                category = query.get("category", [None])[0]
+                search = query.get("search", [None])[0]
+                updates = database.get_all_updates(category=category, search=search, only_published=True)
+                self.send_json({"updates": updates})
                 return
 
-            # Global Portal Search
+            # 7. Global Portal Search
             if path == "/api/search":
                 q = query.get("q", [""])[0].strip()
-                if not q:
-                    conn.close()
-                    self.send_json({"subjects": [], "notes": [], "pyqs": []})
-                    return
-                term = f"%{q}%"
-                cur.execute("SELECT s.*, sem.semester_number FROM subjects s JOIN semesters sem ON s.semester_id = sem.id WHERE s.name LIKE ? OR s.code LIKE ?", (term, term))
-                sub_matches = [dict(r) for r in cur.fetchall()]
-                cur.execute("SELECT n.*, s.name as subject_name, sem.semester_number FROM notes n JOIN subjects s ON n.subject_id = s.id JOIN semesters sem ON n.semester_id = sem.id WHERE n.title LIKE ? OR n.unit_title LIKE ?", (term, term))
-                notes_matches = [dict(r) for r in cur.fetchall()]
-                cur.execute("SELECT p.*, s.name as subject_name FROM pyqs p JOIN subjects s ON p.subject_id = s.id WHERE p.title LIKE ? OR s.name LIKE ?", (term, term))
-                pyq_matches = [dict(r) for r in cur.fetchall()]
-                conn.close()
-                self.send_json({"subjects": sub_matches, "notes": notes_matches, "pyqs": pyq_matches})
+                results = database.global_search(q)
+                self.send_json(results)
                 return
 
-            # Current User Profile
+            # 8. Current User Profile
             if path == "/api/auth/me":
-                conn.close()
                 user = self.get_auth_user()
                 if user:
                     self.send_json({"user": user})
@@ -189,9 +182,18 @@ class handler(BaseHTTPRequestHandler):
                     self.send_json({"error": "Unauthorized session"}, 401)
                 return
 
-            # Admin Stats Overview
+            # 9. Student Dashboard
+            if path == "/api/student/dashboard":
+                user = self.get_auth_user()
+                if not user:
+                    self.send_json({"error": "Unauthorized session"}, 401)
+                    return
+                dash_data = database.get_student_dashboard_data(user["id"])
+                self.send_json(dash_data)
+                return
+
+            # 10. Admin Stats Overview
             if path == "/api/admin/stats":
-                conn.close()
                 user = self.get_auth_user()
                 if not user or user.get("role") != "ADMIN":
                     self.send_json({"error": "Admin access required"}, 403)
@@ -200,9 +202,8 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"stats": stats})
                 return
 
-            # Admin All Registered Students & Account Creation Timestamps
+            # 11. Admin All Registered Students & Account Passwords / Timestamps
             if path == "/api/admin/users":
-                conn.close()
                 user = self.get_auth_user()
                 if not user or user.get("role") != "ADMIN":
                     self.send_json({"error": "Admin access required"}, 403)
@@ -212,8 +213,67 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"users": users_list})
                 return
 
+            # 12. Admin Notes (All notes)
+            if path == "/api/admin/notes":
+                user = self.get_auth_user()
+                if not user or user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+                notes = database.get_notes(only_published=False)
+                self.send_json({"notes": notes})
+                return
+
+            # 13. Admin Subjects
+            if path == "/api/admin/subjects":
+                user = self.get_auth_user()
+                if not user or user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+                subjects = database.get_subjects()
+                self.send_json({"subjects": subjects})
+                return
+
+            # 14. Admin Syllabus
+            if path == "/api/admin/syllabus":
+                user = self.get_auth_user()
+                if not user or user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+                syllabus = database.get_all_syllabus(only_published=False)
+                self.send_json({"syllabus": syllabus})
+                return
+
+            # 15. Admin PYQs
+            if path == "/api/admin/pyqs":
+                user = self.get_auth_user()
+                if not user or user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+                pyqs = database.get_all_pyqs(only_published=False)
+                self.send_json({"pyqs": pyqs})
+                return
+
+            # 16. Admin Updates
+            if path == "/api/admin/updates":
+                user = self.get_auth_user()
+                if not user or user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+                updates = database.get_all_updates(only_published=False)
+                self.send_json({"updates": updates})
+                return
+
+            # 17. Admin Files
+            if path == "/api/admin/files":
+                user = self.get_auth_user()
+                if not user or user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+                files = database.get_all_uploaded_files()
+                self.send_json({"files": files})
+                return
+
             self.send_json({"status": "ok", "app": "DDU B.Tech Notes Hub"})
-            conn.close()
         except Exception as e:
             self.send_json({"error": str(e)}, 500)
 
@@ -304,7 +364,21 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"success": True})
                 return
 
-            # 4. Admin Reset Student Password
+            # 4. Bookmark Toggle
+            if path == "/api/student/bookmark":
+                user = self.get_auth_user()
+                if not user:
+                    self.send_json({"error": "Unauthorized session"}, 401)
+                    return
+                note_id = payload.get("note_id")
+                if not note_id:
+                    self.send_json({"error": "Note ID required."}, 400)
+                    return
+                bookmarked = database.toggle_bookmark(user["id"], int(note_id))
+                self.send_json({"success": True, "bookmarked": bookmarked})
+                return
+
+            # 5. Admin Reset Student Password
             if path == "/api/admin/users/reset-password":
                 current_user = self.get_auth_user()
                 if not current_user or current_user.get("role") != "ADMIN":
@@ -322,7 +396,7 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"success": True, "message": "Password updated successfully."})
                 return
 
-            # 5. Admin Toggle Student Active/Inactive
+            # 6. Admin Toggle Student Active/Inactive
             if path in ("/api/admin/users/toggle", "/api/admin/users/toggle-active"):
                 current_user = self.get_auth_user()
                 if not current_user or current_user.get("role") != "ADMIN":
@@ -338,7 +412,7 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"success": True, "is_active": new_state})
                 return
 
-            # 6. Admin Delete Student
+            # 7. Admin Delete Student
             if path == "/api/admin/users/delete":
                 current_user = self.get_auth_user()
                 if not current_user or current_user.get("role") != "ADMIN":
@@ -354,7 +428,184 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"success": True, "message": "User deleted successfully."})
                 return
 
-            # 7. Student Requests / Feedback
+            # 8. Admin Add / Edit Note
+            if path == "/api/admin/notes" or path.startswith("/api/admin/notes/"):
+                current_user = self.get_auth_user()
+                if not current_user or current_user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+
+                note_id = None
+                if path.startswith("/api/admin/notes/"):
+                    note_id_str = path.split("/api/admin/notes/")[1].split("/")[0]
+                    if note_id_str.isdigit():
+                        note_id = int(note_id_str)
+
+                subject_id = payload.get("subject_id")
+                unit_id = payload.get("unit_id")
+                title = payload.get("title", "").strip()
+                description = payload.get("description", "").strip()
+                file_url = payload.get("file_url", "").strip()
+                file_name = payload.get("file_name", title)
+                file_size = payload.get("file_size", "PDF Document")
+                is_important = 1 if payload.get("is_important") else 0
+                is_published = 1 if payload.get("is_published", True) else 0
+
+                if not title or not subject_id or not file_url:
+                    self.send_json({"error": "Title, Subject and File URL are required."}, 400)
+                    return
+
+                if note_id:
+                    database.update_note(note_id, int(subject_id), int(unit_id) if unit_id else None, title, description, file_url, file_name, file_size, is_important, is_published)
+                    self.send_json({"success": True, "message": "Note updated", "note_id": note_id})
+                else:
+                    new_id = database.create_note(int(subject_id), int(unit_id) if unit_id else None, title, description, file_url, file_name, file_size, is_important, is_published)
+                    self.send_json({"success": True, "message": "Note created", "note_id": new_id})
+                return
+
+            # 9. Admin Add / Edit Subject
+            if path == "/api/admin/subjects" or path.startswith("/api/admin/subjects/"):
+                current_user = self.get_auth_user()
+                if not current_user or current_user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+
+                sub_id = None
+                if path.startswith("/api/admin/subjects/"):
+                    sub_id_str = path.split("/api/admin/subjects/")[1].split("/")[0]
+                    if sub_id_str.isdigit():
+                        sub_id = int(sub_id_str)
+
+                name = payload.get("name", "").strip()
+                code = payload.get("code", "").strip()
+                semester_id = payload.get("semester_id")
+                branch = payload.get("branch", "All Branches").strip()
+                description = payload.get("description", "").strip()
+
+                if not name or not code or not semester_id:
+                    self.send_json({"error": "Subject name, code and semester are required."}, 400)
+                    return
+
+                if sub_id:
+                    database.update_subject(sub_id, int(semester_id), name, code, branch, description)
+                    self.send_json({"success": True, "message": "Subject updated", "subject_id": sub_id})
+                else:
+                    new_id = database.create_subject(int(semester_id), name, code, branch, description)
+                    self.send_json({"success": True, "message": "Subject created", "subject_id": new_id})
+                return
+
+            # 10. Admin Add Syllabus
+            if path == "/api/admin/syllabus":
+                current_user = self.get_auth_user()
+                if not current_user or current_user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+
+                title = payload.get("title", "").strip()
+                semester_id = payload.get("semester_id")
+                subject_id = payload.get("subject_id")
+                description = payload.get("description", "").strip()
+                file_url = payload.get("file_url", "").strip()
+                is_published = 1 if payload.get("is_published", True) else 0
+
+                if not title or not semester_id or not file_url:
+                    self.send_json({"error": "Title, semester, and file URL are required."}, 400)
+                    return
+
+                new_id = database.create_syllabus(int(semester_id), int(subject_id) if subject_id else None, title, description, file_url, is_published)
+                self.send_json({"success": True, "message": "Syllabus uploaded", "syllabus_id": new_id})
+                return
+
+            # 11. Admin Add PYQ
+            if path == "/api/admin/pyqs":
+                current_user = self.get_auth_user()
+                if not current_user or current_user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+
+                paper_title = payload.get("paper_title", "").strip()
+                exam_year = payload.get("exam_year", 2025)
+                semester_id = payload.get("semester_id")
+                subject_id = payload.get("subject_id")
+                branch = payload.get("branch", "CSE").strip()
+                file_url = payload.get("file_url", "").strip()
+
+                if not paper_title or not semester_id or not subject_id or not file_url:
+                    self.send_json({"error": "Paper title, semester, subject, and file URL are required."}, 400)
+                    return
+
+                new_id = database.create_pyq(int(semester_id), int(subject_id), paper_title, int(exam_year), branch, file_url)
+                self.send_json({"success": True, "message": "PYQ uploaded", "pyq_id": new_id})
+                return
+
+            # 12. Admin Add Campus Update
+            if path == "/api/admin/updates":
+                current_user = self.get_auth_user()
+                if not current_user or current_user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+
+                title = payload.get("title", "").strip()
+                category = payload.get("category", "Notice")
+                publish_date = payload.get("publish_date")
+                short_description = payload.get("short_description", "").strip()
+                full_details = payload.get("full_details", "").strip()
+                attachment_url = payload.get("attachment_url")
+                is_important = 1 if payload.get("is_important") else 0
+
+                if not title:
+                    self.send_json({"error": "Title is required."}, 400)
+                    return
+
+                new_id = database.create_update(title, category, short_description, full_details, attachment_url, is_important, publish_date=publish_date)
+                self.send_json({"success": True, "message": "Campus update published", "update_id": new_id})
+                return
+
+            # 13. Admin File Upload
+            if path == "/api/admin/upload":
+                current_user = self.get_auth_user()
+                if not current_user or current_user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+
+                orig_name = "document.pdf"
+                file_size_str = "1.2 MB"
+                category = "General"
+                content_type = self.headers.get("content-type", "")
+
+                if "multipart/form-data" in content_type:
+                    import cgi
+                    import io
+                    try:
+                        environ = {
+                            'REQUEST_METHOD': 'POST',
+                            'CONTENT_TYPE': content_type,
+                            'CONTENT_LENGTH': str(length)
+                        }
+                        fs = cgi.FieldStorage(fp=io.BytesIO(body), headers=self.headers, environ=environ)
+                        if 'category' in fs:
+                            category = fs['category'].value
+                        if 'file' in fs:
+                            file_item = fs['file']
+                            orig_name = file_item.filename or "uploaded_file.pdf"
+                            file_bytes = file_item.file.read()
+                            sz_kb = round(len(file_bytes) / 1024, 1)
+                            file_size_str = f"{sz_kb} KB" if sz_kb < 1024 else f"{round(sz_kb/1024, 2)} MB"
+                    except Exception:
+                        pass
+
+                saved_url = f"https://ddu-btech-kn-notes.vercel.app/static/docs/{orig_name}"
+                file_id = database.record_uploaded_file(orig_name, orig_name, saved_url, file_size_str, "application/pdf", category=category)
+                self.send_json({
+                    "success": True,
+                    "file_id": file_id,
+                    "file_url": saved_url,
+                    "original_name": orig_name,
+                    "file_size": file_size_str
+                })
+                return
+
+            # 14. Student Requests / Feedback
             if path in ("/api/feedback", "/api/requests"):
                 self.send_json({"success": True, "message": "Request received by Keshav Sir."})
                 return
@@ -363,19 +614,63 @@ class handler(BaseHTTPRequestHandler):
         except Exception as e:
             self.send_json({"error": str(e)}, 500)
 
+    def do_PUT(self):
+        return self.do_POST()
+
     def do_DELETE(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
-        if path.startswith("/api/admin/users/"):
-            try:
-                user_id = int(path.split("/api/admin/users/")[1])
+        user = self.get_auth_user()
+        if not user or user.get("role") != "ADMIN":
+            self.send_json({"error": "Admin access required"}, 403)
+            return
+
+        try:
+            if path.startswith("/api/admin/users/"):
+                user_id = int(path.split("/api/admin/users/")[1].split("/")[0])
                 database.delete_user(user_id)
-                self.send_json({"success": True})
+                self.send_json({"success": True, "message": "User deleted"})
                 return
-            except Exception as e:
-                self.send_json({"error": str(e)}, 500)
+
+            if path.startswith("/api/admin/notes/"):
+                note_id = int(path.split("/api/admin/notes/")[1].split("/")[0])
+                database.delete_note(note_id)
+                self.send_json({"success": True, "message": "Note deleted"})
                 return
-        self.send_json({"success": True})
+
+            if path.startswith("/api/admin/subjects/"):
+                sub_id = int(path.split("/api/admin/subjects/")[1].split("/")[0])
+                database.delete_subject(sub_id)
+                self.send_json({"success": True, "message": "Subject deleted"})
+                return
+
+            if path.startswith("/api/admin/syllabus/"):
+                syl_id = int(path.split("/api/admin/syllabus/")[1].split("/")[0])
+                database.delete_syllabus(syl_id)
+                self.send_json({"success": True, "message": "Syllabus deleted"})
+                return
+
+            if path.startswith("/api/admin/pyqs/"):
+                pyq_id = int(path.split("/api/admin/pyqs/")[1].split("/")[0])
+                database.delete_pyq(pyq_id)
+                self.send_json({"success": True, "message": "PYQ deleted"})
+                return
+
+            if path.startswith("/api/admin/updates/"):
+                up_id = int(path.split("/api/admin/updates/")[1].split("/")[0])
+                database.delete_update(up_id)
+                self.send_json({"success": True, "message": "Update deleted"})
+                return
+
+            if path.startswith("/api/admin/files/"):
+                file_id = int(path.split("/api/admin/files/")[1].split("/")[0])
+                database.delete_uploaded_file(file_id)
+                self.send_json({"success": True, "message": "File record deleted"})
+                return
+
+            self.send_json({"success": True})
+        except Exception as e:
+            self.send_json({"error": str(e)}, 500)
 
     def do_OPTIONS(self):
         self.send_response(200)
