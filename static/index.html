@@ -111,10 +111,12 @@
             <span class="nav-install-text">Install App</span>
           </button>
 
-          <!-- Dynamic Auth Container -->
-          <div id="nav-auth-container" class="desktop-auth-container">
-            <button onclick="Auth.openModal('login')" class="btn-secondary btn-sm">Log In</button>
-            <button onclick="Auth.openModal('register')" class="btn-primary btn-sm">Student Sign Up</button>
+          <!-- Dynamic Auth Container (Visible on mobile & desktop) -->
+          <div id="nav-auth-container" class="nav-auth-container">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <button onclick="Auth.openModal('login')" class="btn-primary btn-sm nav-login-btn">Log In</button>
+              <button onclick="Auth.openModal('register')" class="btn-secondary btn-sm nav-signup-btn">Sign Up</button>
+            </div>
           </div>
 
           <!-- Mobile Menu Toggle -->
@@ -133,6 +135,7 @@
       <a href="#notes" class="sub-nav-link" data-subnav="notes">📝 Notes</a>
       <a href="#pyq" class="sub-nav-link" data-subnav="pyq">📑 PYQs</a>
       <a href="#updates" class="sub-nav-link" data-subnav="updates">📢 Updates</a>
+      <a href="javascript:void(0)" onclick="Auth.currentUser ? (window.location.hash='#dashboard') : Auth.openModal('login')" class="sub-nav-link" id="sub-nav-profile-link" data-subnav="dashboard">👤 Profile</a>
       <a href="#about" class="sub-nav-link" data-subnav="about">👨‍💻 About</a>
     </nav>
   </div>
