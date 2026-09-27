@@ -179,18 +179,24 @@ def load_registry(fetch_remote=True):
 
     # Fetch from Cloud Firestore to sync all serverless instances
     if fetch_remote:
-        remote_students = fetch_firestore_students()
-        if remote_students:
-            user_map = {u.get("email", "").lower().strip(): u for u in users if u.get("email")}
-            for rs in remote_students:
-                em = rs.get("email", "").lower().strip()
-                if em and em not in FAKE_EMAILS:
-                    if em in user_map:
-                        user_map[em].update(rs)
-                    else:
-                        user_map[em] = rs
-            users = list(user_map.values())
-            save_registry(users, sync_remote=False)
+        try:
+            remote_students = fetch_firestore_students()
+            if isinstance(remote_students, list):
+                # Authoritative remote map of active students
+                remote_map = {rs.get("email", "").lower().strip(): rs for rs in remote_students if rs.get("email")}
+                # Retain admin, and retain students that exist in remote Firestore
+                new_users = [u for u in users if u.get("role") == "ADMIN" or u.get("email", "").lower().strip() in remote_map]
+                user_map = {u.get("email", "").lower().strip(): u for u in new_users}
+                for em, rs in remote_map.items():
+                    if em not in FAKE_EMAILS:
+                        if em in user_map:
+                            user_map[em].update(rs)
+                        else:
+                            user_map[em] = rs
+                users = list(user_map.values())
+                save_registry(users, sync_remote=False)
+        except Exception:
+            pass
 
     # Clean fake student accounts permanently
     users = [u for u in users if u.get("email", "").lower().strip() not in FAKE_EMAILS]
@@ -317,18 +323,21 @@ def toggle_active_in_registry(user_id):
         return new_active
     return 1
 
-def delete_user_from_registry(user_id):
+def delete_user_from_registry(user_id_or_email):
     users = load_registry(fetch_remote=False)
     target_email = None
     filtered = []
     for u in users:
-        if str(u.get("id")) == str(user_id):
+        if str(u.get("id")) == str(user_id_or_email) or u.get("email", "").lower().strip() == str(user_id_or_email).lower().strip():
             target_email = u.get("email")
         else:
             filtered.append(u)
     save_registry(filtered, sync_remote=False)
     if target_email:
-        threading.Thread(target=delete_firestore_student, args=(target_email,), daemon=True).start()
+        try:
+            delete_firestore_student(target_email)
+        except Exception:
+            pass
     return True
 
 # ----------------- Cryptographic Auth Token Helpers -----------------

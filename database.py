@@ -487,7 +487,7 @@ def get_all_users(search=""):
     for em, du in db_users.items():
         if em in combined:
             combined[em].update({k: v for k, v in du.items() if v is not None and v != ""})
-        else:
+        elif du.get("role") == "ADMIN":
             combined[em] = du
 
     # Ensure admin is always present
@@ -523,11 +523,19 @@ def toggle_user_active(user_id):
     return new_state
 
 def delete_user(user_id):
+    user_email = None
+    for u in user_registry.load_registry(fetch_remote=False):
+        if str(u.get("id")) == str(user_id) or str(u.get("email")).lower() == str(user_id).lower():
+            user_email = u.get("email", "").lower().strip()
+            break
     user_registry.delete_user_from_registry(user_id)
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        if user_email:
+            cursor.execute("DELETE FROM users WHERE id = ? OR LOWER(email) = ?", (user_id, user_email))
+        else:
+            cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
         conn.commit()
         conn.close()
     except Exception:
