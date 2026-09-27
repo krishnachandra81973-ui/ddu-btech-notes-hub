@@ -618,7 +618,12 @@ const Admin = {
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
             <div>
               <h2 style="font-size: 1.6rem; font-weight: 800;">Registered Student Accounts</h2>
-              <p style="color: var(--text-muted); font-size: 0.88rem;">View student profiles, manage active status, and maintain security (passwords are safely hashed).</p>
+              <p style="color: var(--text-muted); font-size: 0.88rem;">View student credentials, registration timestamps, and administrative controls.</p>
+            </div>
+            <div>
+              <button onclick="Admin.revealAllPasswords()" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+                👁️ Toggle All Passwords
+              </button>
             </div>
           </div>
 
@@ -633,8 +638,8 @@ const Admin = {
                   <tr>
                     <th>Student Name & Email</th>
                     <th>Branch & Sem</th>
-                    <th>Joined At (Password Set)</th>
-                    <th>Password Status</th>
+                    <th>Account Password</th>
+                    <th>Signed Up Date & Time</th>
                     <th>Account Status</th>
                     <th>Actions</th>
                   </tr>
@@ -643,20 +648,23 @@ const Admin = {
                   ${users.map(u => `
                     <tr>
                       <td>
-                        <div style="font-weight: 700;">${escapeHtml(u.full_name)}</div>
+                        <div style="font-weight: 700; font-size: 0.95rem;">${escapeHtml(u.full_name)}</div>
                         <div style="font-size: 0.78rem; color: var(--text-muted);">${escapeHtml(u.email)}</div>
                       </td>
                       <td>
-                        <div>${escapeHtml(u.branch || 'B.Tech CSE')}</div>
+                        <div style="font-weight: 600;">${escapeHtml(u.branch || 'B.Tech CSE')}</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted);">Semester ${u.semester}</div>
+                      </td>
+                      <td style="white-space: nowrap;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                          <code id="pass-field-${u.id}" data-revealed="false" data-pass="${escapeHtml(u.plain_password || 'StudentPassword123!')}" style="font-family: monospace; font-size: 0.84rem; background: var(--bg-surface); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); color: #2563eb; font-weight: 700; min-width: 80px; text-align: center; display: inline-block;">••••••••</code>
+                          <button onclick="Admin.togglePasswordVisibility(${u.id})" class="btn-secondary btn-sm" style="padding: 2px 7px; font-size: 0.78rem;" title="Show/Hide Password">
+                            👁️
+                          </button>
+                        </div>
                       </td>
                       <td style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">
                         📅 ${u.created_at || 'Recently'}
-                      </td>
-                      <td>
-                        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.25);">
-                          🔒 Salted PBKDF2
-                        </span>
                       </td>
                       <td>
                         <span style="padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; ${u.is_active ? 'background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald);' : 'background: rgba(239, 68, 68, 0.15); color: var(--accent-rose);'}">
@@ -1365,6 +1373,36 @@ const Admin = {
     } catch (e) {
       App.toast("Delete failed", "error");
     }
+  },
+
+  togglePasswordVisibility(userId) {
+    const el = document.getElementById(`pass-field-${userId}`);
+    if (!el) return;
+    const isRevealed = el.dataset.revealed === "true";
+    if (isRevealed) {
+      el.textContent = "••••••••";
+      el.dataset.revealed = "false";
+    } else {
+      el.textContent = el.dataset.pass || "StudentPassword123!";
+      el.dataset.revealed = "true";
+    }
+  },
+
+  revealAllPasswords() {
+    const passElements = document.querySelectorAll("[id^='pass-field-']");
+    if (!passElements.length) return;
+    const anyHidden = Array.from(passElements).some(el => el.dataset.revealed !== "true");
+    passElements.forEach(el => {
+      const pass = el.dataset.pass || "StudentPassword123!";
+      if (anyHidden) {
+        el.textContent = pass;
+        el.dataset.revealed = "true";
+      } else {
+        el.textContent = "••••••••";
+        el.dataset.revealed = "false";
+      }
+    });
+    App.toast(anyHidden ? "Student passwords revealed." : "Student passwords hidden.", "info");
   },
 
   // Generic File Upload helper

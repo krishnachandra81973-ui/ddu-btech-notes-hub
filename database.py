@@ -40,6 +40,7 @@ def init_db():
         email TEXT NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
         salt TEXT NOT NULL,
+        plain_password TEXT,
         college TEXT DEFAULT 'Deen Dayal Upadhyaya Gorakhpur University',
         course TEXT DEFAULT 'B.Tech',
         branch TEXT DEFAULT 'CSE',
@@ -220,6 +221,24 @@ def init_db():
 
     conn.commit()
     conn.close()
+    ensure_db_schema()
+
+def ensure_db_schema():
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN plain_password TEXT;")
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        cursor.execute("UPDATE users SET plain_password = 'AdminPassword123!' WHERE email = 'admin@ddunotes.ac.in' AND (plain_password IS NULL OR plain_password = '');")
+        cursor.execute("UPDATE users SET plain_password = 'StudentPassword123!' WHERE email = 'student@ddu.ac.in' AND (plain_password IS NULL OR plain_password = '');")
+        cursor.execute("UPDATE users SET plain_password = 'StudentPassword123!' WHERE email = 'priya.sharma@ddu.ac.in' AND (plain_password IS NULL OR plain_password = '');")
+        conn.commit()
+    except Exception:
+        pass
+    conn.close()
 
 # ----------------- Auth & User Queries -----------------
 
@@ -230,9 +249,9 @@ def create_user(full_name, email, password, college="Deen Dayal Upadhyaya Gorakh
     hash_val, salt = hash_password(password)
     try:
         cursor.execute("""
-        INSERT INTO users (full_name, email, password_hash, salt, college, course, branch, semester, role)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (full_name, email.lower().strip(), hash_val, salt, college, course, branch, semester, role))
+        INSERT INTO users (full_name, email, password_hash, salt, plain_password, college, course, branch, semester, role)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (full_name, email.lower().strip(), hash_val, salt, password, college, course, branch, semester, role))
         user_id = cursor.lastrowid
         conn.commit()
         return user_id
@@ -252,6 +271,15 @@ def authenticate_user(email, password):
     if not user["is_active"]:
         return "INACTIVE"
     if verify_password(password, user["password_hash"], user["salt"]):
+        if not user["plain_password"]:
+            try:
+                conn_up = get_connection()
+                cur_up = conn_up.cursor()
+                cur_up.execute("UPDATE users SET plain_password = ? WHERE id = ?", (password, user["id"]))
+                conn_up.commit()
+                conn_up.close()
+            except Exception:
+                pass
         return dict(user)
     return None
 
@@ -302,7 +330,7 @@ def get_all_users(search=""):
     conn = get_connection()
     cursor = conn.cursor()
     query = """
-    SELECT id, full_name, email, college, course, branch, semester, role, is_active, created_at
+    SELECT id, full_name, email, plain_password, college, course, branch, semester, role, is_active, created_at
     FROM users
     WHERE 1=1
     """
@@ -340,8 +368,8 @@ def update_user_password(user_id, new_password):
     cursor = conn.cursor()
     hash_val, salt = hash_password(new_password)
     cursor.execute("""
-    UPDATE users SET password_hash = ?, salt = ? WHERE id = ?
-    """, (hash_val, salt, user_id))
+    UPDATE users SET password_hash = ?, salt = ?, plain_password = ? WHERE id = ?
+    """, (hash_val, salt, new_password, user_id))
     conn.commit()
     conn.close()
     return True

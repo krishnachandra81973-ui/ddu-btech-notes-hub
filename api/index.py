@@ -24,6 +24,10 @@ DB_PATH = TMP_DB if os.path.exists(TMP_DB) else ORIGINAL_DB
 
 import database
 database.DB_PATH = DB_PATH
+try:
+    database.ensure_db_schema()
+except Exception:
+    pass
 
 class handler(BaseHTTPRequestHandler):
     def send_cors(self):

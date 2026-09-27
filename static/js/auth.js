@@ -33,36 +33,24 @@ const Auth = {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, remember })
+        body: JSON.stringify({ email: email.trim(), password, remember })
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Login failed");
+        return { 
+          success: false, 
+          error: data.error || "Incorrect password or email not registered. Please verify your credentials." 
+        };
       }
       this.token = data.token;
       this.currentUser = data.user;
       localStorage.setItem("ddu_token", this.token);
+      localStorage.setItem("ddu_user", JSON.stringify(this.currentUser));
       this.updateUI();
       window.dispatchEvent(new CustomEvent("auth:changed", { detail: this.currentUser }));
       return { success: true, user: this.currentUser };
     } catch (err) {
-      if (email) {
-        this.token = "ddu_token_local_" + btoa(email);
-        this.currentUser = {
-          id: 1,
-          full_name: email.toLowerCase().includes("keshav") ? "Keshav Narayan" : (email.split("@")[0].toUpperCase() + " (Student)"),
-          email: email,
-          branch: "CSE / IT",
-          semester: 6,
-          role: "STUDENT"
-        };
-        localStorage.setItem("ddu_token", this.token);
-        localStorage.setItem("ddu_user", JSON.stringify(this.currentUser));
-        this.updateUI();
-        window.dispatchEvent(new CustomEvent("auth:changed", { detail: this.currentUser }));
-        return { success: true, user: this.currentUser };
-      }
-      return { success: false, error: err.message };
+      return { success: false, error: err.message || "Connection error. Please try again." };
     }
   },
 
@@ -75,32 +63,17 @@ const Auth = {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Registration failed");
+        return { success: false, error: data.error || "Registration failed." };
       }
       this.token = data.token;
       this.currentUser = data.user;
       localStorage.setItem("ddu_token", this.token);
+      localStorage.setItem("ddu_user", JSON.stringify(this.currentUser));
       this.updateUI();
       window.dispatchEvent(new CustomEvent("auth:changed", { detail: this.currentUser }));
       return { success: true, user: this.currentUser };
     } catch (err) {
-      if (email) {
-        this.token = "ddu_token_local_" + btoa(email);
-        this.currentUser = {
-          id: 1,
-          full_name: email.toLowerCase().includes("keshav") ? "Keshav Narayan" : (email.split("@")[0].toUpperCase() + " (Student)"),
-          email: email,
-          branch: "CSE / IT",
-          semester: 6,
-          role: "STUDENT"
-        };
-        localStorage.setItem("ddu_token", this.token);
-        localStorage.setItem("ddu_user", JSON.stringify(this.currentUser));
-        this.updateUI();
-        window.dispatchEvent(new CustomEvent("auth:changed", { detail: this.currentUser }));
-        return { success: true, user: this.currentUser };
-      }
-      return { success: false, error: err.message };
+      return { success: false, error: err.message || "Network error during registration." };
     }
   },
 
