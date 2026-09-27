@@ -654,7 +654,7 @@ class handler(BaseHTTPRequestHandler):
                 subject_id = payload.get("subject_id")
                 unit_id = payload.get("unit_id")
                 title = payload.get("title", "").strip()
-                description = payload.get("description", "").strip()
+                description = payload.get("description", "").strip() or "Detailed notes will be shared in PDF format shortly."
                 file_url = payload.get("file_url", "").strip()
                 file_name = payload.get("file_name", title)
                 file_size = payload.get("file_size", "PDF Document")

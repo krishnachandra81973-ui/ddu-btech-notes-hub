@@ -146,7 +146,10 @@ const Dashboard = {
                         <span class="subject-code-tag">${escapeHtml(b.subject_code)}</span>
                         <div>
                           <div class="note-title">${escapeHtml(b.title)}</div>
-                          <div style="font-size: 0.78rem; color: var(--text-muted);">
+                          <div style="font-size: 0.76rem; color: var(--primary); font-weight: 500; margin-top: 2px;">
+                            Detailed notes will be shared in PDF format shortly.
+                          </div>
+                          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
                             ${escapeHtml(b.subject_name)} • Sem ${b.semester_number} • ${b.file_size || 'PDF'}
                           </div>
                         </div>
@@ -188,7 +191,10 @@ const Dashboard = {
                         <span style="font-weight: 700; font-size: 0.82rem; color: var(--primary);">${escapeHtml(r.subject_code)}</span>
                         <div>
                           <div style="font-weight: 600; font-size: 0.88rem;">${escapeHtml(r.title)}</div>
-                          <div style="font-size: 0.75rem; color: var(--text-muted);">
+                          <div style="font-size: 0.75rem; color: var(--primary); font-weight: 500; margin-top: 2px;">
+                            Detailed notes will be shared in PDF format shortly.
+                          </div>
+                          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
                             ${escapeHtml(r.subject_name)}
                           </div>
                         </div>

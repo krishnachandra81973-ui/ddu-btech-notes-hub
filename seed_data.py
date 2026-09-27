@@ -24,31 +24,30 @@ def generate_sample_pdf(filepath, title, subtitle, author="DDU B.Tech Notes Hub"
 (Deen Dayal Upadhyaya Gorakhpur University - B.Tech Study Material) Tj
 0 -18 Td
 (Publisher / Curator: {safe_author}) Tj
-0 -28 Td
+0 -36 Td
+/F1 14 Tf
+(NOTICE / STATUS UPDATE:) Tj
+0 -24 Td
+/F1 13 Tf
+(Detailed notes will be shared in PDF format shortly.) Tj
+0 -24 Td
+/F3 10 Tf
+(The comprehensive unit lecture notes, solved derivations, and question banks) Tj
+0 -15 Td
+(for this module are currently being prepared and verified according to the) Tj
+0 -15 Td
+(official DDU Gorakhpur University curriculum. They will be uploaded soon.) Tj
+0 -35 Td
 /F2 11 Tf
-(Document Summary & Academic Notes:) Tj
+(Document Information:) Tj
 0 -18 Td
 /F3 10 Tf
-(This verified academic document contains unit lecture notes, solved derivations,) Tj
+(Status: In Preparation / Verification Phase) Tj
 0 -15 Td
-(curated practice problems, and previous year university examination questions.) Tj
-0 -15 Td
-(Referenced from official DDU Gorakhpur syllabus and recommended standard textbooks.) Tj
-0 -30 Td
-/F1 12 Tf
-(Key Topics Covered in this Document:) Tj
-0 -18 Td
-/F3 10 Tf
-(1. Fundamental Concepts & Definitions with clear theoretical derivations) Tj
-0 -15 Td
-(2. Step-by-Step Algorithmic / Mathematical proofs and solved numericals) Tj
-0 -15 Td
-(3. High-frequency exam questions asked in DDU End-Semester Examinations) Tj
-0 -15 Td
-(4. Important formula sheet and rapid revision summary notes) Tj
+(Availability: Detailed notes will be shared in PDF format shortly.) Tj
 0 -40 Td
 /F3 9 Tf
-(Notice: This educational resource is prepared independently for students of DDU Gorakhpur.) Tj
+(Notice: This educational resource is prepared for students of DDU Gorakhpur.) Tj
 ET"""
     
     stream_bytes = stream_content.encode("latin-1", errors="replace")
@@ -793,7 +792,7 @@ def seed():
                 cursor.execute("""
                 INSERT INTO notes (subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-                """, (sub_id, unit_id, n_title, n_desc, f"/static/uploads/{note_filename}", note_filename, f_size, 1 if is_imp else 0))
+                """, (sub_id, unit_id, n_title, "Detailed notes will be shared in PDF format shortly.", f"/static/uploads/{note_filename}", note_filename, f_size, 1 if is_imp else 0))
 
                 cursor.execute("""
                 INSERT INTO uploaded_files (file_name, original_name, file_path, file_size, mime_type, category, semester, subject)

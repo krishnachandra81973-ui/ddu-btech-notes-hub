@@ -959,8 +959,11 @@ const App = {
                           <span style="font-size: 1.1rem;">📄</span>
                           <div>
                             <div class="note-title">${escapeHtml(n.title)}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">
-                              ${escapeHtml(n.description || '')} • ${n.file_size || 'PDF'}
+                            <div style="font-size: 0.76rem; color: var(--primary); font-weight: 500; margin-top: 2px;">
+                              Detailed notes will be shared in PDF format shortly.
+                            </div>
+                            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                              ${n.file_size || 'PDF'}
                             </div>
                           </div>
                           ${n.is_important ? `<span class="update-badge-important">Important</span>` : ''}
@@ -1203,7 +1206,10 @@ const App = {
             <span class="subject-code-tag">${escapeHtml(n.subject_code)}</span>
             <div>
               <div class="note-title">${escapeHtml(n.title)}</div>
-              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+              <div style="font-size: 0.78rem; color: var(--primary); font-weight: 500; margin-top: 2px;">
+                Detailed notes will be shared in PDF format shortly.
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
                 ${escapeHtml(n.subject_name)} • Sem ${n.semester_number} • ${n.unit_number ? `Unit ${n.unit_number}` : 'General'} • ${n.file_size || 'PDF'}
               </div>
             </div>
@@ -1706,6 +1712,7 @@ const App = {
                 <div class="note-row" style="margin-bottom: 6px;">
                   <div>
                     <div style="font-weight: 600; font-size: 0.88rem;">${escapeHtml(n.title)}</div>
+                    <div style="font-size: 0.72rem; color: var(--primary); font-weight: 500;">Detailed notes will be shared in PDF format shortly.</div>
                     <div style="font-size: 0.72rem; color: var(--text-muted);">${escapeHtml(n.subject_name)} • Sem ${n.semester_number}</div>
                   </div>
                   <button onclick="App.openPdfViewer('${n.file_url}', '${escapeHtml(n.title)}', ${n.id})" class="btn-secondary btn-sm">View</button>
