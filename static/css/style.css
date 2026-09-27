@@ -1032,6 +1032,14 @@ button {
   transform: scale(1);
 }
 
+.modal-box form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .modal-box.modal-lg {
   max-width: 950px;
   height: 85vh;
@@ -1078,6 +1086,11 @@ button {
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+  flex-shrink: 0;
+  background: var(--bg-card);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 
 /* Forms & Inputs */

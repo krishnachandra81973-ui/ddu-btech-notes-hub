@@ -185,8 +185,8 @@ const Admin = {
             </div>
             <div style="display: flex; gap: 10px;">
               <button onclick="Admin.openAddStudentModal()" class="btn-secondary btn-sm">+ Register Student</button>
-              <button onclick="Admin.openAddNoteModal()" class="btn-primary btn-sm">+ Add New Note</button>
-              <button onclick="Admin.openAddUpdateModal()" class="btn-secondary btn-sm">+ Post Notice</button>
+              <button onclick="Admin.openAddNoteModal()" class="btn-secondary btn-sm">+ Add New Note</button>
+              <button onclick="Admin.openAddUpdateModal()" class="btn-primary btn-sm" style="background: linear-gradient(135deg, #0284c7, #2563eb); font-weight: 700;">🚀 + Push Notice</button>
             </div>
           </div>
 
@@ -772,8 +772,8 @@ const Admin = {
               <h2 style="font-size: 1.6rem; font-weight: 800;">Campus Notices & Daily Updates</h2>
               <p style="color: var(--text-muted); font-size: 0.88rem;">Publish exam timetables, admit card notices, syllabus changes, and university alerts.</p>
             </div>
-            <button onclick="Admin.openAddUpdateModal()" class="btn-primary">
-              + Post New Update
+            <button onclick="Admin.openAddUpdateModal()" class="btn-primary" style="font-weight: 800; font-size: 0.95rem; padding: 10px 20px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
+              🚀 + Push New Notice
             </button>
           </div>
 
@@ -810,7 +810,8 @@ const Admin = {
                         ` : '<span style="color: var(--text-muted); font-size: 0.75rem;">None</span>'}
                       </td>
                       <td style="white-space: nowrap;">
-                        <button onclick="Admin.openEditUpdateModal(${u.id})" class="btn-secondary btn-sm" style="font-size: 0.75rem; padding: 4px 8px; margin-right: 6px;">Edit</button>
+                        <button onclick="Admin.openEditUpdateModal(${u.id})" class="btn-secondary btn-sm" style="font-size: 0.75rem; padding: 4px 8px; margin-right: 4px;">Edit</button>
+                        <button onclick="Admin.broadcastUpdateAlert(${u.id})" class="btn-primary btn-sm" style="font-size: 0.75rem; padding: 4px 8px; margin-right: 4px; background: #0284c7; border-color: #0284c7;" title="Broadcast Push Alert to students">📢 Push</button>
                         <button onclick="Admin.deleteUpdate(${u.id})" class="btn-outline-danger btn-sm" style="font-size: 0.75rem; padding: 4px 8px;">Delete</button>
                       </td>
                     </tr>
@@ -1467,16 +1468,28 @@ const Admin = {
   // Modal: Add Daily Update
   openAddUpdateModal() {
     const modalHtml = `
-      <div class="modal-box">
+      <div class="modal-box" style="display: flex; flex-direction: column; max-height: 90vh;">
         <div class="modal-header">
-          <h3 class="modal-title">📢 Post New Campus Update / Notice</h3>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.3rem;">📢</span>
+            <h3 class="modal-title" style="margin: 0;">Post &amp; Push Campus Notice</h3>
+          </div>
           <button onclick="App.closeActiveModal()" class="modal-close-btn">✕</button>
         </div>
-        <form onsubmit="Admin.handleSaveUpdate(event)">
-          <div class="modal-body">
+        <form onsubmit="Admin.handleSaveUpdate(event)" style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; margin: 0;">
+          
+          <!-- Top Quick Push Banner (Always Visible on any screen size) -->
+          <div style="padding: 10px 20px; background: rgba(37, 99, 235, 0.08); border-bottom: 1px solid rgba(37, 99, 235, 0.2); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-shrink: 0;">
+            <span style="font-size: 0.82rem; color: var(--text-main); font-weight: 600;">Fill notice details &amp; push:</span>
+            <button type="submit" class="btn-primary btn-sm" style="font-weight: 800; padding: 6px 16px; font-size: 0.85rem; background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 2px 8px rgba(37,99,235,0.3); white-space: nowrap;">
+              🚀 Push Notice Now
+            </button>
+          </div>
+
+          <div class="modal-body" style="overflow-y: auto; flex: 1; min-height: 0; padding: 20px 24px;">
             <div class="form-group">
               <label class="form-label">Notice Title *</label>
-              <input type="text" name="title" required placeholder="e.g. Odd Semester Exam Timetable Dec 2026" class="form-control">
+              <input type="text" name="title" required placeholder="e.g. Odd Semester Exam Timetable Dec 2026" class="form-control" autofocus>
             </div>
 
             <div class="form-row">
@@ -1519,13 +1532,13 @@ const Admin = {
               </div>
               <input type="text" name="attachment_url" id="update-file-url-input" placeholder="/static/uploads/circular.pdf" class="form-control">
               <small style="color: var(--text-muted); font-size: 0.74rem; display: block; margin-top: 4px;">
-                💡 File choose karke seedhe neeche <strong>Push Notice</strong> daba sakte hain — automatic cloud par upload ho jayega.
+                💡 File choose karke seedhe <strong>Push Notice</strong> daba sakte hain — automatic cloud par upload ho jayega.
               </small>
             </div>
 
             <label style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem; cursor: pointer; margin-top: 10px;">
               <input type="checkbox" name="is_important">
-              📌 Mark as <span class="update-badge-important">Important</span> (Pins with visual indicator on student portal)
+              📌 Mark as <span class="update-badge-important">Important</span> (Pins notice at top of student portal)
             </label>
 
             <!-- Push Notification Toggle -->
@@ -1540,9 +1553,9 @@ const Admin = {
               </label>
             </div>
           </div>
-          <div class="modal-footer">
+          <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid var(--border); background: var(--bg-card); display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-shrink: 0; position: sticky; bottom: 0; z-index: 10;">
             <button type="button" onclick="App.closeActiveModal()" class="btn-secondary">Cancel</button>
-            <button type="submit" id="admin-save-update-btn" class="btn-primary" style="font-weight: 800; font-size: 0.95rem; padding: 10px 22px;">
+            <button type="submit" id="admin-save-update-btn" class="btn-primary" style="font-weight: 800; font-size: 1rem; padding: 11px 26px; background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);">
               🚀 Push / Publish Notice Now
             </button>
           </div>
@@ -1573,14 +1586,14 @@ const Admin = {
       ];
 
       const modalHtml = `
-        <div class="modal-box">
+        <div class="modal-box" style="display: flex; flex-direction: column; max-height: 90vh;">
           <div class="modal-header">
             <h3 class="modal-title">✏️ Edit Campus Notice</h3>
             <button onclick="App.closeActiveModal()" class="modal-close-btn">✕</button>
           </div>
-          <form onsubmit="Admin.handleSaveUpdate(event)">
+          <form onsubmit="Admin.handleSaveUpdate(event)" style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; margin: 0;">
             <input type="hidden" name="update_id" value="${u.id}">
-            <div class="modal-body">
+            <div class="modal-body" style="overflow-y: auto; flex: 1; min-height: 0; padding: 20px 24px;">
               <div class="form-group">
                 <label class="form-label">Notice Title *</label>
                 <input type="text" name="title" required value="${escapeHtml(u.title || '')}" class="form-control">
@@ -1625,10 +1638,10 @@ const Admin = {
                 📌 Mark as <span class="update-badge-important">Important</span> (Pins notice at the top)
               </label>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid var(--border); background: var(--bg-card); display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-shrink: 0; position: sticky; bottom: 0; z-index: 10;">
               <button type="button" onclick="App.closeActiveModal()" class="btn-secondary">Cancel</button>
-              <button type="submit" id="admin-edit-update-btn" class="btn-primary" style="font-weight: 800; font-size: 0.95rem; padding: 10px 22px;">
-                💾 Save Changes & Push Update
+              <button type="submit" id="admin-edit-update-btn" class="btn-primary" style="font-weight: 800; font-size: 0.95rem; padding: 11px 24px; background: linear-gradient(135deg, #2563eb, #1d4ed8);">
+                💾 Save Changes &amp; Push Update
               </button>
             </div>
           </form>
@@ -1637,6 +1650,22 @@ const Admin = {
       App.showGenericModal(modalHtml);
     } catch (e) {
       App.toast("Error opening update: " + e.message, "error");
+    }
+  },
+
+  async broadcastUpdateAlert(id) {
+    try {
+      const res = await fetch(`/api/admin/updates/${id}`, { headers: Auth.getAuthHeaders() });
+      const data = await res.json();
+      if (!res.ok || !data.update) {
+        App.toast("Notice not found", "error");
+        return;
+      }
+      const u = data.update;
+      App.toast(`🔔 Broadcasting push alert for: ${u.title}`, "info");
+      await this.sendPushNotification(u.title, u.short_description || u.category);
+    } catch (e) {
+      App.toast("Failed to broadcast alert: " + e.message, "error");
     }
   },
 
