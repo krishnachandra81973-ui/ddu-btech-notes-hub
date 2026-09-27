@@ -2218,6 +2218,98 @@ const App = {
               <span style="display: block; text-align: right; margin-top: 6px; font-weight: 700; font-size: 0.85rem; color: var(--text-main);">— Keshav Narayan</span>
             </div>
 
+            <!-- ==================== Big Detailed LinkedIn Profile & Contact For Me ==================== -->
+            <div class="dev-linkedin-card" style="margin-top: 28px; background: linear-gradient(135deg, rgba(10, 102, 194, 0.08) 0%, rgba(10, 102, 194, 0.02) 100%); border: 1.5px solid rgba(10, 102, 194, 0.35); border-radius: var(--radius-lg); padding: 26px 28px; box-shadow: 0 8px 24px rgba(10, 102, 194, 0.08); position: relative; overflow: hidden;">
+              <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #0a66c2, #0077b5, #004182);"></div>
+              
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 18px;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                  <div style="width: 54px; height: 54px; border-radius: 12px; background: #0a66c2; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.7rem; font-weight: 800; box-shadow: 0 4px 12px rgba(10, 102, 194, 0.35); flex-shrink: 0;">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.2a1.65 1.65 0 0 0-1.66 1.66c0 .92.74 1.66 1.66 1.66.92 0 1.66-.74 1.66-1.66A1.65 1.65 0 0 0 7.83 6.2Z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 0.72rem; text-transform: uppercase; font-weight: 800; color: #0a66c2; letter-spacing: 1px; background: rgba(10, 102, 194, 0.12); padding: 3px 8px; border-radius: 4px;">
+                        LinkedIn Official Profile
+                      </span>
+                      <span style="color: #10b981; font-size: 0.78rem; font-weight: 700;">● Available for Opportunities</span>
+                    </div>
+                    <h3 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); margin: 4px 0 2px;">
+                      Keshav Narayan
+                    </h3>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+                      Lead Architect &amp; Software Engineer • B.Tech CSE (AI &amp; ML) at DDU Gorakhpur University
+                    </div>
+                  </div>
+                </div>
+
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="btn-primary" style="background: linear-gradient(135deg, #0a66c2 0%, #004182 100%); border-color: #0a66c2; padding: 12px 24px; font-weight: 800; font-size: 0.94rem; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(10, 102, 194, 0.35); text-decoration: none;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.2a1.65 1.65 0 0 0-1.66 1.66c0 .92.74 1.66 1.66 1.66.92 0 1.66-.74 1.66-1.66A1.65 1.65 0 0 0 7.83 6.2Z"/></svg>
+                  Connect on LinkedIn ↗
+                </a>
+              </div>
+
+              <!-- Contact For Me Details Section -->
+              <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px 22px; margin-top: 14px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                  <span style="font-size: 1.2rem;">📬</span>
+                  <h4 style="font-size: 1.02rem; font-weight: 800; color: var(--text-main); margin: 0;">
+                    Contact For Me (Aap Mujhse In Cheezon Ke Liye Sampark Kar Sakte Hain):
+                  </h4>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; font-size: 0.86rem; color: var(--text-muted); line-height: 1.6;">
+                  <div style="display: flex; align-items: flex-start; gap: 10px; background: var(--bg-main); padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                    <span style="color: #0a66c2; font-weight: 800; font-size: 1.1rem; line-height: 1;">💻</span>
+                    <div>
+                      <strong style="color: var(--text-main); display: block; font-size: 0.88rem; margin-bottom: 2px;">Software Engineering &amp; AI/ML Projects:</strong>
+                      Full-stack web applications, Python multithreaded systems, AI models, deep learning research, and cloud architecture.
+                    </div>
+                  </div>
+
+                  <div style="display: flex; align-items: flex-start; gap: 10px; background: var(--bg-main); padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                    <span style="color: #0a66c2; font-weight: 800; font-size: 1.1rem; line-height: 1;">📚</span>
+                    <div>
+                      <strong style="color: var(--text-main); display: block; font-size: 0.88rem; margin-bottom: 2px;">Study Notes &amp; Academic Inquiries:</strong>
+                      Missing semester unit notes, textbook modules, syllabus roadmaps, or previous 5-year question papers (PYQs).
+                    </div>
+                  </div>
+
+                  <div style="display: flex; align-items: flex-start; gap: 10px; background: var(--bg-main); padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                    <span style="color: #0a66c2; font-weight: 800; font-size: 1.1rem; line-height: 1;">🤝</span>
+                    <div>
+                      <strong style="color: var(--text-main); display: block; font-size: 0.88rem; margin-bottom: 2px;">Technical Mentorship &amp; Collaborations:</strong>
+                      Peer coding guidance, hackathon team partnerships, open-source projects, and student tech community workshops.
+                    </div>
+                  </div>
+
+                  <div style="display: flex; align-items: flex-start; gap: 10px; background: var(--bg-main); padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                    <span style="color: #0a66c2; font-weight: 800; font-size: 1.1rem; line-height: 1;">💼</span>
+                    <div>
+                      <strong style="color: var(--text-main); display: block; font-size: 0.88rem; margin-bottom: 2px;">Internship &amp; Career Opportunities:</strong>
+                      Available for high-impact software engineering roles, research fellowships, and technical project consultations.
+                    </div>
+                  </div>
+                </div>
+                
+                <div style="margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                  <div style="font-size: 0.82rem; color: var(--text-muted);">
+                    💬 <em>Aap mujhe direct LinkedIn par message bhej sakte hain — main sabhi messages ka jald se jald reply karta hoon!</em>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="btn-primary btn-sm" style="background: #0a66c2; border-color: #0a66c2; font-weight: 700; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px;">
+                      Open LinkedIn Profile ↗
+                    </a>
+                    <button onclick="App.openFeedbackModal()" class="btn-secondary btn-sm" style="font-size: 0.82rem;">
+                      ✉️ Send Portal Message
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- 4 Core Technical Pillars -->
             <div class="dev-section-heading" style="margin-top: 30px;">
               <span>🛠️</span> Core Technical Competencies & Architectural Stack
@@ -2263,14 +2355,15 @@ const App = {
                 <p style="font-size: 0.84rem; color: var(--text-muted);">Have questions regarding study notes, missing PYQ papers, or wish to collaborate?</p>
               </div>
               <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button onclick="App.openFeedbackModal()" class="btn-primary" style="padding: 10px 18px; font-size: 0.85rem;">
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="btn-primary" style="background: #0a66c2; border-color: #0a66c2; padding: 10px 18px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; font-weight: 700;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.2a1.65 1.65 0 0 0-1.66 1.66c0 .92.74 1.66 1.66 1.66.92 0 1.66-.74 1.66-1.66A1.65 1.65 0 0 0 7.83 6.2Z"/></svg>
+                  Connect on LinkedIn
+                </a>
+                <button onclick="App.openFeedbackModal()" class="btn-secondary" style="padding: 10px 18px; font-size: 0.85rem;">
                   ✉️ Send Direct Message
                 </button>
                 <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="padding: 10px 16px; font-size: 0.85rem;">
                   GitHub
-                </a>
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="padding: 10px 16px; font-size: 0.85rem;">
-                  LinkedIn
                 </a>
               </div>
             </div>
