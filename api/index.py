@@ -395,6 +395,23 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"updates": updates})
                 return
 
+            if path.startswith("/api/admin/updates/"):
+                user = self.get_auth_user()
+                if not user or user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+                try:
+                    up_id = int(path.split("/api/admin/updates/")[1].split("/")[0])
+                except (ValueError, IndexError):
+                    self.send_json({"error": "Invalid update ID."}, 400)
+                    return
+                update = database.get_update_by_id(up_id)
+                if not update:
+                    self.send_json({"error": "Update not found"}, 404)
+                    return
+                self.send_json({"update": update})
+                return
+
             # 17. Admin Files
             if path == "/api/admin/files":
                 user = self.get_auth_user()
@@ -873,6 +890,33 @@ class handler(BaseHTTPRequestHandler):
 
                 new_id = database.create_update(title, category, short_description, full_details, attachment_url, is_important, publish_date=publish_date)
                 self.send_json({"success": True, "message": "Campus update published", "update_id": new_id})
+                return
+
+            if path.startswith("/api/admin/updates/"):
+                current_user = self.get_auth_user()
+                if not current_user or current_user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+                try:
+                    up_id = int(path.split("/api/admin/updates/")[1].split("/")[0])
+                except (ValueError, IndexError):
+                    self.send_json({"error": "Invalid update ID."}, 400)
+                    return
+
+                title = payload.get("title", "").strip()
+                category = payload.get("category", "Notice")
+                publish_date = payload.get("publish_date")
+                short_description = payload.get("short_description", "").strip()
+                full_details = payload.get("full_details", "").strip()
+                attachment_url = payload.get("attachment_url")
+                is_important = 1 if payload.get("is_important") else 0
+
+                if not title:
+                    self.send_json({"error": "Title is required."}, 400)
+                    return
+
+                database.update_update(up_id, title, category, short_description, full_details, attachment_url, is_important, 1, publish_date)
+                self.send_json({"success": True, "message": "Campus update modified successfully", "update_id": up_id})
                 return
 
             # 13. File Upload (Permanent Cloud Hosting via GitHub API & jsdelivr CDN)

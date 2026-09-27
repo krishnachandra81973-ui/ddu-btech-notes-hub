@@ -808,9 +808,9 @@ const Admin = {
                             Attachment
                           </button>
                         ` : '<span style="color: var(--text-muted); font-size: 0.75rem;">None</span>'}
-                      </td>
-                      <td>
-                        <button onclick="Admin.deleteUpdate(${u.id})" class="btn-outline-danger btn-sm">Delete</button>
+                      <td style="white-space: nowrap;">
+                        <button onclick="Admin.openEditUpdateModal(${u.id})" class="btn-secondary btn-sm" style="font-size: 0.75rem; padding: 4px 8px; margin-right: 6px;">Edit</button>
+                        <button onclick="Admin.deleteUpdate(${u.id})" class="btn-outline-danger btn-sm" style="font-size: 0.75rem; padding: 4px 8px;">Delete</button>
                       </td>
                     </tr>
                   `).join('')}
@@ -1534,9 +1534,97 @@ const Admin = {
     App.showGenericModal(modalHtml);
   },
 
+  async openEditUpdateModal(id) {
+    try {
+      const res = await fetch(`/api/admin/updates/${id}`, { headers: Auth.getAuthHeaders() });
+      const data = await res.json();
+      if (!res.ok || !data.update) {
+        App.toast(data.error || "Update not found", "error");
+        return;
+      }
+      const u = data.update;
+      const categories = [
+        "University Notice",
+        "Exam",
+        "Result",
+        "Admit Card",
+        "Syllabus",
+        "Notes",
+        "Previous Year Paper",
+        "Important Announcement"
+      ];
+
+      const modalHtml = `
+        <div class="modal-box">
+          <div class="modal-header">
+            <h3 class="modal-title">Edit Campus Update / Notice</h3>
+            <button onclick="App.closeActiveModal()" class="modal-close-btn">✕</button>
+          </div>
+          <form onsubmit="Admin.handleSaveUpdate(event)">
+            <input type="hidden" name="update_id" value="${u.id}">
+            <div class="modal-body">
+              <div class="form-group">
+                <label class="form-label">Notice Title *</label>
+                <input type="text" name="title" required value="${escapeHtml(u.title || '')}" class="form-control">
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Category *</label>
+                  <select name="category" required class="form-control">
+                    ${categories.map(cat => `<option value="${cat}" ${u.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Publish Date</label>
+                  <input type="date" name="publish_date" value="${u.publish_date || new Date().toISOString().split('T')[0]}" class="form-control">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Short Description *</label>
+                <textarea name="short_description" required rows="2" class="form-control">${escapeHtml(u.short_description || '')}</textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Full Details (Optional)</label>
+                <textarea name="full_details" rows="3" class="form-control">${escapeHtml(u.full_details || '')}</textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Attachment (PDF or Image)</label>
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                  <input type="file" id="edit-update-file-upload" accept=".pdf,.png,.jpg,.jpeg,.webp" class="form-control">
+                  <button type="button" onclick="Admin.uploadFileField('edit-update-file-upload', 'edit-update-file-url-input', 'Notice')" class="btn-secondary btn-sm">
+                    Upload New File
+                  </button>
+                </div>
+                <input type="text" name="attachment_url" id="edit-update-file-url-input" value="${escapeHtml(u.attachment_url || '')}" placeholder="/static/uploads/circular.pdf" class="form-control">
+              </div>
+
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer; margin-top: 10px;">
+                <input type="checkbox" name="is_important" ${u.is_important ? 'checked' : ''}>
+                Mark as <span class="update-badge-important">Important</span> (Pins with visual indicator)
+              </label>
+            </div>
+            <div class="modal-footer">
+              <button type="button" onclick="App.closeActiveModal()" class="btn-secondary">Cancel</button>
+              <button type="submit" class="btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      `;
+      App.showGenericModal(modalHtml);
+    } catch (e) {
+      App.toast("Error opening update: " + e.message, "error");
+    }
+  },
+
   async handleSaveUpdate(e) {
     e.preventDefault();
     const form = e.target;
+    const updateId = form.update_id ? form.update_id.value : null;
+
     const body = {
       title: form.title.value.trim(),
       category: form.category.value,
@@ -1547,16 +1635,21 @@ const Admin = {
       is_important: form.is_important.checked
     };
 
+    const url = updateId ? `/api/admin/updates/${updateId}` : "/api/admin/updates";
+
     try {
-      const res = await fetch("/api/admin/updates", {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...Auth.getAuthHeaders() },
         body: JSON.stringify(body)
       });
-      if (res.ok) {
+      const data = await res.json();
+      if (res.ok && data.success !== false) {
         App.closeActiveModal();
-        App.toast("Campus update published successfully!", "success");
+        App.toast(updateId ? "Campus update modified successfully!" : "Campus update published successfully!", "success");
         this.renderUpdatesTab(document.getElementById("admin-tab-content"));
+      } else {
+        App.toast(data.error || "Failed to save update", "error");
       }
     } catch (e) {
       App.toast(e.message, "error");
@@ -1564,12 +1657,19 @@ const Admin = {
   },
 
   async deleteUpdate(id) {
-    if (!confirm("Delete this campus update?")) return;
+    if (!confirm("Are you sure you want to delete this campus update?")) return;
     try {
-      await fetch(`/api/admin/updates/${id}`, { method: "DELETE", headers: Auth.getAuthHeaders() });
-      App.toast("Update deleted", "info");
-      this.renderUpdatesTab(document.getElementById("admin-tab-content"));
-    } catch (e) {}
+      const res = await fetch(`/api/admin/updates/${id}`, { method: "DELETE", headers: Auth.getAuthHeaders() });
+      const data = await res.json();
+      if (res.ok && data.success !== false) {
+        App.toast("Update deleted", "info");
+        this.renderUpdatesTab(document.getElementById("admin-tab-content"));
+      } else {
+        App.toast(data.error || "Failed to delete update", "error");
+      }
+    } catch (e) {
+      App.toast(e.message, "error");
+    }
   },
 
   // Student Account Status Toggle

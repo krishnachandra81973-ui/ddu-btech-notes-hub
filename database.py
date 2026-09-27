@@ -1143,7 +1143,9 @@ def create_update(title, category, short_description, full_details, attachment_u
     conn.close()
     return up_id
 
-def update_update(up_id, title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date):
+def update_update(up_id, title, category, short_description, full_details, attachment_url, is_important=0, is_published=1, publish_date=None):
+    if not publish_date:
+        publish_date = datetime.utcnow().strftime("%Y-%m-%d")
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -1163,6 +1165,14 @@ def delete_update(up_id):
     conn.commit()
     conn.close()
     return True
+
+def get_update_by_id(up_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM daily_updates WHERE id = ?", (up_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 # ----------------- Student Features: Bookmarks & History -----------------
 
