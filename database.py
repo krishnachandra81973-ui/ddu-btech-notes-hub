@@ -4,6 +4,7 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 import user_registry
+import notes_registry
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ddu_portal.db")
 
@@ -646,6 +647,10 @@ def get_subject_detail(subject_id):
 
 def get_notes(semester_id=None, subject_id=None, unit_number=None, branch=None, search=None, only_published=True):
     conn = get_connection()
+    try:
+        notes_registry.ensure_custom_notes_synced(conn)
+    except Exception:
+        pass
     cursor = conn.cursor()
     query = """
     SELECT n.*, sub.name as subject_name, sub.code as subject_code, sub.semester_id,
@@ -707,6 +712,12 @@ def create_note(subject_id, unit_id, title, description, file_url, file_name, fi
     """, (subject_id, actual_unit_id, title, description, file_url, file_name, file_size, is_important, is_published))
     note_id = cursor.lastrowid
     conn.commit()
+    try:
+        cursor.execute("SELECT * FROM notes WHERE id = ?", (note_id,))
+        created_row = dict(cursor.fetchone())
+        notes_registry.record_custom_note(created_row)
+    except Exception:
+        pass
     conn.close()
     return note_id
 
@@ -737,6 +748,12 @@ def update_note(note_id, subject_id, unit_id, title, description, file_url, file
     WHERE id = ?
     """, (subject_id, actual_unit_id, title, description, file_url, file_name, file_size, is_important, is_published, note_id))
     conn.commit()
+    try:
+        cursor.execute("SELECT * FROM notes WHERE id = ?", (note_id,))
+        updated_row = dict(cursor.fetchone())
+        notes_registry.record_custom_note(updated_row)
+    except Exception:
+        pass
     conn.close()
     return True
 
@@ -746,6 +763,10 @@ def delete_note(note_id):
     cursor.execute("DELETE FROM notes WHERE id = ?", (note_id,))
     conn.commit()
     conn.close()
+    try:
+        notes_registry.remove_custom_note(note_id)
+    except Exception:
+        pass
     return True
 
 # ----------------- Subject CRUD -----------------

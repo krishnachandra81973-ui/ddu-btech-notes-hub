@@ -969,7 +969,7 @@ const App = {
                           <button onclick="App.openPdfViewer('${n.file_url}', '${escapeHtml(n.title)}', ${n.id})" class="btn-secondary btn-sm">
                             View PDF
                           </button>
-                          <a href="${n.file_url}" download onclick="App.recordDownload(${n.id})" class="btn-primary btn-sm">
+                          <a href="${this.getDownloadUrl(n.file_url)}" ${this.isGoogleDriveUrl(n.file_url) ? 'target="_blank" rel="noopener noreferrer"' : 'download'} onclick="App.recordDownload(${n.id})" class="btn-primary btn-sm">
                             Download
                           </a>
                           <button onclick="App.toggleBookmark(${n.id})" title="Save note" style="padding: 6px; font-size: 1.1rem; color: var(--accent-amber);">
@@ -1127,7 +1127,7 @@ const App = {
             <button onclick="App.openPdfViewer('${s.file_url}', '${escapeHtml(s.title)}')" class="btn-secondary">
               View Online
             </button>
-            <a href="${s.file_url}" download class="btn-primary">
+            <a href="${this.getDownloadUrl(s.file_url)}" ${this.isGoogleDriveUrl(s.file_url) ? 'target="_blank" rel="noopener noreferrer"' : 'download'} class="btn-primary">
               Download PDF
             </a>
           </div>
@@ -1213,7 +1213,7 @@ const App = {
             <button onclick="App.openPdfViewer('${n.file_url}', '${escapeHtml(n.title)}', ${n.id})" class="btn-secondary btn-sm">
               View PDF
             </button>
-            <a href="${n.file_url}" download onclick="App.recordDownload(${n.id})" class="btn-primary btn-sm">
+            <a href="${this.getDownloadUrl(n.file_url)}" ${this.isGoogleDriveUrl(n.file_url) ? 'target="_blank" rel="noopener noreferrer"' : 'download'} onclick="App.recordDownload(${n.id})" class="btn-primary btn-sm">
               Download
             </a>
             <button onclick="App.toggleBookmark(${n.id})" title="Save note" style="padding: 6px; font-size: 1.1rem; color: var(--accent-amber);">
@@ -1321,7 +1321,7 @@ const App = {
               <button onclick="App.openPdfViewer('${p.file_url}', '${escapeHtml(p.paper_title)}')" class="btn-secondary btn-sm">
                 View PDF
               </button>
-              <a href="${p.file_url}" download class="btn-primary btn-sm">
+              <a href="${this.getDownloadUrl(p.file_url)}" ${this.isGoogleDriveUrl(p.file_url) ? 'target="_blank" rel="noopener noreferrer"' : 'download'} class="btn-primary btn-sm">
                 Download
               </a>
             </div>
@@ -1755,6 +1755,30 @@ const App = {
     }, 250);
   },
 
+  getGoogleDriveId(url) {
+    if (!url || typeof url !== 'string') return null;
+    const m1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (m1) return m1[1];
+    const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (m2) return m2[1];
+    const m3 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (m3) return m3[1];
+    return null;
+  },
+
+  isGoogleDriveUrl(url) {
+    return !!this.getGoogleDriveId(url);
+  },
+
+  getDownloadUrl(url) {
+    if (!url) return "#";
+    const driveId = this.getGoogleDriveId(url);
+    if (driveId) {
+      return `https://drive.google.com/uc?export=download&id=${driveId}`;
+    }
+    return url;
+  },
+
   // ------------------- PDF Viewer Modal -------------------
   openPdfViewer(fileUrl, title = "Document Preview", noteId = null) {
     const modal = document.getElementById("pdf-viewer-modal");
@@ -1762,10 +1786,62 @@ const App = {
     const titleEl = document.getElementById("pdf-viewer-title");
     const frame = document.getElementById("pdf-viewer-frame");
     const downloadBtn = document.getElementById("pdf-viewer-download-link");
+    const externalBtn = document.getElementById("pdf-viewer-external-link");
+    const mobileTip = document.getElementById("pdf-viewer-mobile-tip");
 
+    fileUrl = (fileUrl || "").trim();
     if (titleEl) titleEl.innerText = title;
-    if (frame) frame.src = fileUrl;
-    if (downloadBtn) downloadBtn.href = fileUrl;
+
+    const driveId = this.getGoogleDriveId(fileUrl);
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    let embedUrl = fileUrl;
+    let externalUrl = fileUrl;
+    let downloadUrl = fileUrl;
+
+    if (driveId) {
+      embedUrl = `https://drive.google.com/file/d/${driveId}/preview`;
+      externalUrl = `https://drive.google.com/file/d/${driveId}/view?usp=sharing`;
+      downloadUrl = `https://drive.google.com/uc?export=download&id=${driveId}`;
+    } else {
+      const absoluteUrl = (fileUrl.startsWith("http://") || fileUrl.startsWith("https://"))
+        ? fileUrl
+        : (window.location.origin + (fileUrl.startsWith("/") ? "" : "/") + fileUrl);
+      externalUrl = absoluteUrl;
+      downloadUrl = absoluteUrl;
+      if (isMobile) {
+        embedUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(absoluteUrl)}&embedded=true`;
+      } else {
+        embedUrl = absoluteUrl;
+      }
+    }
+
+    if (frame) {
+      frame.src = embedUrl;
+    }
+
+    if (downloadBtn) {
+      downloadBtn.href = downloadUrl;
+      if (driveId) {
+        downloadBtn.removeAttribute("download");
+        downloadBtn.target = "_blank";
+        downloadBtn.rel = "noopener noreferrer";
+      } else {
+        downloadBtn.setAttribute("download", "");
+        downloadBtn.removeAttribute("target");
+        downloadBtn.removeAttribute("rel");
+      }
+    }
+
+    if (externalBtn) {
+      externalBtn.href = externalUrl;
+      externalBtn.target = "_blank";
+      externalBtn.rel = "noopener noreferrer";
+    }
+
+    if (mobileTip) {
+      mobileTip.style.display = isMobile ? "block" : "none";
+    }
 
     if (noteId) {
       this.recordDownload(noteId);

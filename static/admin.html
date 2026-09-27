@@ -44,21 +44,31 @@
 
   <!-- Fullscreen PDF Viewer Modal for Admin -->
   <div id="pdf-viewer-modal" class="modal-overlay" onclick="if(event.target === this) App.closeAllModals()">
-    <div class="modal-box modal-lg">
-      <div class="modal-header">
-        <div style="display: flex; align-items: center; gap: 10px;">
+    <div class="modal-box modal-lg" style="height: 90vh; max-height: 900px; display: flex; flex-direction: column;">
+      <div class="modal-header" style="flex-shrink: 0; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px; min-width: 200px; flex: 1;">
           <span style="font-size: 1.3rem;">📄</span>
-          <div>
-            <h3 id="pdf-viewer-title" class="modal-title" style="font-size: 1.05rem;">Document Preview</h3>
+          <div style="overflow: hidden;">
+            <h3 id="pdf-viewer-title" class="modal-title" style="font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Document Preview</h3>
             <span style="font-size: 0.75rem; color: var(--text-muted);">Admin Preview Mode</span>
           </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <a id="pdf-viewer-download-link" href="#" download class="btn-primary btn-sm">Download PDF</a>
-          <button onclick="App.closeAllModals()" class="modal-close-btn">✕</button>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <a id="pdf-viewer-external-link" href="#" target="_blank" rel="noopener noreferrer" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; font-weight: 600;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Open Fullscreen ↗
+          </a>
+          <a id="pdf-viewer-download-link" href="#" download class="btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; font-weight: 600;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download PDF
+          </a>
+          <button onclick="App.closeAllModals()" class="modal-close-btn" style="margin-left: 4px;">✕</button>
         </div>
       </div>
-      <div class="modal-body" style="padding: 0; background: #525659; overflow: hidden; height: calc(100% - 70px);">
+      <div id="pdf-viewer-mobile-tip" style="display: none; flex-shrink: 0; background: rgba(59, 130, 246, 0.15); border-bottom: 1px solid rgba(59, 130, 246, 0.3); padding: 8px 14px; font-size: 0.8rem; color: #93c5fd; text-align: center;">
+        📱 Mobile Tip: Agar preview load hone me deri ho, toh <strong>Open Fullscreen ↗</strong> tap karein.
+      </div>
+      <div class="modal-body" style="padding: 0; background: #525659; overflow: hidden; flex: 1; height: 100%; position: relative;">
         <iframe id="pdf-viewer-frame" src="about:blank" style="width: 100%; height: 100%; border: none;"></iframe>
       </div>
     </div>
@@ -212,14 +222,76 @@
         container.appendChild(toast);
         setTimeout(() => toast.remove(), 3500);
       },
+      getGoogleDriveId(url) {
+        if (!url || typeof url !== 'string') return null;
+        const m1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+        if (m1) return m1[1];
+        const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (m2) return m2[1];
+        const m3 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (m3) return m3[1];
+        return null;
+      },
       openPdfViewer(fileUrl, title = "Document Preview") {
         const modal = document.getElementById("pdf-viewer-modal");
         const titleEl = document.getElementById("pdf-viewer-title");
         const frame = document.getElementById("pdf-viewer-frame");
         const downloadBtn = document.getElementById("pdf-viewer-download-link");
+        const externalBtn = document.getElementById("pdf-viewer-external-link");
+        const mobileTip = document.getElementById("pdf-viewer-mobile-tip");
+
+        fileUrl = (fileUrl || "").trim();
         if (titleEl) titleEl.innerText = title;
-        if (frame) frame.src = fileUrl;
-        if (downloadBtn) downloadBtn.href = fileUrl;
+
+        const driveId = this.getGoogleDriveId(fileUrl);
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        let embedUrl = fileUrl;
+        let externalUrl = fileUrl;
+        let downloadUrl = fileUrl;
+
+        if (driveId) {
+          embedUrl = `https://drive.google.com/file/d/${driveId}/preview`;
+          externalUrl = `https://drive.google.com/file/d/${driveId}/view?usp=sharing`;
+          downloadUrl = `https://drive.google.com/uc?export=download&id=${driveId}`;
+        } else {
+          const absoluteUrl = (fileUrl.startsWith("http://") || fileUrl.startsWith("https://"))
+            ? fileUrl
+            : (window.location.origin + (fileUrl.startsWith("/") ? "" : "/") + fileUrl);
+          externalUrl = absoluteUrl;
+          downloadUrl = absoluteUrl;
+          if (isMobile) {
+            embedUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(absoluteUrl)}&embedded=true`;
+          } else {
+            embedUrl = absoluteUrl;
+          }
+        }
+
+        if (frame) frame.src = embedUrl;
+
+        if (downloadBtn) {
+          downloadBtn.href = downloadUrl;
+          if (driveId) {
+            downloadBtn.removeAttribute("download");
+            downloadBtn.target = "_blank";
+            downloadBtn.rel = "noopener noreferrer";
+          } else {
+            downloadBtn.setAttribute("download", "");
+            downloadBtn.removeAttribute("target");
+            downloadBtn.removeAttribute("rel");
+          }
+        }
+
+        if (externalBtn) {
+          externalBtn.href = externalUrl;
+          externalBtn.target = "_blank";
+          externalBtn.rel = "noopener noreferrer";
+        }
+
+        if (mobileTip) {
+          mobileTip.style.display = isMobile ? "block" : "none";
+        }
+
         if (modal) modal.classList.add("active");
       },
       closeAllModals() {

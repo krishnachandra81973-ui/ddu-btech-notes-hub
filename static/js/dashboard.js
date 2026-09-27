@@ -155,7 +155,7 @@ const Dashboard = {
                         <button onclick="App.openPdfViewer('${b.file_url}', '${escapeHtml(b.title)}', ${b.id})" class="btn-secondary btn-sm">
                           View
                         </button>
-                        <a href="${b.file_url}" download class="btn-primary btn-sm">
+                        <a href="${App.getDownloadUrl(b.file_url)}" ${App.isGoogleDriveUrl(b.file_url) ? 'target="_blank" rel="noopener noreferrer"' : 'download'} class="btn-primary btn-sm">
                           Download
                         </a>
                         <button onclick="Dashboard.removeBookmark(${b.id})" title="Remove bookmark" style="color: var(--accent-amber); font-size: 1.1rem; padding: 4px;">

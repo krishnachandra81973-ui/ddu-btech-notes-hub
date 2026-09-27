@@ -871,7 +871,10 @@ const Admin = {
                   Upload File
                 </button>
               </div>
-              <input type="text" name="file_url" id="note-file-url-input" required value="${isEdit ? escapeHtml(note.file_url) : ''}" placeholder="/static/uploads/document.pdf" class="form-control" style="font-size: 0.8rem; background: var(--bg-main);">
+              <input type="text" name="file_url" id="note-file-url-input" required value="${isEdit ? escapeHtml(note.file_url) : ''}" placeholder="/static/uploads/document.pdf or Google Drive link" class="form-control" style="font-size: 0.8rem; background: var(--bg-main);">
+              <small style="color: var(--text-muted); font-size: 0.76rem; display: block; margin-top: 4px;">
+                💡 <strong>Tip:</strong> Aap directly <strong>Upload File</strong> kar sakte hain (CDN par permanently save hoga), ya fir <strong>Google Drive share link</strong> paste kar sakte hain (Ensure link is 'Anyone with the link can view').
+              </small>
             </div>
 
             <div style="display: flex; gap: 20px; align-items: center; margin-top: 10px;">
@@ -906,8 +909,8 @@ const Admin = {
       title: form.title.value.strip ? form.title.value.trim() : form.title.value,
       subject_id: parseInt(form.subject_id.value),
       unit_id: parseInt(form.unit_number.value), // maps to unit
-      description: form.description.value,
-      file_url: form.file_url.value,
+      description: (form.description.value || "").trim(),
+      file_url: (form.file_url.value || "").trim(),
       is_important: form.is_important.checked,
       is_published: form.is_published.checked
     };

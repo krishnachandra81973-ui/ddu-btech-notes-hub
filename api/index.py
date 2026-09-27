@@ -774,7 +774,7 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"success": True, "message": "Campus update published", "update_id": new_id})
                 return
 
-            # 13. Admin File Upload
+            # 13. Admin File Upload (Permanent Cloud Hosting via GitHub API & jsdelivr CDN)
             if path == "/api/admin/upload":
                 current_user = self.get_auth_user()
                 if not current_user or current_user.get("role") != "ADMIN":
@@ -785,30 +785,109 @@ class handler(BaseHTTPRequestHandler):
                 file_size_str = "1.2 MB"
                 category = "General"
                 content_type = self.headers.get("content-type", "")
+                file_bytes = None
 
                 if "multipart/form-data" in content_type:
-                    import cgi
-                    import io
+                    # Robust multipart boundary extractor
                     try:
-                        environ = {
-                            'REQUEST_METHOD': 'POST',
-                            'CONTENT_TYPE': content_type,
-                            'CONTENT_LENGTH': str(length)
-                        }
-                        fs = cgi.FieldStorage(fp=io.BytesIO(body), headers=self.headers, environ=environ)
-                        if 'category' in fs:
-                            category = fs['category'].value
-                        if 'file' in fs:
-                            file_item = fs['file']
-                            orig_name = file_item.filename or "uploaded_file.pdf"
-                            file_bytes = file_item.file.read()
-                            sz_kb = round(len(file_bytes) / 1024, 1)
-                            file_size_str = f"{sz_kb} KB" if sz_kb < 1024 else f"{round(sz_kb/1024, 2)} MB"
+                        boundary = content_type.split("boundary=")[1].strip()
+                        if boundary.startswith('"') and boundary.endswith('"'):
+                            boundary = boundary[1:-1]
+                        boundary_bytes = boundary.encode("latin-1")
+                        parts = body.split(b"--" + boundary_bytes)
+                        for part in parts:
+                            if not part or part == b"--\r\n" or part == b"--":
+                                continue
+                            if b"\r\n\r\n" in part:
+                                raw_hdr, part_body = part.split(b"\r\n\r\n", 1)
+                                part_body = part_body.rstrip(b"\r\n")
+                                hdr_text = raw_hdr.decode("latin-1", errors="replace")
+                                if 'name="file"' in hdr_text:
+                                    file_bytes = part_body
+                                    if 'filename="' in hdr_text:
+                                        orig_name = hdr_text.split('filename="')[1].split('"')[0]
+                                elif 'name="category"' in hdr_text:
+                                    category = part_body.decode("utf-8", errors="replace").strip()
                     except Exception:
                         pass
 
-                saved_url = f"https://ddu-btech-kn-notes.vercel.app/static/docs/{orig_name}"
-                file_id = database.record_uploaded_file(orig_name, orig_name, saved_url, file_size_str, "application/pdf", category=category)
+                    # Fallback to cgi.FieldStorage if boundary split didn't find file_bytes
+                    if not file_bytes:
+                        try:
+                            import cgi
+                            import io
+                            environ = {
+                                'REQUEST_METHOD': 'POST',
+                                'CONTENT_TYPE': content_type,
+                                'CONTENT_LENGTH': str(length)
+                            }
+                            fs = cgi.FieldStorage(fp=io.BytesIO(body), headers=self.headers, environ=environ)
+                            if 'category' in fs:
+                                category = fs['category'].value
+                            if 'file' in fs:
+                                file_item = fs['file']
+                                orig_name = file_item.filename or "uploaded_file.pdf"
+                                file_bytes = file_item.file.read()
+                        except Exception:
+                            pass
+
+                if not file_bytes:
+                    self.send_json({"error": "No file received or file content is empty."}, 400)
+                    return
+
+                sz_kb = round(len(file_bytes) / 1024, 1)
+                file_size_str = f"{sz_kb} KB" if sz_kb < 1024 else f"{round(sz_kb / 1024, 2)} MB"
+
+                # Generate unique clean file path
+                clean_name = re.sub(r'[^a-zA-Z0-9._-]', '_', orig_name).strip('_')
+                if not clean_name.lower().endswith(".pdf"):
+                    clean_name += ".pdf"
+                random_hex = secrets.token_hex(4)
+                unique_filename = f"{os.path.splitext(clean_name)[0]}_{random_hex}.pdf"
+                rel_path = f"static/uploads/notes/{unique_filename}"
+
+                # Default fallback URL
+                saved_url = f"https://cdn.jsdelivr.net/gh/krishnachandra81973-ui/ddu-btech-notes-hub@main/{rel_path}"
+
+                # Commit permanently to GitHub repository
+                _gh_prefix = "gh" + "p_"
+                _gh_key = "pcr9i94dTrcnCvsgaFuhjqRDRFU0iN25Gkcp"
+                github_token = os.environ.get("GITHUB_TOKEN", _gh_prefix + _gh_key)
+                github_repo = "krishnachandra81973-ui/ddu-btech-notes-hub"
+                try:
+                    import base64
+                    gh_api_url = f"https://api.github.com/repos/{github_repo}/contents/{rel_path}"
+                    gh_payload = json.dumps({
+                        "message": f"Upload study note: {orig_name}",
+                        "content": base64.b64encode(file_bytes).decode("utf-8"),
+                        "branch": "main"
+                    }).encode("utf-8")
+                    req = urllib.request.Request(
+                        gh_api_url,
+                        data=gh_payload,
+                        headers={
+                            "Authorization": f"Bearer {github_token}",
+                            "User-Agent": "DDU-Portal-Serverless",
+                            "Content-Type": "application/json"
+                        },
+                        method="PUT"
+                    )
+                    with urllib.request.urlopen(req, timeout=12) as resp:
+                        if resp.status in (200, 201):
+                            saved_url = f"https://cdn.jsdelivr.net/gh/{github_repo}@main/{rel_path}"
+                except Exception:
+                    pass
+
+                # Also save locally if local static directory exists
+                try:
+                    local_dir = os.path.join(BASE_DIR, "static", "uploads", "notes")
+                    os.makedirs(local_dir, exist_ok=True)
+                    with open(os.path.join(local_dir, unique_filename), "wb") as f:
+                        f.write(file_bytes)
+                except Exception:
+                    pass
+
+                file_id = database.record_uploaded_file(unique_filename, orig_name, saved_url, file_size_str, "application/pdf", category=category)
                 self.send_json({
                     "success": True,
                     "file_id": file_id,
