@@ -7,7 +7,6 @@ const Auth = {
   token: localStorage.getItem("ddu_token") || null,
 
   async init() {
-    // 1. Immediately read from localStorage so UI is responsive with no delay
     const localUser = localStorage.getItem("ddu_user");
     if (localUser) {
       try { this.currentUser = JSON.parse(localUser); } catch(err){}
@@ -23,7 +22,6 @@ const Auth = {
           this.currentUser = data.user;
           localStorage.setItem("ddu_user", JSON.stringify(this.currentUser));
         } else if (res.status === 401) {
-          // If admin, keep session alive to prevent lockouts
           if (this.currentUser && this.currentUser.role === "ADMIN") {
             console.warn("Preserving administrator session");
           } else {
@@ -72,11 +70,7 @@ const Auth = {
       });
       const data = await res.json();
       if (!res.ok) {
-        return {
-          success: false,
-          error: data.error || "Registration failed.",
-          already_registered: data.already_registered || res.status === 409
-        };
+        return { success: false, error: data.error || "Registration failed." };
       }
       this.token = data.token;
       this.currentUser = data.user;
@@ -123,32 +117,24 @@ const Auth = {
       const initial = (this.currentUser.full_name || "U").charAt(0).toUpperCase();
       
       authContainer.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <a href="#dashboard" class="btn-primary btn-sm desktop-only-dashboard" style="height: 38px; display: inline-flex; align-items: center; gap: 7px; padding: 0 13px; border-radius: 8px; font-weight: 700; font-size: 0.84rem; white-space: nowrap;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <a href="#dashboard" class="btn-primary btn-sm" style="height: 38px; display: inline-flex; align-items: center; gap: 7px; padding: 0 13px; border-radius: 8px; font-weight: 700; font-size: 0.84rem; white-space: nowrap;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
             My Dashboard
           </a>
           <div style="position: relative;" id="user-dropdown-wrapper">
-            <button id="user-avatar-btn" class="user-avatar-btn" style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #1e40af, #2563eb); color: white; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid #d97706; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.12);" title="Student Profile & Menu">
+            <button id="user-avatar-btn" style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #1e40af, #2563eb); color: white; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid #d97706; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.12);" title="Account Menu">
               ${initial}
             </button>
-            <div id="user-dropdown-menu" style="display: none; position: absolute; right: 0; top: 44px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); width: 230px; padding: 10px; z-index: 1000;">
-              <div style="padding: 6px 10px; border-bottom: 1px solid var(--border); margin-bottom: 8px;">
+            <div id="user-dropdown-menu" style="display: none; position: absolute; right: 0; top: 48px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); width: 220px; padding: 8px; z-index: 200;">
+              <div style="padding: 8px 10px; border-bottom: 1px solid var(--border); margin-bottom: 6px;">
                 <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main);">${escapeHtml(this.currentUser.full_name)}</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis;">${escapeHtml(this.currentUser.email)}</div>
-                <div style="font-size: 0.72rem; color: var(--primary); font-weight: 600; margin-top: 4px;">Student • Semester ${this.currentUser.semester} (${escapeHtml(this.currentUser.branch || 'CSE')})</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(this.currentUser.email)}</div>
+                <div style="font-size: 0.72rem; color: var(--primary); font-weight: 600; margin-top: 4px;">Student • Semester ${this.currentUser.semester}</div>
               </div>
-              <a href="#dashboard" onclick="const m=document.getElementById('user-dropdown-menu');if(m)m.style.display='none';" class="nav-btn-link" style="width: 100%; text-align: left; padding: 7px 10px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                <span>📊</span> My Dashboard & Notes
-              </a>
-              ${isAdmin ? `
-              <a href="/admin" class="nav-btn-link" style="width: 100%; text-align: left; padding: 7px 10px; font-weight: 600; color: var(--accent-amber); display: flex; align-items: center; gap: 6px;">
-                <span>🛡️</span> Admin Portal
-              </a>
-              ` : ''}
-              <button onclick="Auth.logout()" class="nav-btn-link" style="width: 100%; text-align: left; padding: 7px 10px; color: var(--accent-rose); font-weight: 600; display: flex; align-items: center; gap: 6px; margin-top: 4px; border-top: 1px solid var(--border);">
-                <span>🚪</span> Sign Out
-              </button>
+              <a href="#dashboard" class="nav-btn-link" style="width: 100%; text-align: left; padding: 6px 10px;">My Dashboard</a>
+              ${isAdmin ? '<a href="/admin" class="nav-btn-link" style="width: 100%; text-align: left; padding: 6px 10px; color: var(--accent-amber); font-weight: 700;">🛡️ Admin Portal</a>' : ''}
+              <button onclick="Auth.logout()" class="nav-btn-link" style="width: 100%; text-align: left; padding: 6px 10px; color: var(--accent-rose);">Sign Out</button>
             </div>
           </div>
         </div>
@@ -180,8 +166,9 @@ const Auth = {
                 <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(this.currentUser.email)}</div>
               </div>
             </div>
-            <div style="display: flex; gap: 8px;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
               <a href="#dashboard" onclick="App.toggleMobileMenu()" class="btn-primary btn-sm" style="flex: 1; justify-content: center; text-decoration: none;">My Dashboard</a>
+              ${isAdmin ? '<a href="/admin" onclick="App.toggleMobileMenu()" class="btn-secondary btn-sm" style="flex: 1; justify-content: center; text-decoration: none;">Admin Portal</a>' : ''}
               <button onclick="Auth.logout(); App.toggleMobileMenu();" class="btn-outline-danger btn-sm">Sign Out</button>
             </div>
           </div>
@@ -189,14 +176,12 @@ const Auth = {
       }
     } else {
       authContainer.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <button onclick="Auth.openModal('login')" class="btn-primary btn-sm nav-login-btn">
-            Log In
-          </button>
-          <button onclick="Auth.openModal('register')" class="btn-secondary btn-sm nav-signup-btn">
-            Sign Up
-          </button>
-        </div>
+        <button onclick="Auth.openModal('login')" class="btn-secondary btn-sm">
+          Log In
+        </button>
+        <button onclick="Auth.openModal('register')" class="btn-primary btn-sm">
+          Student Sign Up
+        </button>
       `;
 
       // Also update Mobile Drawer Auth
@@ -206,17 +191,6 @@ const Auth = {
           <button onclick="Auth.openModal('login'); App.toggleMobileMenu();" class="btn-primary" style="width: 100%; justify-content: center; padding: 12px; margin-bottom: 8px;">🔑 Student Log In</button>
           <button onclick="Auth.openModal('register'); App.toggleMobileMenu();" class="btn-secondary" style="width: 100%; justify-content: center; padding: 12px;">✨ Create Student Account</button>
         `;
-      }
-    }
-
-    // Also sync Sub-Navigation Profile Pill
-    const subNavProfile = document.getElementById("sub-nav-profile-link");
-    if (subNavProfile) {
-      if (this.currentUser) {
-        const firstName = this.currentUser.full_name ? this.currentUser.full_name.split(' ')[0] : 'Profile';
-        subNavProfile.innerHTML = `👤 ${escapeHtml(firstName)}`;
-      } else {
-        subNavProfile.innerHTML = "👤 Log In";
       }
     }
   },
@@ -246,8 +220,6 @@ const Auth = {
 
     if (loginTab) loginTab.classList.toggle("active", tab === "login");
     if (regTab) regTab.classList.toggle("active", tab === "register");
-    const errBox = document.getElementById("register-error-msg");
-    if (errBox) errBox.style.display = "none";
   }
 };
 

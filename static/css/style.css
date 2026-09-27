@@ -2058,158 +2058,57 @@ button {
     padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  /* Compact Navbar Header for Mobile */
+  /* Compact Navbar Header */
   .nav-container {
-    height: 52px !important;
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-    gap: 6px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-  }
-  .brand-link {
-    gap: 6px !important;
-    min-width: 0 !important;
-    flex-shrink: 1 !important;
-    display: inline-flex !important;
-    align-items: center !important;
+    height: 56px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    gap: 8px !important;
   }
   .brand-logo-img {
-    width: 32px !important;
-    height: 32px !important;
-    padding: 1px !important;
-    flex-shrink: 0 !important;
-  }
-  .brand-info {
-    min-width: 0 !important;
-    overflow: hidden !important;
-  }
-  .brand-title-line {
-    gap: 4px !important;
+    width: 38px !important;
+    height: 38px !important;
+    padding: 1.5px !important;
   }
   .brand-title {
-    font-size: 0.88rem !important;
-    font-weight: 800 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    max-width: 110px !important;
+    font-size: 1rem !important;
   }
   .brand-subtitle {
     display: none !important;
   }
   .brand-naac-badge {
-    display: none !important;
+    font-size: 0.58rem !important;
+    padding: 1px 5px !important;
   }
 
-  /* Compact Top Navbar Actions: Search, Theme, Auth, Menu */
-  .nav-actions {
-    gap: 5px !important;
-    flex-shrink: 0 !important;
-    display: flex !important;
-    align-items: center !important;
+  /* Compact Top Navbar Actions: Clean round icon buttons */
+  .desktop-auth-container {
+    display: none !important;
   }
   .search-trigger-btn {
-    width: 32px !important;
-    min-width: 32px !important;
-    height: 32px !important;
+    width: 36px !important;
+    height: 36px !important;
     padding: 0 !important;
     justify-content: center !important;
     border-radius: 50% !important;
-    flex-shrink: 0 !important;
   }
   .search-btn-text, .search-shortcut-badge {
     display: none !important;
   }
   .theme-toggle-btn {
-    width: 32px !important;
-    height: 32px !important;
+    width: 36px !important;
+    height: 36px !important;
     border-radius: 50% !important;
-    font-size: 0.88rem !important;
-    flex-shrink: 0 !important;
+    font-size: 0.95rem !important;
   }
   .mobile-menu-toggle {
-    width: 32px !important;
-    height: 32px !important;
+    width: 36px !important;
+    height: 36px !important;
     border-radius: 50% !important;
     padding: 0 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+  }
   .btn-nav-install {
-    display: inline-flex !important;
-    height: 30px !important;
-    padding: 0 8px !important;
-    font-size: 0.76rem !important;
-    font-weight: 700 !important;
-    background: linear-gradient(135deg, #ea580c, #f97316) !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 6px !important;
-    align-items: center !important;
-    gap: 4px !important;
-    white-space: nowrap !important;
-    flex-shrink: 0 !important;
-    box-shadow: 0 2px 5px rgba(234, 88, 12, 0.25) !important;
-  }
-  .btn-nav-install svg {
-    width: 13px !important;
-    height: 13px !important;
-  }
-  .nav-install-text {
-    display: inline !important;
-  }
-
-  /* Phone Auth Container & Buttons (Always visible at top!) */
-  .nav-auth-container {
-    display: flex !important;
-    align-items: center !important;
-    gap: 4px !important;
-    flex-shrink: 0 !important;
-  }
-  .nav-login-btn {
-    height: 30px !important;
-    padding: 0 10px !important;
-    font-size: 0.78rem !important;
-    font-weight: 700 !important;
-    border-radius: 6px !important;
-    white-space: nowrap !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: var(--primary) !important;
-    color: #ffffff !important;
-    border: none !important;
-    box-shadow: 0 2px 6px rgba(30, 64, 175, 0.25) !important;
-  }
-  .nav-signup-btn {
     display: none !important;
-  }
-  .desktop-only-dashboard {
-    display: none !important;
-  }
-  .user-avatar-btn {
-    width: 32px !important;
-    height: 32px !important;
-    font-size: 0.82rem !important;
-    border-width: 1.5px !important;
-    flex-shrink: 0 !important;
-  }
-
-  @media (min-width: 440px) {
-    .brand-title {
-      max-width: 160px !important;
-      font-size: 0.95rem !important;
-    }
-    .nav-signup-btn {
-      display: inline-flex !important;
-      height: 30px !important;
-      padding: 0 9px !important;
-      font-size: 0.76rem !important;
-      border-radius: 6px !important;
-      white-space: nowrap !important;
-    }
   }
 
   /* Hero Section Mobile Optimization */
@@ -2442,90 +2341,5 @@ button {
     flex-direction: column !important;
     gap: 10px !important;
     text-align: center !important;
-  }
-}
-
-/* Mobile PWA Install Floating Banner */
-.mobile-install-banner {
-  display: none;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 14px;
-  background: linear-gradient(135deg, rgba(234, 88, 12, 0.12), rgba(30, 64, 175, 0.12));
-  border-bottom: 1.5px solid rgba(234, 88, 12, 0.3);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  position: relative;
-  z-index: 998;
-}
-.mobile-install-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.mobile-install-app-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1.5px solid #ea580c;
-  object-fit: contain;
-  background: #ffffff;
-  padding: 2px;
-  flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-}
-.mobile-install-text {
-  min-width: 0;
-}
-.mobile-install-title {
-  font-weight: 800;
-  font-size: 0.86rem;
-  color: var(--text-main);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.mobile-install-subtitle {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.mobile-install-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.btn-install-banner {
-  background: linear-gradient(135deg, #ea580c, #f97316);
-  color: #ffffff;
-  border: none;
-  font-weight: 700;
-  font-size: 0.78rem;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);
-  white-space: nowrap;
-}
-.btn-install-banner:active {
-  transform: scale(0.96);
-}
-.btn-dismiss-banner {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  padding: 4px 6px;
-  cursor: pointer;
-  line-height: 1;
-}
-
-@media (min-width: 992px) {
-  .mobile-install-banner {
-    display: none !important;
   }
 }

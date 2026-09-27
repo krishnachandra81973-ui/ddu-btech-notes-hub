@@ -111,12 +111,10 @@
             <span class="nav-install-text">Install App</span>
           </button>
 
-          <!-- Dynamic Auth Container (Visible on mobile & desktop) -->
-          <div id="nav-auth-container" class="nav-auth-container">
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <button onclick="Auth.openModal('login')" class="btn-primary btn-sm nav-login-btn">Log In</button>
-              <button onclick="Auth.openModal('register')" class="btn-secondary btn-sm nav-signup-btn">Sign Up</button>
-            </div>
+          <!-- Dynamic Auth Container -->
+          <div id="nav-auth-container" class="desktop-auth-container">
+            <button onclick="Auth.openModal('login')" class="btn-secondary btn-sm">Log In</button>
+            <button onclick="Auth.openModal('register')" class="btn-primary btn-sm">Student Sign Up</button>
           </div>
 
           <!-- Mobile Menu Toggle -->
@@ -127,35 +125,14 @@
       </div>
     </header>
 
-    <!-- Mobile App Install Floating Banner (Visible on mobile/tablet) -->
-    <div id="mobile-install-banner" class="mobile-install-banner" style="display: none;">
-      <div class="mobile-install-left">
-        <img src="/logo.png?v=3" class="mobile-install-app-icon" alt="App Icon" onerror="this.src='/static/ddu_official_logo.png'">
-        <div class="mobile-install-text">
-          <div class="mobile-install-title">DDU B.Tech Notes App</div>
-          <div class="mobile-install-subtitle">Offline Notes, Syllabus & PYQs • 1-Tap Access</div>
-        </div>
-      </div>
-      <div class="mobile-install-actions">
-        <button onclick="window.installPwa()" class="btn-install-banner" title="Install App on Phone">
-          📲 Install
-        </button>
-        <button onclick="App.dismissInstallBanner()" class="btn-dismiss-banner" aria-label="Dismiss banner">
-          ✕
-        </button>
-      </div>
-    </div>
-
     <!-- Mobile/Tablet Horizontal Scrollable Sub-Navigation Bar (Sticky below header) -->
     <nav class="mobile-sub-nav scrollable-mobile-nav" id="mobile-sub-navigation">
-      <a href="javascript:void(0)" onclick="window.installPwa()" class="sub-nav-link install-subnav-pill" id="sub-nav-install-link" style="color: #ea580c; font-weight: 700; background: rgba(234, 88, 12, 0.12); border-radius: 9999px; border: 1px solid rgba(234, 88, 12, 0.25);">📲 Install App</a>
       <a href="#home" class="sub-nav-link active" data-subnav="home">🏠 Home</a>
       <a href="#semesters" class="sub-nav-link" data-subnav="semesters">🎓 Semesters</a>
       <a href="#syllabus" class="sub-nav-link" data-subnav="syllabus">📖 Syllabus</a>
       <a href="#notes" class="sub-nav-link" data-subnav="notes">📝 Notes</a>
       <a href="#pyq" class="sub-nav-link" data-subnav="pyq">📑 PYQs</a>
       <a href="#updates" class="sub-nav-link" data-subnav="updates">📢 Updates</a>
-      <a href="javascript:void(0)" onclick="Auth.currentUser ? (window.location.hash='#dashboard') : Auth.openModal('login')" class="sub-nav-link" id="sub-nav-profile-link" data-subnav="dashboard">👤 Profile</a>
       <a href="#about" class="sub-nav-link" data-subnav="about">👨‍💻 About</a>
     </nav>
   </div>
@@ -182,7 +159,6 @@
 
     <!-- Mobile Drawer Links -->
     <div class="mobile-drawer-links">
-      <button onclick="window.installPwa(); App.toggleMobileMenu();" class="mobile-drawer-link" style="width: 100%; text-align: left; background: rgba(234, 88, 12, 0.12); color: #ea580c; border: 1.5px solid rgba(234, 88, 12, 0.35); border-radius: 8px; font-weight: 800; font-family: inherit; font-size: 0.95rem; cursor: pointer; margin-bottom: 10px; padding: 10px 14px;"><span>📲</span> Install Mobile App (PWA)</button>
       <a href="#home" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>🏠</span> Home Dashboard</a>
       <a href="#semesters" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>🎓</span> B.Tech Semesters (1st to 8th)</a>
       <a href="#syllabus" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>📖</span> Official CBCS Syllabus</a>
@@ -395,8 +371,6 @@
             <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--text-main);">Create Student Account</h3>
             <p style="color: var(--text-muted); font-size: 0.82rem;">Join the DDU B.Tech Notes Hub community.</p>
           </div>
-
-          <div id="register-error-msg" style="display: none;"></div>
 
           <form id="register-form-element">
             <div class="form-group">
