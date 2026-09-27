@@ -498,6 +498,9 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                     branch=body.get("branch", "All Branches"),
                     description=body.get("description", "")
                 )
+                if not sub_id:
+                    self.send_error_json("Subject with this code already exists.")
+                    return
                 self.send_json({"success": True, "subject_id": sub_id})
                 return
 

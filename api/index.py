@@ -583,6 +583,9 @@ class handler(BaseHTTPRequestHandler):
                     self.send_json({"success": True, "message": "Subject updated", "subject_id": sub_id})
                 else:
                     new_id = database.create_subject(int(semester_id), name, code, branch, description)
+                    if not new_id:
+                        self.send_json({"error": "Subject with this code already exists."}, 400)
+                        return
                     self.send_json({"success": True, "message": "Subject created", "subject_id": new_id})
                 return
 

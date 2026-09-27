@@ -234,8 +234,8 @@ def ensure_db_schema():
         pass
     try:
         cursor.execute("UPDATE users SET plain_password = 'AdminPassword123!' WHERE email = 'admin@ddunotes.ac.in' AND (plain_password IS NULL OR plain_password = '');")
-        cursor.execute("UPDATE users SET plain_password = 'StudentPassword123!' WHERE email = 'student@ddu.ac.in' AND (plain_password IS NULL OR plain_password = '');")
-        cursor.execute("UPDATE users SET plain_password = 'StudentPassword123!' WHERE email = 'priya.sharma@ddu.ac.in' AND (plain_password IS NULL OR plain_password = '');")
+        # Ensure any leftover dummy accounts are removed
+        cursor.execute("DELETE FROM users WHERE email IN ('student@ddu.ac.in', 'priya.sharma@ddu.ac.in');")
         conn.commit()
     except Exception:
         pass
@@ -397,7 +397,7 @@ def create_user_session(user_id, days=30):
                 user = u
                 break
     if not user:
-        user = {"id": user_id, "email": "student@ddu.ac.in", "role": "STUDENT", "full_name": "Student"}
+        user = {"id": user_id, "email": f"student_{user_id}@ddunotes.ac.in", "role": "STUDENT", "full_name": "Student"}
     
     # Generate cryptographic stateless token
     token = user_registry.generate_auth_token(user)
@@ -479,6 +479,9 @@ def get_all_users(search=""):
         em = ru.get("email", "").lower().strip()
         if em:
             combined[em] = ru
+
+    # Filter out any legacy fake accounts from database
+    db_users = {em: du for em, du in db_users.items() if em not in user_registry.FAKE_EMAILS}
 
     # Merge database users into combined (giving priority to latest plain_password)
     for em, du in db_users.items():
@@ -673,10 +676,27 @@ def get_notes(semester_id=None, subject_id=None, unit_number=None, branch=None, 
 def create_note(subject_id, unit_id, title, description, file_url, file_name, file_size, is_important=0, is_published=1):
     conn = get_connection()
     cursor = conn.cursor()
+    actual_unit_id = None
+    if unit_id:
+        cursor.execute("SELECT id FROM units WHERE id = ? AND subject_id = ?", (unit_id, subject_id))
+        row = cursor.fetchone()
+        if row:
+            actual_unit_id = row[0]
+        else:
+            cursor.execute("SELECT id FROM units WHERE subject_id = ? AND unit_number = ?", (subject_id, unit_id))
+            row2 = cursor.fetchone()
+            if row2:
+                actual_unit_id = row2[0]
+            else:
+                cursor.execute("SELECT id FROM units WHERE subject_id = ? ORDER BY unit_number ASC LIMIT 1", (subject_id,))
+                row3 = cursor.fetchone()
+                if row3:
+                    actual_unit_id = row3[0]
+
     cursor.execute("""
     INSERT INTO notes (subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published))
+    """, (subject_id, actual_unit_id, title, description, file_url, file_name, file_size, is_important, is_published))
     note_id = cursor.lastrowid
     conn.commit()
     conn.close()
@@ -685,12 +705,29 @@ def create_note(subject_id, unit_id, title, description, file_url, file_name, fi
 def update_note(note_id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published):
     conn = get_connection()
     cursor = conn.cursor()
+    actual_unit_id = None
+    if unit_id:
+        cursor.execute("SELECT id FROM units WHERE id = ? AND subject_id = ?", (unit_id, subject_id))
+        row = cursor.fetchone()
+        if row:
+            actual_unit_id = row[0]
+        else:
+            cursor.execute("SELECT id FROM units WHERE subject_id = ? AND unit_number = ?", (subject_id, unit_id))
+            row2 = cursor.fetchone()
+            if row2:
+                actual_unit_id = row2[0]
+            else:
+                cursor.execute("SELECT id FROM units WHERE subject_id = ? ORDER BY unit_number ASC LIMIT 1", (subject_id,))
+                row3 = cursor.fetchone()
+                if row3:
+                    actual_unit_id = row3[0]
+
     cursor.execute("""
     UPDATE notes
     SET subject_id = ?, unit_id = ?, title = ?, description = ?, file_url = ?, 
         file_name = ?, file_size = ?, is_important = ?, is_published = ?
     WHERE id = ?
-    """, (subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, note_id))
+    """, (subject_id, actual_unit_id, title, description, file_url, file_name, file_size, is_important, is_published, note_id))
     conn.commit()
     conn.close()
     return True
@@ -708,20 +745,27 @@ def delete_note(note_id):
 def create_subject(semester_id, name, code, branch='All Branches', description=''):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("""
-    INSERT INTO subjects (semester_id, name, code, branch, description)
-    VALUES (?, ?, ?, ?, ?)
-    """, (semester_id, name, code, branch, description))
-    sub_id = cursor.lastrowid
-    
-    # Auto-create standard Units 1 to 5 for the new subject
-    for u in range(1, 6):
-        cursor.execute("INSERT INTO units (subject_id, unit_number, title) VALUES (?, ?, ?)",
-                       (sub_id, u, f"Unit {u}: Module Topics"))
-    
-    conn.commit()
-    conn.close()
-    return sub_id
+    try:
+        cursor.execute("""
+        INSERT INTO subjects (semester_id, name, code, branch, description)
+        VALUES (?, ?, ?, ?, ?)
+        """, (semester_id, name, code, branch, description))
+        sub_id = cursor.lastrowid
+        
+        # Auto-create standard Units 1 to 5 for the new subject
+        for u in range(1, 6):
+            cursor.execute("INSERT INTO units (subject_id, unit_number, title) VALUES (?, ?, ?)",
+                           (sub_id, u, f"Unit {u}: Module Topics"))
+        
+        conn.commit()
+        return sub_id
+    except sqlite3.IntegrityError:
+        return None
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 def update_subject(subject_id, semester_id, name, code, branch, description):
     conn = get_connection()

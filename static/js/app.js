@@ -49,22 +49,16 @@ const App = {
     if (pwaCard) {
       if (installed) {
         pwaCard.style.display = "none";
-      } else if (window.deferredPrompt) {
-        pwaCard.style.display = "flex";
       } else {
-        pwaCard.style.display = "none";
+        // Show promotional card below hero if not installed (like keshavaieducation.vercel.app)
+        pwaCard.style.display = "flex";
       }
     }
 
     const navBtn = document.getElementById("btn-nav-install");
     if (navBtn) {
-      if (installed) {
-        navBtn.style.display = "none";
-      } else if (window.deferredPrompt) {
-        navBtn.style.display = "inline-flex";
-      } else {
-        navBtn.style.display = "none";
-      }
+      // Keep navbar clean and spacious
+      navBtn.style.display = "none";
     }
 
     const bottomInstall = document.getElementById("btn-bottom-install");

@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /api/admin/
 Sitemap: https://ddu-btech-kn-notes.vercel.app/sitemap.xml
 Sitemap: https://ddu-btech-kn-notes.vercel.app/sitemap-main.xml

@@ -146,20 +146,6 @@ def seed():
     """, ("Keshav Narayan (Admin)", "admin@ddunotes.ac.in", admin_hash, admin_salt,
           "Deen Dayal Upadhyaya Gorakhpur University", "B.Tech", "CSE (AI/ML)", 3, "ADMIN"))
     admin_id = cursor.lastrowid
-
-    stud_hash, stud_salt = db.hash_password("StudentPassword123!")
-    cursor.execute("""
-    INSERT INTO users (full_name, email, password_hash, salt, college, course, branch, semester, role)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, ("Aditya Verma", "student@ddu.ac.in", stud_hash, stud_salt,
-          "Deen Dayal Upadhyaya Gorakhpur University", "B.Tech", "CSE", 3, "STUDENT"))
-    student_id = cursor.lastrowid
-
-    cursor.execute("""
-    INSERT INTO users (full_name, email, password_hash, salt, college, course, branch, semester, role)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, ("Priya Sharma", "priya.sharma@ddu.ac.in", stud_hash, stud_salt,
-          "Deen Dayal Upadhyaya Gorakhpur University", "B.Tech", "Information Technology", 2, "STUDENT"))
     conn.commit()
 
     # 3. Comprehensive Curriculum for ALL 8 Semesters
@@ -922,12 +908,12 @@ def seed():
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (title, cat, s_desc, f_desc, att, imp, 1, p_date))
 
-    # 5. Bookmarks for Demo Student
+    # 5. Bookmarks for Admin
     cursor.execute("SELECT id FROM notes LIMIT 5")
     sample_notes = cursor.fetchall()
     for row in sample_notes:
-        cursor.execute("INSERT OR IGNORE INTO bookmarks (user_id, note_id) VALUES (?, ?)", (student_id, row[0]))
-        cursor.execute("INSERT INTO recently_viewed (user_id, note_id) VALUES (?, ?)", (student_id, row[0]))
+        cursor.execute("INSERT OR IGNORE INTO bookmarks (user_id, note_id) VALUES (?, ?)", (admin_id, row[0]))
+        cursor.execute("INSERT INTO recently_viewed (user_id, note_id) VALUES (?, ?)", (admin_id, row[0]))
 
     conn.commit()
     conn.close()

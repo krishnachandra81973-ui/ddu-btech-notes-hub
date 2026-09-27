@@ -185,7 +185,7 @@ def run_tests():
         # 1. Create a new Subject
         new_sub = {
             "name": "Cloud Computing and DevOps",
-            "code": "BCS-802",
+            "code": f"BCS-TEST-{int(time.time())}",
             "semester_id": 8,
             "branch": "CSE",
             "description": "Docker, Kubernetes, AWS, and CI/CD pipelines"
