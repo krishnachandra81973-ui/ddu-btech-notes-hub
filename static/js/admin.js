@@ -1076,9 +1076,9 @@ const Admin = {
                   Upload File
                 </button>
               </div>
-              <input type="text" name="file_url" id="note-file-url-input" required value="${isEdit ? escapeHtml(note.file_url) : ''}" placeholder="/static/uploads/document.pdf or Google Drive link" class="form-control" style="font-size: 0.8rem; background: var(--bg-main);">
+              <input type="text" name="file_url" id="note-file-url-input" required value="${isEdit ? escapeHtml(note.file_url) : ''}" placeholder="/static/uploads/document.pdf" class="form-control" style="font-size: 0.8rem; background: var(--bg-main);">
               <small style="color: var(--text-muted); font-size: 0.76rem; display: block; margin-top: 4px;">
-                💡 <strong>Tip:</strong> Aap directly <strong>Upload File</strong> kar sakte hain (CDN par permanently save hoga), ya fir <strong>Google Drive share link</strong> paste kar sakte hain (Ensure link is 'Anyone with the link can view').
+                💡 <strong>Tip:</strong> Upar <strong>Upload File</strong> button dabao — PDF/image securely CDN par upload ho jayega aur link automatic fill ho jayega.
               </small>
             </div>
 

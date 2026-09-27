@@ -2865,9 +2865,9 @@ const App = {
                   Upload PDF
                 </button>
               </div>
-              <input type="text" name="file_url" id="student-note-url" required placeholder="/static/uploads/... or Google Drive shareable link" class="form-control" style="font-size: 0.8rem; background: var(--bg-main);">
+              <input type="text" name="file_url" id="student-note-url" required placeholder="/static/uploads/your-note.pdf" class="form-control" style="font-size: 0.8rem; background: var(--bg-main);">
               <small style="color: var(--text-muted); font-size: 0.74rem; display: block; margin-top: 4px;">
-                💡 <strong>Tip:</strong> Aap seedhe <strong>Upload PDF</strong> daba sakte hain ya fir apna <strong>Google Drive share link</strong> paste kar sakte hain (Set link to 'Anyone with the link can view').
+                💡 <strong>Tip:</strong> Upar <strong>Upload PDF</strong> button dabao — file automatically secure CDN par upload ho jayegi aur link yahan fill ho jayega.
               </small>
             </div>
           </div>
