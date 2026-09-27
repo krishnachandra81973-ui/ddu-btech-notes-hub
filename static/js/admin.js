@@ -808,6 +808,7 @@ const Admin = {
                             Attachment
                           </button>
                         ` : '<span style="color: var(--text-muted); font-size: 0.75rem;">None</span>'}
+                      </td>
                       <td style="white-space: nowrap;">
                         <button onclick="Admin.openEditUpdateModal(${u.id})" class="btn-secondary btn-sm" style="font-size: 0.75rem; padding: 4px 8px; margin-right: 6px;">Edit</button>
                         <button onclick="Admin.deleteUpdate(${u.id})" class="btn-outline-danger btn-sm" style="font-size: 0.75rem; padding: 4px 8px;">Delete</button>
@@ -1468,7 +1469,7 @@ const Admin = {
     const modalHtml = `
       <div class="modal-box">
         <div class="modal-header">
-          <h3 class="modal-title">Post New Campus Update / Notice</h3>
+          <h3 class="modal-title">📢 Post New Campus Update / Notice</h3>
           <button onclick="App.closeActiveModal()" class="modal-close-btn">✕</button>
         </div>
         <form onsubmit="Admin.handleSaveUpdate(event)">
@@ -1499,8 +1500,8 @@ const Admin = {
             </div>
 
             <div class="form-group">
-              <label class="form-label">Short Description *</label>
-              <textarea name="short_description" required rows="2" class="form-control" placeholder="Quick 1-2 sentence preview for student noticeboard..."></textarea>
+              <label class="form-label">Short Description (Optional)</label>
+              <textarea name="short_description" rows="2" class="form-control" placeholder="Quick 1-2 sentence preview (leave empty to auto-use title)..."></textarea>
             </div>
 
             <div class="form-group">
@@ -1512,33 +1513,38 @@ const Admin = {
               <label class="form-label">Attachment (PDF or Image)</label>
               <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                 <input type="file" id="update-file-upload" accept=".pdf,.png,.jpg,.jpeg,.webp" class="form-control">
-                <button type="button" onclick="Admin.uploadFileField('update-file-upload', 'update-file-url-input', 'Notice')" class="btn-secondary btn-sm">
-                  Upload Attachment
+                <button type="button" onclick="Admin.uploadFileField('update-file-upload', 'update-file-url-input', 'Notice')" class="btn-secondary btn-sm" style="white-space: nowrap;">
+                  Upload File
                 </button>
               </div>
               <input type="text" name="attachment_url" id="update-file-url-input" placeholder="/static/uploads/circular.pdf" class="form-control">
+              <small style="color: var(--text-muted); font-size: 0.74rem; display: block; margin-top: 4px;">
+                💡 File choose karke seedhe neeche <strong>Push Notice</strong> daba sakte hain — automatic cloud par upload ho jayega.
+              </small>
             </div>
 
-            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer; margin-top: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem; cursor: pointer; margin-top: 10px;">
               <input type="checkbox" name="is_important">
-              Mark as <span class="update-badge-important">Important</span> (Pins with visual indicator)
+              📌 Mark as <span class="update-badge-important">Important</span> (Pins with visual indicator on student portal)
             </label>
 
             <!-- Push Notification Toggle -->
             <div style="margin-top: 14px; padding: 12px 14px; background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.25); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
               <div>
-                <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main);">🔔 Send Push Notification</div>
-                <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">Sabhi registered students ke browser par instant notification bhejo</div>
+                <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main);">🔔 Send Web Push Notification</div>
+                <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">Broadcast push alert to subscribed student browsers</div>
               </div>
               <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
                 <input type="checkbox" name="send_push" id="send-push-toggle" style="width: 16px; height: 16px;">
-                <span style="font-size: 0.82rem; font-weight: 600; color: var(--accent);">Push karo</span>
+                <span style="font-size: 0.82rem; font-weight: 600; color: var(--accent);">Push alert</span>
               </label>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" onclick="App.closeActiveModal()" class="btn-secondary">Cancel</button>
-            <button type="submit" class="btn-primary">📢 Publish Update</button>
+            <button type="submit" id="admin-save-update-btn" class="btn-primary" style="font-weight: 800; font-size: 0.95rem; padding: 10px 22px;">
+              🚀 Push / Publish Notice Now
+            </button>
           </div>
         </form>
       </div>
@@ -1569,7 +1575,7 @@ const Admin = {
       const modalHtml = `
         <div class="modal-box">
           <div class="modal-header">
-            <h3 class="modal-title">Edit Campus Update / Notice</h3>
+            <h3 class="modal-title">✏️ Edit Campus Notice</h3>
             <button onclick="App.closeActiveModal()" class="modal-close-btn">✕</button>
           </div>
           <form onsubmit="Admin.handleSaveUpdate(event)">
@@ -1594,8 +1600,8 @@ const Admin = {
               </div>
 
               <div class="form-group">
-                <label class="form-label">Short Description *</label>
-                <textarea name="short_description" required rows="2" class="form-control">${escapeHtml(u.short_description || '')}</textarea>
+                <label class="form-label">Short Description (Optional)</label>
+                <textarea name="short_description" rows="2" class="form-control">${escapeHtml(u.short_description || '')}</textarea>
               </div>
 
               <div class="form-group">
@@ -1607,21 +1613,23 @@ const Admin = {
                 <label class="form-label">Attachment (PDF or Image)</label>
                 <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                   <input type="file" id="edit-update-file-upload" accept=".pdf,.png,.jpg,.jpeg,.webp" class="form-control">
-                  <button type="button" onclick="Admin.uploadFileField('edit-update-file-upload', 'edit-update-file-url-input', 'Notice')" class="btn-secondary btn-sm">
-                    Upload New File
+                  <button type="button" onclick="Admin.uploadFileField('edit-update-file-upload', 'edit-update-file-url-input', 'Notice')" class="btn-secondary btn-sm" style="white-space: nowrap;">
+                    Upload File
                   </button>
                 </div>
                 <input type="text" name="attachment_url" id="edit-update-file-url-input" value="${escapeHtml(u.attachment_url || '')}" placeholder="/static/uploads/circular.pdf" class="form-control">
               </div>
 
-              <label style="display: flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer; margin-top: 10px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem; cursor: pointer; margin-top: 10px;">
                 <input type="checkbox" name="is_important" ${u.is_important ? 'checked' : ''}>
-                Mark as <span class="update-badge-important">Important</span> (Pins with visual indicator)
+                📌 Mark as <span class="update-badge-important">Important</span> (Pins notice at the top)
               </label>
             </div>
             <div class="modal-footer">
               <button type="button" onclick="App.closeActiveModal()" class="btn-secondary">Cancel</button>
-              <button type="submit" class="btn-primary">Save Changes</button>
+              <button type="submit" id="admin-edit-update-btn" class="btn-primary" style="font-weight: 800; font-size: 0.95rem; padding: 10px 22px;">
+                💾 Save Changes & Push Update
+              </button>
             </div>
           </form>
         </div>
@@ -1635,16 +1643,54 @@ const Admin = {
   async handleSaveUpdate(e) {
     e.preventDefault();
     const form = e.target;
-    const updateId = form.update_id ? form.update_id.value : null;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn ? submitBtn.innerHTML : "Save";
 
+    const updateId = form.update_id ? form.update_id.value : null;
+    const title = (form.title.value || "").trim();
+    if (!title) {
+      App.toast("Notice title is required.", "warning");
+      return;
+    }
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "⏳ Pushing Notice...";
+    }
+
+    // Auto upload file if user selected a file but didn't click "Upload" separately
+    let attachmentUrl = (form.attachment_url.value || "").trim();
+    const fileInput = form.querySelector('input[type="file"]');
+    if (!attachmentUrl && fileInput && fileInput.files && fileInput.files.length > 0) {
+      try {
+        App.toast("Uploading attachment file...", "info");
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+        formData.append("category", "Notice");
+        const upRes = await fetch("/api/admin/upload", {
+          method: "POST",
+          headers: Auth.getAuthHeaders(),
+          body: formData
+        });
+        const upData = await upRes.json();
+        if (upRes.ok && upData.file_url) {
+          attachmentUrl = upData.file_url;
+          if (form.attachment_url) form.attachment_url.value = attachmentUrl;
+        }
+      } catch (upErr) {
+        console.warn("Auto attachment upload error:", upErr);
+      }
+    }
+
+    const short_desc = (form.short_description.value || "").trim() || title;
     const body = {
-      title: form.title.value.trim(),
+      title: title,
       category: form.category.value,
       publish_date: form.publish_date.value,
-      short_description: form.short_description.value.trim(),
-      full_details: form.full_details.value.trim(),
-      attachment_url: form.attachment_url.value.trim() || null,
-      is_important: form.is_important.checked
+      short_description: short_desc,
+      full_details: (form.full_details.value || "").trim(),
+      attachment_url: attachmentUrl || null,
+      is_important: form.is_important ? form.is_important.checked : false
     };
     const sendPush = form.send_push && form.send_push.checked;
 
@@ -1659,45 +1705,50 @@ const Admin = {
       const data = await res.json();
       if (res.ok && data.success !== false) {
         App.closeActiveModal();
-        App.toast(updateId ? "Campus update modified successfully!" : "Campus update published successfully!", "success");
-        this.renderUpdatesTab(document.getElementById("admin-tab-content"));
+        App.toast(updateId ? "Campus update modified successfully!" : "🎉 Campus notice pushed and published successfully!", "success");
 
-        // Push Notification bhejo agar toggle on hai
+        if (this.currentTab === "updates") {
+          await this.renderUpdatesTab(document.getElementById("admin-tab-content"));
+        } else {
+          this.switchTab("updates");
+        }
+
+        // Web push notification safely dispatched
         if (sendPush && !updateId) {
-          await this.sendPushNotification(body.title, body.short_description || body.category);
+          this.sendPushNotification(body.title, body.short_description || body.category);
         }
       } else {
         App.toast(data.error || "Failed to save update", "error");
       }
     } catch (e) {
       App.toast(e.message, "error");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+      }
     }
   },
 
   async sendPushNotification(title, body) {
-    // Browser Push Notification (requires user permission)
-    if (!("Notification" in window)) {
-      App.toast("Yeh browser push notifications support nahi karta.", "warning");
-      return;
-    }
-
-    let permission = Notification.permission;
-    if (permission === "default") {
-      permission = await Notification.requestPermission();
-    }
-
-    if (permission === "granted") {
-      // Self-notification for admin confirmation
-      new Notification(`📢 New Notice: ${title}`, {
-        body: body,
-        icon: "/static/logo.png",
-        badge: "/static/logo.png",
-        tag: "ddu-notice-" + Date.now(),
-        requireInteraction: false
-      });
-      App.toast("🔔 Push notification bheja gaya! Students ko browser notification milega jab wo portal visit karenge.", "success");
-    } else if (permission === "denied") {
-      App.toast("⚠️ Browser notifications blocked hain. Please browser settings mein allow karein.", "warning");
+    try {
+      if (!("Notification" in window)) return;
+      let permission = Notification.permission;
+      if (permission === "default") {
+        permission = await Notification.requestPermission();
+      }
+      if (permission === "granted") {
+        new Notification(`📢 New Notice: ${title}`, {
+          body: body,
+          icon: "/static/logo.png",
+          badge: "/static/logo.png",
+          tag: "ddu-notice-" + Date.now(),
+          requireInteraction: false
+        });
+        App.toast("🔔 Push alert dispatched successfully!", "info");
+      }
+    } catch (err) {
+      console.warn("Push notification non-fatal notice:", err);
     }
   },
 
@@ -1708,7 +1759,11 @@ const Admin = {
       const data = await res.json();
       if (res.ok && data.success !== false) {
         App.toast("Update deleted", "info");
-        this.renderUpdatesTab(document.getElementById("admin-tab-content"));
+        if (this.currentTab === "updates") {
+          await this.renderUpdatesTab(document.getElementById("admin-tab-content"));
+        } else {
+          this.switchTab("updates");
+        }
       } else {
         App.toast(data.error || "Failed to delete update", "error");
       }

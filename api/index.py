@@ -876,16 +876,16 @@ class handler(BaseHTTPRequestHandler):
                     self.send_json({"error": "Admin access required"}, 403)
                     return
 
-                title = payload.get("title", "").strip()
-                category = payload.get("category", "Notice")
-                publish_date = payload.get("publish_date")
-                short_description = payload.get("short_description", "").strip()
-                full_details = payload.get("full_details", "").strip()
-                attachment_url = payload.get("attachment_url")
+                title = (payload.get("title") or "").strip()
+                category = (payload.get("category") or "University Notice").strip()
+                publish_date = payload.get("publish_date") or None
+                short_description = (payload.get("short_description") or "").strip() or title
+                full_details = (payload.get("full_details") or "").strip()
+                attachment_url = (payload.get("attachment_url") or "").strip() or None
                 is_important = 1 if payload.get("is_important") else 0
 
                 if not title:
-                    self.send_json({"error": "Title is required."}, 400)
+                    self.send_json({"error": "Notice title is required."}, 400)
                     return
 
                 new_id = database.create_update(title, category, short_description, full_details, attachment_url, is_important, publish_date=publish_date)
@@ -903,16 +903,16 @@ class handler(BaseHTTPRequestHandler):
                     self.send_json({"error": "Invalid update ID."}, 400)
                     return
 
-                title = payload.get("title", "").strip()
-                category = payload.get("category", "Notice")
-                publish_date = payload.get("publish_date")
-                short_description = payload.get("short_description", "").strip()
-                full_details = payload.get("full_details", "").strip()
-                attachment_url = payload.get("attachment_url")
+                title = (payload.get("title") or "").strip()
+                category = (payload.get("category") or "University Notice").strip()
+                publish_date = payload.get("publish_date") or None
+                short_description = (payload.get("short_description") or "").strip() or title
+                full_details = (payload.get("full_details") or "").strip()
+                attachment_url = (payload.get("attachment_url") or "").strip() or None
                 is_important = 1 if payload.get("is_important") else 0
 
                 if not title:
-                    self.send_json({"error": "Title is required."}, 400)
+                    self.send_json({"error": "Notice title is required."}, 400)
                     return
 
                 database.update_update(up_id, title, category, short_description, full_details, attachment_url, is_important, 1, publish_date)
