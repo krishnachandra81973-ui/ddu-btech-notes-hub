@@ -2156,7 +2156,7 @@ const App = {
           </span>
           <h1 class="section-title">About the Platform &amp; Creator</h1>
           <p class="section-description">
-            Complete academic overview, university engineering department profile, and system architectural dossier of platform founder &amp; lead developer — <strong>Keshav Narayan</strong> (with co-founding support from Akash Yadav).
+            Complete academic overview, official university engineering department profile, and detailed architectural biography of platform founder &amp; lead developer — <strong>Keshav Narayan</strong>.
           </p>
         </div>
 
