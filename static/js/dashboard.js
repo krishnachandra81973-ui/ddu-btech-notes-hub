@@ -166,6 +166,10 @@ const Dashboard = {
                         <a href="${App.getDownloadUrl(b.file_url)}" ${App.isGoogleDriveUrl(b.file_url) ? 'target="_blank" rel="noopener noreferrer"' : 'download'} class="btn-primary btn-sm">
                           Download
                         </a>
+                        <button onclick="App.shareNote(${b.id}, '${escapeHtml(b.title)}')" class="btn-secondary btn-sm" title="Share Note" style="display: inline-flex; align-items: center; gap: 4px;">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                          Share
+                        </button>
                         <button onclick="Dashboard.removeBookmark(${b.id})" title="Remove bookmark" style="color: var(--accent-amber); font-size: 1.1rem; padding: 4px;">
                           ★
                         </button>

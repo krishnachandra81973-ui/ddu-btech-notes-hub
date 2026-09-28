@@ -290,18 +290,32 @@ class handler(BaseHTTPRequestHandler):
             if path == "/api/notes":
                 sem_id = query.get("semester_id", [None])[0]
                 sub_id = query.get("subject_id", [None])[0]
-                unit_num = query.get("unit_number", [None])[0]
+                unit_num = query.get("unit_number", [None])[0] or query.get("unit", [None])[0]
                 branch = query.get("branch", [None])[0]
                 search = query.get("search", [None])[0]
+                note_id = query.get("id", [None])[0] or query.get("note_id", [None])[0]
                 notes = database.get_notes(
                     semester_id=int(sem_id) if sem_id else None,
                     subject_id=int(sub_id) if sub_id else None,
                     unit_number=int(unit_num) if unit_num else None,
                     branch=branch,
                     search=search,
-                    only_published=True
+                    only_published=True,
+                    note_id=int(note_id) if note_id else None
                 )
                 self.send_json({"notes": notes})
+                return
+
+            if path.startswith("/api/notes/") and not path.endswith("/view"):
+                nid = path.split("/api/notes/")[1].strip("/")
+                try:
+                    notes = database.get_notes(note_id=int(nid), only_published=True)
+                    if notes:
+                        self.send_json({"note": notes[0]})
+                    else:
+                        self.send_json({"error": "Note not found"}, 404)
+                except ValueError:
+                    self.send_json({"error": "Invalid note ID"}, 400)
                 return
 
             # 4. Syllabus

@@ -253,18 +253,32 @@ class DDURequestHandler(BaseHTTPRequestHandler):
         if path == "/api/notes":
             sem_id = query.get("semester_id", [None])[0]
             sub_id = query.get("subject_id", [None])[0]
-            unit = query.get("unit", [None])[0]
+            unit = query.get("unit", [None])[0] or query.get("unit_number", [None])[0]
             branch = query.get("branch", [None])[0]
             search = query.get("search", [None])[0]
+            note_id = query.get("id", [None])[0] or query.get("note_id", [None])[0]
             data = db.get_notes(
                 semester_id=int(sem_id) if sem_id else None,
                 subject_id=int(sub_id) if sub_id else None,
                 unit_number=int(unit) if unit else None,
                 branch=branch,
                 search=search,
-                only_published=True
+                only_published=True,
+                note_id=int(note_id) if note_id else None
             )
             self.send_json({"notes": data})
+            return
+
+        if path.startswith("/api/notes/") and not path.endswith("/view"):
+            nid = path.split("/api/notes/")[1].strip("/")
+            try:
+                data = db.get_notes(note_id=int(nid), only_published=True)
+                if data:
+                    self.send_json({"note": data[0]})
+                else:
+                    self.send_error_json("Note not found", status=404)
+            except ValueError:
+                self.send_error_json("Invalid note ID", status=400)
             return
 
         if path.startswith("/api/notes/") and path.endswith("/view"):

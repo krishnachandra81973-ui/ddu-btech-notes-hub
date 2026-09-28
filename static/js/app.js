@@ -329,6 +329,14 @@ const App = {
 
   // ------------------- Router -------------------
   handleRouting() {
+    // Check if query params have direct note link, e.g. ?note=123 or ?id=123
+    const urlParams = new URLSearchParams(window.location.search);
+    const directNoteId = urlParams.get("note") || urlParams.get("noteId") || urlParams.get("id");
+    if (directNoteId && (!window.location.hash || window.location.hash === "#home" || window.location.hash === "")) {
+      window.location.hash = `#note/${directNoteId}`;
+      return;
+    }
+
     const hash = window.location.hash.slice(1) || "home";
     const container = document.getElementById("main-content");
     if (!container) return;
@@ -411,6 +419,9 @@ const App = {
 
     if (hash === "home") {
       this.renderHome(container);
+    } else if (hash.startsWith("note/")) {
+      const noteId = hash.split("/")[1];
+      this.renderSharedNote(container, parseInt(noteId));
     } else if (hash === "semesters") {
       this.renderSemesters(container);
     } else if (hash.startsWith("semester/")) {
@@ -1783,6 +1794,10 @@ const App = {
                           <button onclick="App.downloadFile('${n.file_url}', '${escapeHtml(n.title)}', ${n.id})" class="btn-primary btn-sm">
                             Download
                           </button>
+                          <button onclick="App.shareNote(${n.id}, '${escapeHtml(n.title)}')" class="btn-secondary btn-sm" title="Share Note" style="display: inline-flex; align-items: center; gap: 4px;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                            Share
+                          </button>
                           <button onclick="App.toggleBookmark(${n.id})" title="Save note" style="padding: 6px; font-size: 1.1rem; color: var(--accent-amber);">
                             ★
                           </button>
@@ -2095,6 +2110,10 @@ const App = {
             </button>
             <button onclick="App.downloadFile('${n.file_url}', '${escapeHtml(n.title)}', ${n.id})" class="btn-primary btn-sm">
               Download
+            </button>
+            <button onclick="App.shareNote(${n.id}, '${escapeHtml(n.title)}')" class="btn-secondary btn-sm" title="Share Note" style="display: inline-flex; align-items: center; gap: 4px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              Share
             </button>
             <button onclick="App.toggleBookmark(${n.id})" title="Save note" style="padding: 6px; font-size: 1.1rem; color: var(--accent-amber);">
               ★
@@ -2799,12 +2818,13 @@ const App = {
   },
 
   // ------------------- PDF Viewer Modal -------------------
-  openPdfViewer(fileUrl, title = "Document Preview", noteId = null) {
-    if (!Auth.currentUser) {
+  openPdfViewer(fileUrl, title = "Document Preview", noteId = null, isDirectShared = false) {
+    if (!Auth.currentUser && !isDirectShared) {
       Auth.openModal("login");
       this.toast("Study notes aur documents dekhne ke liye kripya pahle Student Login karein.", "warning");
       return;
     }
+    this.currentPdfNote = { fileUrl, title, noteId };
     const modal = document.getElementById("pdf-viewer-modal");
     if (!modal) return;
     const titleEl = document.getElementById("pdf-viewer-title");
@@ -2953,6 +2973,267 @@ const App = {
     }
   },
 
+  // ------------------- Note Sharing Engine -------------------
+  shareCurrentPdf() {
+    if (!this.currentPdfNote) {
+      this.toast("No active document to share", "info");
+      return;
+    }
+    const { noteId, title, fileUrl } = this.currentPdfNote;
+    this.shareNote(noteId, title, fileUrl);
+  },
+
+  async shareNote(noteId, title, fileUrl = "") {
+    const topic = (title || "Study Note").trim();
+    // Direct website URL pointing to this specific note
+    const shareUrl = noteId 
+      ? `${window.location.origin}${window.location.pathname}#note/${noteId}`
+      : window.location.href;
+
+    // Requirement: "share link me sirf notes ka topic likh ker aaye"
+    // Share text contains strictly the note topic and the direct website link
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: topic,
+          text: topic,
+          url: shareUrl
+        });
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return; // User dismissed share sheet
+      }
+    }
+
+    // Fallback or Desktop: Open sleek Share Modal with WhatsApp, Telegram & Copy Link
+    this.openShareModal(topic, shareUrl);
+  },
+
+  openShareModal(topic, shareUrl) {
+    const modal = document.getElementById("share-modal");
+    const topicEl = document.getElementById("share-modal-topic");
+    const urlInput = document.getElementById("share-modal-url");
+    const waLink = document.getElementById("share-modal-whatsapp");
+    const tgLink = document.getElementById("share-modal-telegram");
+
+    if (topicEl) topicEl.innerText = topic;
+    if (urlInput) urlInput.value = shareUrl;
+
+    // Direct WhatsApp share - strictly note topic and direct website link
+    if (waLink) {
+      const waText = encodeURIComponent(`${topic}\n${shareUrl}`);
+      waLink.href = `https://api.whatsapp.com/send?text=${waText}`;
+    }
+
+    // Direct Telegram share - strictly note topic and URL
+    if (tgLink) {
+      tgLink.href = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(topic)}`;
+    }
+
+    if (modal) {
+      modal.classList.add("active");
+    } else {
+      this.copyShareUrl(shareUrl, topic);
+    }
+  },
+
+  async copyShareUrl(customUrl = null, customTopic = null) {
+    const urlInput = document.getElementById("share-modal-url");
+    const shareUrl = customUrl || (urlInput ? urlInput.value : window.location.href);
+    const topic = customTopic || document.getElementById("share-modal-topic")?.innerText || "";
+    // Strictly topic and website link
+    const copyText = topic ? `${topic}\n${shareUrl}` : shareUrl;
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(copyText);
+      } else if (urlInput) {
+        urlInput.select();
+        document.execCommand("copy");
+      }
+      const copyBtn = document.getElementById("share-modal-copy-btn");
+      if (copyBtn) {
+        const orig = copyBtn.innerText;
+        copyBtn.innerText = "✓ Copied!";
+        copyBtn.style.background = "var(--accent-emerald)";
+        setTimeout(() => {
+          copyBtn.innerText = orig;
+          copyBtn.style.background = "";
+        }, 2000);
+      }
+      this.toast("Note link copied! Share it with classmates.", "success");
+    } catch (e) {
+      if (urlInput) {
+        urlInput.select();
+        document.execCommand("copy");
+        this.toast("Note link copied to clipboard!", "success");
+      }
+    }
+  },
+
+  // ------------------- Shared Note Direct Landing -------------------
+  async renderSharedNote(container, noteId) {
+    if (!noteId || isNaN(noteId)) {
+      window.location.hash = "#notes";
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="container" style="padding: 40px 20px 80px; max-width: 900px; margin: 0 auto;">
+        <div style="text-align: center; padding: 60px 0;">
+          <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">Opening note on DDU B.Tech Notes Hub...</p>
+        </div>
+      </div>
+    `;
+
+    let note = null;
+    try {
+      const res = await fetch(`/api/notes?id=${noteId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.notes && data.notes.length > 0) {
+          note = data.notes[0];
+        } else if (data.note) {
+          note = data.note;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch shared note via API, checking fallback:", e);
+    }
+
+    // Fallback to window.DDU_DATA
+    if (!note && window.DDU_DATA && window.DDU_DATA.notes) {
+      note = window.DDU_DATA.notes.find(n => n.id === noteId);
+      if (note) {
+        const sub = (window.DDU_DATA.subjects || []).find(s => s.id === note.subject_id);
+        if (sub) {
+          note.subject_name = sub.name;
+          note.subject_code = sub.code;
+          note.semester_number = sub.semester_id;
+        }
+      }
+    }
+
+    if (!note) {
+      container.innerHTML = `
+        <div class="container" style="padding: 60px 20px; text-align: center; max-width: 600px; margin: 0 auto;">
+          <div style="font-size: 3rem; margin-bottom: 12px;">📄</div>
+          <h2 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 10px;">Study Note Not Found</h2>
+          <p style="color: var(--text-muted); margin-bottom: 24px; font-size: 0.95rem;">
+            The requested note might have been updated or moved. You can browse all verified semester notes from the portal.
+          </p>
+          <a href="#notes" class="btn-primary">Browse All Notes Explorer</a>
+        </div>
+      `;
+      return;
+    }
+
+    // Render Shared Note Card & Exploration Options
+    container.innerHTML = `
+      <div class="container" style="padding: 40px 20px 80px; max-width: 900px; margin: 0 auto;">
+        
+        <!-- Navigation Link -->
+        <div style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <a href="#notes" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+            ← Back to All Notes Explorer
+          </a>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">
+            DDU B.Tech Notes Hub • Official Portal
+          </span>
+        </div>
+
+        <!-- Shared Note Hero Card -->
+        <div style="background: var(--bg-card); border: 2px solid var(--primary-light); border-radius: var(--radius-lg); padding: 32px 28px; box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08); margin-bottom: 30px; position: relative;">
+          
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+            <span style="background: rgba(37, 99, 235, 0.12); color: var(--primary); font-weight: 700; font-size: 0.78rem; padding: 4px 10px; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.5px;">
+              Shared Note
+            </span>
+            <span class="subject-code-tag" style="margin: 0; font-size: 0.8rem;">
+              ${escapeHtml(note.subject_code || 'B.Tech')}
+            </span>
+            <span style="font-size: 0.82rem; color: var(--accent-emerald); font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+              <span>✓</span> Verified Material
+            </span>
+          </div>
+
+          <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--text-main); line-height: 1.3; margin-bottom: 10px;">
+            ${escapeHtml(note.title)}
+          </h1>
+
+          <div style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 20px;">
+            ${escapeHtml(note.subject_name || '')} • Semester ${note.semester_number || '1'} • ${note.unit_title || (note.unit_number ? 'Unit ' + note.unit_number : 'General')} • ${note.file_size || 'PDF'}
+          </div>
+
+          <!-- Note Actions -->
+          <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding-top: 14px; border-top: 1px solid var(--border);">
+            <button onclick="App.openPdfViewer('${note.file_url}', '${escapeHtml(note.title)}', ${note.id}, true)" class="btn-primary" style="padding: 12px 24px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; font-size: 1rem; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);">
+              👁️ Read Note Online
+            </button>
+            <button onclick="App.downloadFile('${note.file_url}', '${escapeHtml(note.title)}', ${note.id})" class="btn-secondary" style="padding: 12px 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+              ⬇ Download PDF
+            </button>
+            <button onclick="App.shareNote(${note.id}, '${escapeHtml(note.title)}')" class="btn-secondary" style="padding: 12px 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              Share with Classmates
+            </button>
+            ${note.semester_number ? `
+              <a href="#semester/${note.semester_number}" class="btn-secondary" style="padding: 12px 20px; font-weight: 700;">
+                📚 All Sem ${note.semester_number} Notes
+              </a>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Student Onboarding Banner for Guests -->
+        ${!Auth.currentUser ? `
+          <div style="background: linear-gradient(135deg, rgba(30, 64, 175, 0.08), rgba(16, 185, 129, 0.08)); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 26px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+            <div style="max-width: 520px;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                <span style="font-size: 1.4rem;">🎓</span>
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 0;">
+                  DDU B.Tech Notes Hub par naye hain?
+                </h3>
+              </div>
+              <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0; line-height: 1.5;">
+                Apna Free Student Account banayein aur sabhi 1st se 8th Semester ke subject-wise notes, 5-year PYQs aur official syllabus access karein!
+              </p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button onclick="Auth.openModal('register')" class="btn-primary" style="font-weight: 700; padding: 10px 18px;">
+                ✨ Free Register (5 Sec)
+              </button>
+              <button onclick="Auth.openModal('login')" class="btn-secondary" style="font-weight: 700; padding: 10px 18px;">
+                Student Login
+              </button>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Quick Subject & Semester Navigation -->
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 22px;">
+          <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+            <span>📖</span> Explore More Study Materials
+          </h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+            Access all B.Tech curricula, semester lecture notes, previous examination question papers, and syllabus schemes on DDU Notes Hub.
+          </p>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <a href="#semesters" class="btn-secondary btn-sm">All Semesters (1 to 8)</a>
+            <a href="#syllabus" class="btn-secondary btn-sm">Official Syllabus</a>
+            <a href="#pyq" class="btn-secondary btn-sm">PYQ Papers (2021-2025)</a>
+            <a href="#notes" class="btn-secondary btn-sm">All Notes Search</a>
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    // Automatically open the document reader for a seamless experience
+    this.openPdfViewer(note.file_url, note.title, note.id, true);
+  },
+
   // ------------------- Modals Control -------------------
   showGenericModal(htmlContent) {
     let container = document.getElementById("generic-modal-overlay");
@@ -2997,7 +3278,7 @@ const App = {
             window.location.hash = "#admin";
           } else {
             const currentHash = window.location.hash.slice(1);
-            if (["notes", "pyq", "syllabus"].includes(currentHash) || currentHash.startsWith("semester/")) {
+            if (["notes", "pyq", "syllabus"].includes(currentHash) || currentHash.startsWith("semester/") || currentHash.startsWith("note/")) {
               App.handleRouting();
             } else {
               window.location.hash = "#dashboard";
@@ -3041,7 +3322,7 @@ const App = {
           Auth.closeModal();
           App.toast("Aapka account safalta-poorvak ban gaya! Sabhi notes aur study material unlock ho gaye hain.", "success");
           const currentHash = window.location.hash.slice(1);
-          if (["notes", "pyq", "syllabus"].includes(currentHash) || currentHash.startsWith("semester/")) {
+          if (["notes", "pyq", "syllabus"].includes(currentHash) || currentHash.startsWith("semester/") || currentHash.startsWith("note/")) {
             App.handleRouting();
           } else {
             window.location.hash = "#dashboard";

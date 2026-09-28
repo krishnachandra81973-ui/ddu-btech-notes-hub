@@ -911,7 +911,7 @@ def get_subject_detail(subject_id):
 
 # ----------------- Notes Queries & CRUD -----------------
 
-def get_notes(semester_id=None, subject_id=None, unit_number=None, branch=None, search=None, only_published=True, status=None):
+def get_notes(semester_id=None, subject_id=None, unit_number=None, branch=None, search=None, only_published=True, status=None, note_id=None):
     conn = get_connection()
     try:
         notes_registry.ensure_custom_notes_synced(conn)
@@ -928,6 +928,9 @@ def get_notes(semester_id=None, subject_id=None, unit_number=None, branch=None, 
     WHERE 1=1
     """
     params = []
+    if note_id:
+        query += " AND n.id = ?"
+        params.append(note_id)
     if only_published:
         query += " AND n.is_published = 1 AND (n.is_verified = 1 OR n.is_verified IS NULL)"
     if status:
