@@ -17,18 +17,25 @@ if BASE_DIR not in sys.path:
 ORIGINAL_DB = os.path.join(BASE_DIR, "ddu_portal.db")
 TMP_DB = "/tmp/ddu_portal.db"
 
-if not os.path.exists(TMP_DB):
-    if os.path.exists(ORIGINAL_DB):
+is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or not os.access(BASE_DIR, os.W_OK))
+
+if is_serverless:
+    if not os.path.exists(TMP_DB) and os.path.exists(ORIGINAL_DB):
         try:
             shutil.copy2(ORIGINAL_DB, TMP_DB)
         except Exception:
             pass
-
-DB_PATH = TMP_DB if os.path.exists(TMP_DB) else ORIGINAL_DB
+    DB_PATH = TMP_DB
+else:
+    DB_PATH = ORIGINAL_DB
 
 import database
 import user_registry
 database.DB_PATH = DB_PATH
+try:
+    database.ensure_db_initialized()
+except Exception:
+    pass
 try:
     database.ensure_db_schema()
 except Exception:

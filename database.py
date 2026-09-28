@@ -7,17 +7,65 @@ import user_registry
 import notes_registry
 import updates_registry
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ddu_portal.db")
+def _get_default_db_path():
+    if os.environ.get("DB_PATH"):
+        return os.environ.get("DB_PATH")
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    orig = os.path.join(base_dir, "ddu_portal.db")
+    tmp = "/tmp/ddu_portal.db"
+    # If running on Vercel, AWS Lambda, or directory is read-only
+    is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or not os.access(base_dir, os.W_OK))
+    if is_serverless:
+        if not os.path.exists(tmp) and os.path.exists(orig):
+            try:
+                import shutil
+                shutil.copy2(orig, tmp)
+            except Exception:
+                pass
+        return tmp
+    return orig
+
+DB_PATH = _get_default_db_path()
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON;")
-    conn.execute("PRAGMA journal_mode = WAL;")
-    return conn
+    global DB_PATH
+    # Ensure database is initialized before connecting if file doesn't exist
+    if not os.path.exists(DB_PATH) or os.path.getsize(DB_PATH) == 0:
+        ensure_db_initialized()
+
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON;")
+        try:
+            if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+                conn.execute("PRAGMA journal_mode = MEMORY;")
+            else:
+                conn.execute("PRAGMA journal_mode = WAL;")
+        except Exception:
+            try:
+                conn.execute("PRAGMA journal_mode = DELETE;")
+            except Exception:
+                pass
+        return conn
+    except sqlite3.OperationalError:
+        # Fallback to /tmp/ddu_portal.db if original was on a read-only filesystem
+        if DB_PATH != "/tmp/ddu_portal.db":
+            DB_PATH = "/tmp/ddu_portal.db"
+            ensure_db_initialized()
+            conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA foreign_keys = ON;")
+            try:
+                conn.execute("PRAGMA journal_mode = MEMORY;")
+            except Exception:
+                pass
+            return conn
+        raise
 
 def ensure_db_initialized():
     """Initializes and seeds database if users table is missing or DB file is empty"""
+    global DB_PATH
     needs_init = False
     if not os.path.exists(DB_PATH) or os.path.getsize(DB_PATH) == 0:
         needs_init = True
@@ -33,12 +81,23 @@ def ensure_db_initialized():
             needs_init = True
 
     if needs_init:
-        init_db()
+        # Check writability of target directory
+        target_dir = os.path.dirname(os.path.abspath(DB_PATH))
+        if target_dir and not os.access(target_dir, os.W_OK):
+            DB_PATH = "/tmp/ddu_portal.db"
         try:
+            init_db()
             import seed_data
             seed_data.seed()
         except Exception:
-            pass
+            if DB_PATH != "/tmp/ddu_portal.db":
+                DB_PATH = "/tmp/ddu_portal.db"
+                try:
+                    init_db()
+                    import seed_data
+                    seed_data.seed()
+                except Exception:
+                    pass
 
 def hash_password(password: str, salt: str = None) -> tuple[str, str]:
     if not salt:
@@ -429,11 +488,15 @@ def authenticate_user(email, password):
         return {k: v for k, v in user_registry.ADMIN_USER.items() if k not in ("password_hash", "salt", "plain_password")}
 
     # 2. Check Database with PBKDF2 verification
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE email = ?", (email_clean,))
-    user = cursor.fetchone()
-    conn.close()
+    user = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = ?", (email_clean,))
+        user = cursor.fetchone()
+        conn.close()
+    except Exception:
+        user = None
 
     if user:
         if not user["is_active"]:

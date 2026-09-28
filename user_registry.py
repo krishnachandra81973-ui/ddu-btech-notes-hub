@@ -21,9 +21,11 @@ SECRET_KEY = os.environ.get("DDU_PORTAL_SECRET", "ddu_btech_portal_secure_jwt_20
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@ddunotes.ac.in")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 ADMIN_USER = {
-    "id": 9,
+    "id": 1,
     "full_name": "Keshav Narayan (Admin)",
     "email": ADMIN_EMAIL,
+    "password_hash": "f4faccf873ab758651d151b7a5592c309f730cbca9c1f6c525acf9d3c3fdb8d8",
+    "salt": "1645735c8a5d42f3fdc0d70ee9c06f71",
     "college": "Deen Dayal Upadhyaya Gorakhpur University",
     "course": "B.Tech",
     "branch": "CSE",
@@ -348,6 +350,11 @@ def find_user_in_registry(email):
     email_clean = email.lower().strip()
     if email_clean in FAKE_EMAILS:
         return None
+
+    if email_clean == ADMIN_EMAIL.lower():
+        admin_copy = dict(ADMIN_USER)
+        admin_copy.pop("plain_password", None)
+        return admin_copy
 
     # Check local registry first
     users = load_registry(fetch_remote=False)
