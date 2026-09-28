@@ -25,3 +25,6 @@ students_registry.json
 *.log
 .DS_Store
 Thumbs.db
+
+# Test uploads
+static/uploads/sample_exam_notes_*.pdf

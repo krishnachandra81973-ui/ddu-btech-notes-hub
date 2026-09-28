@@ -2973,7 +2973,18 @@ const App = {
     }
   },
 
-  // ------------------- Note Sharing Engine -------------------
+  // ------------------- Note Sharing Engine with 1st Page Preview -------------------
+  slugify(text) {
+    if (!text) return "chapter-notes";
+    return text
+      .toString()
+      .trim()
+      .replace(/[\/\\#?&]/g, "-") // replace URL path and query delimiters
+      .replace(/[^\w\s-]/g, "")    // strip non-alphanumeric except space and hyphen
+      .replace(/[\s_-]+/g, "-")    // collapse spaces and underscores into hyphens
+      .replace(/^-+|-+$/g, "");    // trim leading and trailing hyphens
+  },
+
   shareCurrentPdf() {
     if (!this.currentPdfNote) {
       this.toast("No active document to share", "info");
@@ -2985,55 +2996,115 @@ const App = {
 
   async shareNote(noteId, title, fileUrl = "") {
     const topic = (title || "Study Note").trim();
-    // Direct website URL pointing to this specific note
-    const shareUrl = noteId 
-      ? `${window.location.origin}${window.location.pathname}#note/${noteId}`
-      : window.location.href;
+    const topicSlug = this.slugify(topic);
 
-    // Requirement: "share link me sirf notes ka topic likh ker aaye"
-    // Share text contains strictly the note topic and the direct website link
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: topic,
-          text: topic,
-          url: shareUrl
-        });
-        return;
-      } catch (err) {
-        if (err.name === 'AbortError') return; // User dismissed share sheet
+    // Requirement: "link me chapter(topic)name aaye"
+    // Direct website URL pointing to this specific note, with the chapter/topic name slug right in the link!
+    const origin = window.location.origin;
+    const pathname = window.location.pathname.replace(/\/+$/, "");
+    const shareUrl = noteId 
+      ? `${origin}${pathname}/#note/${noteId}/${topicSlug}`
+      : `${origin}${pathname}/#preview/${topicSlug}`;
+
+    this.currentShareData = { noteId, topic, shareUrl, fileUrl, topicSlug };
+
+    // Find note metadata for 1st page preview
+    let noteMeta = null;
+    if (noteId && window.DDU_DATA && window.DDU_DATA.notes) {
+      noteMeta = window.DDU_DATA.notes.find(n => n.id === noteId);
+      if (noteMeta) {
+        const sub = (window.DDU_DATA.subjects || []).find(s => s.id === noteMeta.subject_id);
+        if (sub) {
+          noteMeta.subject_name = sub.name;
+          noteMeta.subject_code = sub.code;
+          noteMeta.semester_number = sub.semester_id;
+        }
       }
     }
 
-    // Fallback or Desktop: Open sleek Share Modal with WhatsApp, Telegram & Copy Link
-    this.openShareModal(topic, shareUrl);
+    // Open sleek Share Modal with 1st page preview and chapter-slugged link
+    this.openShareModal(topic, shareUrl, fileUrl, noteMeta);
   },
 
-  openShareModal(topic, shareUrl) {
+  openShareModal(topic, shareUrl, fileUrl = "", noteMeta = null) {
     const modal = document.getElementById("share-modal");
     const topicEl = document.getElementById("share-modal-topic");
     const urlInput = document.getElementById("share-modal-url");
     const waLink = document.getElementById("share-modal-whatsapp");
     const tgLink = document.getElementById("share-modal-telegram");
+    const subcodeEl = document.getElementById("share-modal-subcode");
+    const semEl = document.getElementById("share-modal-sem");
+    const descPreviewEl = document.getElementById("share-modal-desc-preview");
+    const frameWrapper = document.getElementById("share-pdf-frame-wrapper");
+    const frameEl = document.getElementById("share-modal-pdf-frame");
+    const nativeBtn = document.getElementById("share-modal-native-btn");
 
     if (topicEl) topicEl.innerText = topic;
     if (urlInput) urlInput.value = shareUrl;
 
-    // Direct WhatsApp share - strictly note topic and direct website link
+    if (noteMeta) {
+      if (subcodeEl) subcodeEl.innerText = noteMeta.subject_code || (noteMeta.subject_name || "B.Tech");
+      if (semEl) semEl.innerText = `Semester ${noteMeta.semester_number || 1}`;
+      if (descPreviewEl && noteMeta.description) {
+        descPreviewEl.innerText = noteMeta.description;
+      }
+      if (!fileUrl && noteMeta.file_url) {
+        fileUrl = noteMeta.file_url;
+      }
+    } else {
+      if (subcodeEl) subcodeEl.innerText = "B.Tech";
+      if (semEl) semEl.innerText = "Semester Notes";
+    }
+
+    // Requirement: "jab share karu pdf to 1st page bhi thoda show"
+    // If PDF file URL is available, load 1st page preview in embedded frame
+    if (fileUrl && fileUrl.toLowerCase().includes(".pdf") && frameWrapper && frameEl) {
+      frameWrapper.style.display = "block";
+      const cleanUrl = fileUrl.startsWith("http") ? fileUrl : (window.location.origin + (fileUrl.startsWith("/") ? "" : "/") + fileUrl);
+      frameEl.src = `${cleanUrl}#page=1&view=FitH&toolbar=0&navpanes=0&scrollbar=0`;
+    } else if (frameWrapper) {
+      frameWrapper.style.display = "none";
+    }
+
+    // Direct WhatsApp share - strictly note topic and direct website link with chapter name
     if (waLink) {
-      const waText = encodeURIComponent(`${topic}\n${shareUrl}`);
+      const waText = encodeURIComponent(`*${topic}*\n📄 DDU Gorakhpur University B.Tech Study Material (1st Page Preview):\n${shareUrl}`);
       waLink.href = `https://api.whatsapp.com/send?text=${waText}`;
     }
 
     // Direct Telegram share - strictly note topic and URL
     if (tgLink) {
-      tgLink.href = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(topic)}`;
+      tgLink.href = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(topic + " (DDU B.Tech Notes)")}`;
+    }
+
+    // Native Web Share button
+    if (nativeBtn) {
+      if (navigator.share) {
+        nativeBtn.style.display = "inline-flex";
+      } else {
+        nativeBtn.style.display = "none";
+      }
     }
 
     if (modal) {
       modal.classList.add("active");
     } else {
       this.copyShareUrl(shareUrl, topic);
+    }
+  },
+
+  async triggerNativeShare() {
+    if (!navigator.share || !this.currentShareData) return;
+    try {
+      await navigator.share({
+        title: this.currentShareData.topic,
+        text: `*${this.currentShareData.topic}* — DDU B.Tech Study Notes`,
+        url: this.currentShareData.shareUrl
+      });
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        this.copyShareUrl(this.currentShareData.shareUrl, this.currentShareData.topic);
+      }
     }
   },
 
@@ -3061,7 +3132,7 @@ const App = {
           copyBtn.style.background = "";
         }, 2000);
       }
-      this.toast("Note link copied! Share it with classmates.", "success");
+      this.toast("Note link copied! Chapter name included in URL.", "success");
     } catch (e) {
       if (urlInput) {
         urlInput.select();
@@ -3166,15 +3237,37 @@ const App = {
             ${escapeHtml(note.subject_name || '')} • Semester ${note.semester_number || '1'} • ${note.unit_title || (note.unit_number ? 'Unit ' + note.unit_number : 'General')} • ${note.file_size || 'PDF'}
           </div>
 
+          <!-- Document 1st Page Preview Display -->
+          <div style="margin: 22px 0; border: 1.5px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: #ffffff; box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
+            <div style="background: linear-gradient(135deg, #1e40af, #0284c7); padding: 8px 16px; color: #ffffff; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
+              <span style="display: flex; align-items: center; gap: 6px;">
+                <span>📄</span> 1st Page Document Preview
+              </span>
+              <span style="background: rgba(255,255,255,0.22); padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 800;">
+                PAGE 1 OF PDF
+              </span>
+            </div>
+            
+            ${note.file_url && note.file_url.toLowerCase().includes('.pdf') ? `
+              <div style="width: 100%; height: 380px; background: #f8fafc; position: relative;">
+                <iframe src="${note.file_url.startsWith('http') ? note.file_url : (window.location.origin + (note.file_url.startsWith('/') ? '' : '/') + note.file_url)}#page=1&view=FitH&toolbar=0&navpanes=0&scrollbar=0" style="width: 100%; height: 100%; border: none;" title="1st Page of PDF Note"></iframe>
+              </div>
+            ` : `
+              <div style="padding: 24px; text-align: center; color: var(--text-muted);">
+                <p style="margin: 0; font-size: 0.9rem;">Document preview available in online reader.</p>
+              </div>
+            `}
+          </div>
+
           <!-- Note Actions -->
           <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding-top: 14px; border-top: 1px solid var(--border);">
             <button onclick="App.openPdfViewer('${note.file_url}', '${escapeHtml(note.title)}', ${note.id}, true)" class="btn-primary" style="padding: 12px 24px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; font-size: 1rem; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);">
-              👁️ Read Note Online
+              👁️ Read Full Note Online
             </button>
             <button onclick="App.downloadFile('${note.file_url}', '${escapeHtml(note.title)}', ${note.id})" class="btn-secondary" style="padding: 12px 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
               ⬇ Download PDF
             </button>
-            <button onclick="App.shareNote(${note.id}, '${escapeHtml(note.title)}')" class="btn-secondary" style="padding: 12px 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+            <button onclick="App.shareNote(${note.id}, '${escapeHtml(note.title)}', '${note.file_url || ''}')" class="btn-secondary" style="padding: 12px 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
               Share with Classmates
             </button>

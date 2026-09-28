@@ -100,6 +100,10 @@
       "dest": "api/index.py"
     },
     {
+      "src": "/note/(.*)",
+      "dest": "api/index.py"
+    },
+    {
       "src": "/admin",
       "dest": "/admin.html"
     },

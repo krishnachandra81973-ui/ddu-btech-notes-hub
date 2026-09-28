@@ -271,6 +271,16 @@ def run_tests():
         assert status == 200
         print("  ✓ Admin toggled student account status.")
 
+        # TEST 6.5: Verify Shared Note Route with Chapter Name Slug and OpenGraph metadata
+        print("\n[TEST 6.5] Verifying Shared Note Route with Chapter/Topic Slug...")
+        status, note_html, headers = request("/note/210/Unit-1-Introduction-To-Algorithms")
+        assert status == 200
+        assert "text/html" in headers.get("Content-Type", "")
+        assert b"og:title" in note_html
+        assert b"og:description" in note_html
+        assert b"/#note/210/Unit-1-Introduction-To-Algorithms" in note_html
+        print("  ✓ Shared note link with chapter slug returns 200 OK with rich OpenGraph tags and client redirect!")
+
         # TEST 7: Secure Multipart File Upload
         print("\n[TEST 7] Verifying Secure Multipart File Upload & PDF Serving...")
         boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"

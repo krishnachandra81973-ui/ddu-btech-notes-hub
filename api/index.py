@@ -9,6 +9,7 @@ import time
 import secrets
 import threading
 import re
+import html
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
@@ -257,6 +258,76 @@ class handler(BaseHTTPRequestHandler):
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 return
+
+            # Dynamic Shared Note Landing with Rich OpenGraph & 1st Page Preview Meta
+            if path.startswith("/note/"):
+                parts = [p for p in path.split("/") if p]
+                # parts[0] == 'note', parts[1] == note_id, parts[2] == optional slug
+                note_id = None
+                if len(parts) >= 2 and parts[1].isdigit():
+                    note_id = int(parts[1])
+                
+                note = None
+                if note_id:
+                    notes = database.get_notes(note_id=note_id, only_published=True)
+                    if notes:
+                        note = notes[0]
+                
+                if note:
+                    title = html.escape(str(note.get("title") or "B.Tech Lecture Note"))
+                    sub_name = html.escape(str(note.get("subject_name") or "B.Tech Engineering"))
+                    sub_code = html.escape(str(note.get("subject_code") or "DDU"))
+                    sem = note.get("semester_number") or 1
+                    unit = note.get("unit_number") or 1
+                    slug = parts[2] if len(parts) >= 3 and parts[2] else re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '-')
+                    desc = f"DDU Gorakhpur University B.Tech Sem {sem} • {sub_name} ({sub_code}) • Unit {unit} Lecture Notes & PDF Document."
+                    
+                    page_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title} — DDU B.Tech Notes Hub</title>
+  <meta name="description" content="{desc}">
+  
+  <!-- OpenGraph Metadata for WhatsApp, Telegram, Twitter, LinkedIn -->
+  <meta property="og:title" content="{title}">
+  <meta property="og:description" content="{desc}">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://ddu-btech-kn-notes.vercel.app/note/{note_id}/{slug}">
+  <meta property="og:image" content="https://ddu-btech-kn-notes.vercel.app/logo.png">
+  <meta property="og:site_name" content="DDU B.Tech Notes Hub">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{title}">
+  <meta name="twitter:description" content="{desc}">
+  <meta name="twitter:image" content="https://ddu-btech-kn-notes.vercel.app/logo.png">
+  
+  <link rel="stylesheet" href="/static/css/style.css?v=3">
+  <script>
+    // Seamless browser transition to single page app
+    window.location.replace("/#note/{note_id}/{slug}");
+  </script>
+</head>
+<body style="font-family: sans-serif; background: #0f172a; color: #f8fafc; padding: 40px 20px; text-align: center;">
+  <div style="max-width: 600px; margin: 0 auto; background: #1e293b; border-radius: 12px; padding: 30px; border: 1px solid #334155;">
+    <div style="font-size: 0.85rem; color: #38bdf8; font-weight: 700; text-transform: uppercase;">DDU B.Tech Study Note</div>
+    <h1 style="font-size: 1.6rem; margin: 12px 0;">{title}</h1>
+    <p style="color: #94a3b8; font-size: 0.95rem;">{sub_name} • Semester {sem} • Unit {unit}</p>
+    <p style="margin-top: 20px;"><a href="/#note/{note_id}/{slug}" style="display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 700;">Open Note in DDU Hub →</a></p>
+  </div>
+</body>
+</html>"""
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Cache-Control", "public, max-age=3600")
+                    self.end_headers()
+                    self.wfile.write(page_html.encode("utf-8"))
+                    return
+                else:
+                    self.send_response(302)
+                    self.send_header("Location", "/#notes")
+                    self.end_headers()
+                    return
 
             # 1. Semesters
             if path == "/api/semesters":
