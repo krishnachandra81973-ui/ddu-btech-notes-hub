@@ -166,6 +166,16 @@ def run_tests():
         assert len(json.loads(content.decode())["syllabus"]) > 0
         print("  ✓ Syllabus API verified.")
 
+        status, content, _ = request("/api/syllabus?branch=IT")
+        it_syl = json.loads(content.decode())["syllabus"]
+        assert len(it_syl) > 0
+        print(f"  ✓ Information Technology (IT) Syllabus verified: {len(it_syl)} documents.")
+
+        status, content, _ = request("/api/syllabus?branch=ME")
+        me_syl = json.loads(content.decode())["syllabus"]
+        assert len(me_syl) > 0
+        print(f"  ✓ Mechanical Engineering (ME) Syllabus verified: {len(me_syl)} documents.")
+
         status, content, _ = request("/api/pyqs?year=2024")
         assert len(json.loads(content.decode())["pyqs"]) > 0
         print("  ✓ Previous Year Papers API verified.")

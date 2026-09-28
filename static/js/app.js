@@ -796,6 +796,52 @@ const App = {
                 </div>
               </div>
 
+              <div class="official-syllabus-card" style="border-left-color: #06b6d4;">
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                    <span style="font-size: 0.72rem; font-weight: 800; background: rgba(6, 182, 212, 0.15); color: #06b6d4; padding: 3px 8px; border-radius: 4px;">4-YEAR B.TECH IT</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Official DDU PDF</span>
+                  </div>
+                  <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">
+                    B.Tech Information Technology (Session 2024-25)
+                  </h3>
+                  <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
+                    Four-year degree scheme covering Network Architecture, Cloud Systems, Operating Systems, Information Security, Web Engineering, and Full-Stack development.
+                  </p>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: auto;">
+                  <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_it_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech IT Structure & Syllabus 2024-25')" class="btn-primary btn-sm" style="flex: 1;">
+                    👁️ Read Online
+                  </button>
+                  <a href="/static/uploads/ddu_official_btech_it_structure_syllabus_2024_25.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                    ⬇ Download
+                  </a>
+                </div>
+              </div>
+
+              <div class="official-syllabus-card" style="border-left-color: #f97316;">
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                    <span style="font-size: 0.72rem; font-weight: 800; background: rgba(249, 115, 22, 0.15); color: #f97316; padding: 3px 8px; border-radius: 4px;">4-YEAR B.TECH ME</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Official DDU PDF</span>
+                  </div>
+                  <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">
+                    B.Tech Mechanical Engineering (Session 2024-25)
+                  </h3>
+                  <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
+                    Comprehensive 4-year curriculum covering Thermodynamics, Fluid Mechanics, Theory of Machines, CAD/CAM, Robotics, Heat Transfer & Industrial Automation.
+                  </p>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: auto;">
+                  <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_me_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech ME Structure & Syllabus 2024-25')" class="btn-primary btn-sm" style="flex: 1;">
+                    👁️ Read Online
+                  </button>
+                  <a href="/static/uploads/ddu_official_btech_me_structure_syllabus_2024_25.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                    ⬇ Download
+                  </a>
+                </div>
+              </div>
+
               <div class="official-syllabus-card" style="border-left-color: #d97706;">
                 <div>
                   <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
@@ -1187,6 +1233,52 @@ const App = {
                   👁️ Read Online
                 </button>
                 <a href="/static/uploads/ddu_official_btech_cse_aids_syllabus.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                  ⬇ Download
+                </a>
+              </div>
+            </div>
+
+            <div class="official-syllabus-card" style="border-left-color: #06b6d4;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                  <span style="font-size: 0.72rem; font-weight: 800; background: rgba(6, 182, 212, 0.15); color: #06b6d4; padding: 3px 8px; border-radius: 4px;">4-YEAR B.TECH IT</span>
+                  <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Official DDU PDF</span>
+                </div>
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">
+                  B.Tech Information Technology (Session 2024-25)
+                </h3>
+                <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
+                  Four-year degree scheme covering Network Architecture, Cloud Systems, Operating Systems, Information Security, Web Engineering, and Full-Stack development.
+                </p>
+              </div>
+              <div style="display: flex; gap: 10px; margin-top: auto;">
+                <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_it_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech IT Structure & Syllabus 2024-25')" class="btn-primary btn-sm" style="flex: 1;">
+                  👁️ Read Online
+                </button>
+                <a href="/static/uploads/ddu_official_btech_it_structure_syllabus_2024_25.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                  ⬇ Download
+                </a>
+              </div>
+            </div>
+
+            <div class="official-syllabus-card" style="border-left-color: #f97316;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                  <span style="font-size: 0.72rem; font-weight: 800; background: rgba(249, 115, 22, 0.15); color: #f97316; padding: 3px 8px; border-radius: 4px;">4-YEAR B.TECH ME</span>
+                  <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Official DDU PDF</span>
+                </div>
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">
+                  B.Tech Mechanical Engineering (Session 2024-25)
+                </h3>
+                <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
+                  Comprehensive 4-year curriculum covering Thermodynamics, Fluid Mechanics, Theory of Machines, CAD/CAM, Robotics, Heat Transfer & Industrial Automation.
+                </p>
+              </div>
+              <div style="display: flex; gap: 10px; margin-top: auto;">
+                <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_me_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech ME Structure & Syllabus 2024-25')" class="btn-primary btn-sm" style="flex: 1;">
+                  👁️ Read Online
+                </button>
+                <a href="/static/uploads/ddu_official_btech_me_structure_syllabus_2024_25.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
                   ⬇ Download
                 </a>
               </div>
@@ -1745,6 +1837,30 @@ const App = {
               </div>
             </div>
 
+            <div class="official-syllabus-card" style="border-left-color: #06b6d4;">
+              <div>
+                <span style="font-size: 0.72rem; font-weight: 800; background: rgba(6, 182, 212, 0.15); color: #06b6d4; padding: 3px 8px; border-radius: 4px;">4-YEAR B.TECH IT</span>
+                <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin: 8px 0 4px;">B.Tech Information Technology (2024-25)</h4>
+                <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">Full 8-semester structure, Network Architecture, Cloud Systems, Cyber Defense & Web Engineering.</p>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_it_structure_syllabus_2024_25.pdf', 'B.Tech IT Structure & Syllabus 2024-25')" class="btn-primary btn-sm" style="flex: 1;">👁️ View</button>
+                <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_it_structure_syllabus_2024_25.pdf', 'B.Tech IT Structure & Syllabus 2024-25')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">⬇ Download</button>
+              </div>
+            </div>
+
+            <div class="official-syllabus-card" style="border-left-color: #f97316;">
+              <div>
+                <span style="font-size: 0.72rem; font-weight: 800; background: rgba(249, 115, 22, 0.15); color: #f97316; padding: 3px 8px; border-radius: 4px;">4-YEAR B.TECH ME</span>
+                <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin: 8px 0 4px;">B.Tech Mechanical Engineering (2024-25)</h4>
+                <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">Full 8-semester structure, Thermodynamics, SOM, Fluid Mechanics, CAD/CAM, Robotics & Automation.</p>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_me_structure_syllabus_2024_25.pdf', 'B.Tech ME Structure & Syllabus 2024-25')" class="btn-primary btn-sm" style="flex: 1;">👁️ View</button>
+                <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_me_structure_syllabus_2024_25.pdf', 'B.Tech ME Structure & Syllabus 2024-25')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">⬇ Download</button>
+              </div>
+            </div>
+
             <div class="official-syllabus-card" style="border-left-color: #d97706;">
               <div>
                 <span style="font-size: 0.72rem; font-weight: 800; background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); padding: 3px 8px; border-radius: 4px;">POSTGRADUATE</span>
@@ -1767,6 +1883,15 @@ const App = {
             <option value="">All Semesters</option>
             ${[1, 2, 3, 4, 5, 6, 7, 8].map(s => `<option value="${s}">Semester ${s}</option>`).join('')}
           </select>
+          <select id="syl-branch-filter" onchange="App.filterSyllabus()" class="form-control" style="max-width: 240px;">
+            <option value="">All Branches</option>
+            <option value="CSE">Computer Science & Engg (CSE)</option>
+            <option value="IT">Information Technology (IT)</option>
+            <option value="ME">Mechanical Engineering (ME)</option>
+            <option value="ECE">Electronics & Communication (ECE)</option>
+            <option value="EE">Electrical Engineering (EE)</option>
+            <option value="CE">Civil Engineering (CE)</option>
+          </select>
         </div>
 
         <div id="syllabus-list-container" class="notes-pill-list">
@@ -1780,12 +1905,17 @@ const App = {
 
   async filterSyllabus() {
     const semFilter = document.getElementById("syl-sem-filter");
+    const branchFilter = document.getElementById("syl-branch-filter");
     const semId = semFilter ? semFilter.value : "";
+    const branch = branchFilter ? branchFilter.value : "";
     const listEl = document.getElementById("syllabus-list-container");
     if (!listEl) return;
 
     try {
-      const url = semId ? `/api/syllabus?semester_id=${semId}` : "/api/syllabus";
+      const params = [];
+      if (semId) params.push(`semester_id=${semId}`);
+      if (branch) params.push(`branch=${encodeURIComponent(branch)}`);
+      const url = params.length > 0 ? `/api/syllabus?${params.join('&')}` : "/api/syllabus";
       const data = await this.safeFetch(url);
       const list = data.syllabus || [];
 
@@ -1799,7 +1929,14 @@ const App = {
           <div class="note-info">
             <span style="font-size: 1.4rem;">📑</span>
             <div>
-              <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">${escapeHtml(s.title)}</div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">${escapeHtml(s.title)}</div>
+                ${s.branch || s.subject_branch ? `
+                  <span style="font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; background: rgba(59, 130, 246, 0.15); color: var(--primary);">
+                    ${escapeHtml(s.branch && s.branch !== 'All Branches' ? s.branch : (s.subject_branch || 'All Branches'))}
+                  </span>
+                ` : ''}
+              </div>
               <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
                 Sem ${s.semester_number} • ${escapeHtml(s.subject_name || 'Full Semester Curriculum')}
               </div>

@@ -661,6 +661,7 @@ const Admin = {
                 <thead>
                   <tr>
                     <th>Title</th>
+                    <th>Branch</th>
                     <th>Semester & Subject</th>
                     <th>PDF File</th>
                     <th>Status</th>
@@ -671,6 +672,11 @@ const Admin = {
                   ${list.map(s => `
                     <tr>
                       <td style="font-weight: 700;">${escapeHtml(s.title)}</td>
+                      <td>
+                        <span style="font-size: 0.75rem; font-weight: 700; background: rgba(59, 130, 246, 0.15); color: var(--primary); padding: 2px 7px; border-radius: 4px;">
+                          ${escapeHtml(s.branch && s.branch !== 'All Branches' ? s.branch : (s.subject_branch || 'All Branches'))}
+                        </span>
+                      </td>
                       <td>Sem ${s.semester_number} • ${escapeHtml(s.subject_name || 'All Subjects')}</td>
                       <td>
                         <button onclick="App.openPdfViewer('${s.file_url}', '${escapeHtml(s.title)}')" class="btn-secondary btn-sm">
@@ -1306,6 +1312,18 @@ const Admin = {
                 </select>
               </div>
               <div class="form-group">
+                <label class="form-label">Branch *</label>
+                <select name="branch" class="form-control">
+                  <option value="All Branches">All Branches</option>
+                  <option value="CSE">Computer Science & Engg (CSE)</option>
+                  <option value="IT">Information Technology (IT)</option>
+                  <option value="ME">Mechanical Engineering (ME)</option>
+                  <option value="ECE">Electronics & Communication (ECE)</option>
+                  <option value="EE">Electrical Engineering (EE)</option>
+                  <option value="CE">Civil Engineering (CE)</option>
+                </select>
+              </div>
+              <div class="form-group">
                 <label class="form-label">Subject</label>
                 <select name="subject_id" class="form-control">
                   <option value="">-- All Semester Subjects --</option>
@@ -1346,6 +1364,7 @@ const Admin = {
     const body = {
       title: form.title.value.trim(),
       semester_id: parseInt(form.semester_id.value),
+      branch: form.branch ? form.branch.value : "All Branches",
       subject_id: form.subject_id.value ? parseInt(form.subject_id.value) : null,
       description: form.description.value.trim(),
       file_url: form.file_url.value.trim(),

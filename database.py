@@ -267,6 +267,12 @@ def ensure_db_schema():
             pass
 
     try:
+        cursor.execute("ALTER TABLE syllabus ADD COLUMN branch TEXT DEFAULT 'All Branches';")
+        conn.commit()
+    except Exception:
+        pass
+
+    try:
         cursor.execute("UPDATE users SET plain_password = 'AdminPassword123!' WHERE email = 'admin@ddunotes.ac.in' AND (plain_password IS NULL OR plain_password = '');")
         # Ensure any leftover dummy accounts are removed
         cursor.execute("DELETE FROM users WHERE email IN ('student@ddu.ac.in', 'priya.sharma@ddu.ac.in');")
@@ -1001,7 +1007,7 @@ def delete_subject(subject_id):
 
 # ----------------- Syllabus Queries & CRUD -----------------
 
-def get_all_syllabus(semester_id=None, subject_id=None, only_published=True):
+def get_all_syllabus(semester_id=None, subject_id=None, branch=None, only_published=True):
     conn = get_connection()
     cursor = conn.cursor()
     query = """
@@ -1021,32 +1027,36 @@ def get_all_syllabus(semester_id=None, subject_id=None, only_published=True):
     if subject_id:
         query += " AND syl.subject_id = ?"
         params.append(subject_id)
+    if branch and branch != 'All Branches':
+        query += " AND (sub.branch LIKE ? OR sub.branch = 'All Branches' OR syl.branch LIKE ? OR syl.branch = 'All Branches' OR syl.title LIKE ?)"
+        branch_param = f"%{branch}%"
+        params.extend([branch_param, branch_param, branch_param])
     query += " ORDER BY sem.number ASC, sub.name ASC"
     cursor.execute(query, params)
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
     return rows
 
-def create_syllabus(semester_id, subject_id, title, description, file_url, is_published=1):
+def create_syllabus(semester_id, subject_id, title, description, file_url, is_published=1, branch='All Branches'):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    INSERT INTO syllabus (semester_id, subject_id, title, description, file_url, is_published)
-    VALUES (?, ?, ?, ?, ?, ?)
-    """, (semester_id, subject_id, title, description, file_url, is_published))
+    INSERT INTO syllabus (semester_id, subject_id, title, description, file_url, is_published, branch)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (semester_id, subject_id, title, description, file_url, is_published, branch))
     syl_id = cursor.lastrowid
     conn.commit()
     conn.close()
     return syl_id
 
-def update_syllabus(syl_id, semester_id, subject_id, title, description, file_url, is_published):
+def update_syllabus(syl_id, semester_id, subject_id, title, description, file_url, is_published, branch='All Branches'):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
     UPDATE syllabus
-    SET semester_id = ?, subject_id = ?, title = ?, description = ?, file_url = ?, is_published = ?, updated_at = CURRENT_TIMESTAMP
+    SET semester_id = ?, subject_id = ?, title = ?, description = ?, file_url = ?, is_published = ?, branch = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
-    """, (semester_id, subject_id, title, description, file_url, is_published, syl_id))
+    """, (semester_id, subject_id, title, description, file_url, is_published, branch, syl_id))
     conn.commit()
     conn.close()
     return True

@@ -1,0 +1,83 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page
+   /Parent 2 0 R
+   /MediaBox [0 0 612 792]
+   /Resources <<
+     /Font <<
+       /F1 4 0 R
+       /F2 5 0 R
+       /F3 6 0 R
+     >>
+   >>
+   /Contents 7 0 R
+>>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-BoldOblique >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+7 0 obj
+<< /Length 1041 >>
+stream
+BT
+/F1 16 Tf
+50 720 Td
+(Official Syllabus: BME-403 - Manufacturing Pr) Tj
+0 -24 Td
+/F2 12 Tf
+(Department of ME | B.Tech Semester 4) Tj
+0 -22 Td
+/F3 10 Tf
+(Deen Dayal Upadhyaya Gorakhpur University - Official Verified Syllabus) Tj
+0 -18 Td
+(Faculty of Engineering & Technology | Department of Engineering) Tj
+0 -30 Td
+/F1 12 Tf
+(Course Objectives, Credit Scheme & Unit Distribution:) Tj
+0 -18 Td
+/F3 10 Tf
+(Unit 1: Fundamental Principles, Formulations & Mathematical Modeling) Tj
+0 -15 Td
+(Unit 2: Core Engineering Theorems, Systematic Derivations & Analytical Laws) Tj
+0 -15 Td
+(Unit 3: Applied Systems, Parameter Evaluation & Design Methodologies) Tj
+0 -15 Td
+(Unit 4: Advanced Mechanisms, Computational Traces & Laboratory Experiments) Tj
+0 -15 Td
+(Unit 5: Modern Industrial Trends, Standards & NEP 2020 Real-World Applications) Tj
+0 -30 Td
+/F2 10 Tf
+(Evaluation: 30 Marks Continuous Sessional + 70 Marks University Examination) Tj
+0 -18 Td
+/F3 9 Tf
+(Verified & Approved by Board of Studies, Faculty of Engineering, DDUGU Gorakhpur.) Tj
+ET
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000287 00000 n 
+0000000366 00000 n 
+0000000452 00000 n 
+0000000531 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+1641
+%%EOF

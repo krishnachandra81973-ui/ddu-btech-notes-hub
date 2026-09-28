@@ -245,9 +245,11 @@ class handler(BaseHTTPRequestHandler):
             if path == "/api/syllabus":
                 sem_id = query.get("semester_id", [None])[0]
                 sub_id = query.get("subject_id", [None])[0]
+                branch = query.get("branch", [None])[0]
                 syllabus = database.get_all_syllabus(
                     semester_id=int(sem_id) if sem_id else None,
                     subject_id=int(sub_id) if sub_id else None,
+                    branch=branch,
                     only_published=True
                 )
                 self.send_json({"syllabus": syllabus})
@@ -371,7 +373,13 @@ class handler(BaseHTTPRequestHandler):
                 if not user or user.get("role") != "ADMIN":
                     self.send_json({"error": "Admin access required"}, 403)
                     return
-                syllabus = database.get_all_syllabus(only_published=False)
+                sem_id = query.get("semester_id", [None])[0]
+                branch = query.get("branch", [None])[0]
+                syllabus = database.get_all_syllabus(
+                    semester_id=int(sem_id) if sem_id else None,
+                    branch=branch,
+                    only_published=False
+                )
                 self.send_json({"syllabus": syllabus})
                 return
 
@@ -835,6 +843,7 @@ class handler(BaseHTTPRequestHandler):
                 title = payload.get("title", "").strip()
                 semester_id = payload.get("semester_id")
                 subject_id = payload.get("subject_id")
+                branch = payload.get("branch", "All Branches").strip()
                 description = payload.get("description", "").strip()
                 file_url = payload.get("file_url", "").strip()
                 is_published = 1 if payload.get("is_published", True) else 0
@@ -843,7 +852,7 @@ class handler(BaseHTTPRequestHandler):
                     self.send_json({"error": "Title, semester, and file URL are required."}, 400)
                     return
 
-                new_id = database.create_syllabus(int(semester_id), int(subject_id) if subject_id else None, title, description, file_url, is_published)
+                new_id = database.create_syllabus(int(semester_id), int(subject_id) if subject_id else None, title, description, file_url, is_published, branch)
                 self.send_json({"success": True, "message": "Syllabus uploaded", "syllabus_id": new_id})
                 return
 

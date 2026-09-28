@@ -232,9 +232,11 @@ class DDURequestHandler(BaseHTTPRequestHandler):
         if path == "/api/syllabus":
             sem_id = query.get("semester_id", [None])[0]
             sub_id = query.get("subject_id", [None])[0]
+            branch = query.get("branch", [None])[0]
             data = db.get_all_syllabus(
                 semester_id=int(sem_id) if sem_id else None,
                 subject_id=int(sub_id) if sub_id else None,
+                branch=branch,
                 only_published=True
             )
             self.send_json({"syllabus": data})
@@ -349,7 +351,13 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 return
 
             if path == "/api/admin/syllabus":
-                syl = db.get_all_syllabus(only_published=False)
+                sem_id = query.get("semester_id", [None])[0]
+                branch = query.get("branch", [None])[0]
+                syl = db.get_all_syllabus(
+                    semester_id=int(sem_id) if sem_id else None,
+                    branch=branch,
+                    only_published=False
+                )
                 self.send_json({"syllabus": syl})
                 return
 
@@ -618,7 +626,8 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                     title=body["title"].strip(),
                     description=body.get("description", ""),
                     file_url=body["file_url"].strip(),
-                    is_published=1 if body.get("is_published", True) else 0
+                    is_published=1 if body.get("is_published", True) else 0,
+                    branch=body.get("branch", "All Branches").strip()
                 )
                 self.send_json({"success": True, "syllabus_id": syl_id})
                 return
