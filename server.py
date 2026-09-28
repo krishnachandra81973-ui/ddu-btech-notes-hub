@@ -647,7 +647,8 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                     attachment_url=body.get("attachment_url"),
                     is_important=1 if body.get("is_important") else 0,
                     is_published=1 if body.get("is_published", True) else 0,
-                    publish_date=body.get("publish_date")
+                    publish_date=body.get("publish_date"),
+                    duration_days=int(body.get("duration_days") or 0)
                 )
                 self.send_json({"success": True, "update_id": up_id})
                 return
@@ -737,7 +738,8 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                     attachment_url=body.get("attachment_url"),
                     is_important=1 if body.get("is_important") else 0,
                     is_published=1 if body.get("is_published", True) else 0,
-                    publish_date=body.get("publish_date")
+                    publish_date=body.get("publish_date"),
+                    duration_days=int(body.get("duration_days") or 0)
                 )
                 self.send_json({"success": True})
                 return

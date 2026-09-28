@@ -5,6 +5,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 import user_registry
 import notes_registry
+import updates_registry
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ddu_portal.db")
 
@@ -174,6 +175,8 @@ def init_db():
         is_important INTEGER DEFAULT 0,
         is_published INTEGER DEFAULT 1,
         publish_date DATE NOT NULL,
+        duration_days INTEGER DEFAULT 0, -- 0 means Permanent / No Expiry, or e.g. 7, 15, 30, 60
+        expires_at DATE DEFAULT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     """)
@@ -253,6 +256,16 @@ def ensure_db_schema():
         except Exception:
             pass
 
+    for col, col_type in [
+        ("duration_days", "INTEGER DEFAULT 0"),
+        ("expires_at", "DATE DEFAULT NULL")
+    ]:
+        try:
+            cursor.execute(f"ALTER TABLE daily_updates ADD COLUMN {col} {col_type};")
+            conn.commit()
+        except Exception:
+            pass
+
     try:
         cursor.execute("UPDATE users SET plain_password = 'AdminPassword123!' WHERE email = 'admin@ddunotes.ac.in' AND (plain_password IS NULL OR plain_password = '');")
         # Ensure any leftover dummy accounts are removed
@@ -261,6 +274,11 @@ def ensure_db_schema():
     except Exception:
         pass
     conn.close()
+
+try:
+    ensure_db_schema()
+except Exception:
+    pass
 
 # ----------------- Auth & User Queries -----------------
 
@@ -1111,11 +1129,19 @@ def delete_pyq(pyq_id):
 
 def get_all_updates(category=None, search=None, only_published=True):
     conn = get_connection()
+    try:
+        updates_registry.ensure_campus_updates_synced(conn)
+    except Exception:
+        pass
     cursor = conn.cursor()
     query = "SELECT * FROM daily_updates WHERE 1=1"
     params = []
     if only_published:
         query += " AND is_published = 1"
+        # Hide notices that have an active expiry date which is strictly in the past
+        today_str = datetime.utcnow().strftime("%Y-%m-%d")
+        query += " AND (expires_at IS NULL OR expires_at = '' OR expires_at >= ?)"
+        params.append(today_str)
     if category and category != 'All':
         query += " AND category = ?"
         params.append(category)
@@ -1129,32 +1155,66 @@ def get_all_updates(category=None, search=None, only_published=True):
     conn.close()
     return rows
 
-def create_update(title, category, short_description, full_details, attachment_url, is_important=0, is_published=1, publish_date=None):
+def create_update(title, category, short_description, full_details, attachment_url, is_important=0, is_published=1, publish_date=None, duration_days=0):
     if not publish_date:
         publish_date = datetime.utcnow().strftime("%Y-%m-%d")
+    
+    expires_at = None
+    try:
+        duration_days = int(duration_days or 0)
+        if duration_days > 0:
+            p_dt = datetime.strptime(publish_date, "%Y-%m-%d")
+            expires_at = (p_dt + timedelta(days=duration_days)).strftime("%Y-%m-%d")
+    except Exception:
+        duration_days = 0
+        expires_at = None
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    INSERT INTO daily_updates (title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date))
+    INSERT INTO daily_updates (title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date, duration_days, expires_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date, duration_days, expires_at))
     up_id = cursor.lastrowid
     conn.commit()
+    try:
+        cursor.execute("SELECT * FROM daily_updates WHERE id = ?", (up_id,))
+        created_row = dict(cursor.fetchone())
+        updates_registry.record_custom_update(created_row)
+    except Exception:
+        pass
     conn.close()
     return up_id
 
-def update_update(up_id, title, category, short_description, full_details, attachment_url, is_important=0, is_published=1, publish_date=None):
+def update_update(up_id, title, category, short_description, full_details, attachment_url, is_important=0, is_published=1, publish_date=None, duration_days=0):
     if not publish_date:
         publish_date = datetime.utcnow().strftime("%Y-%m-%d")
+    
+    expires_at = None
+    try:
+        duration_days = int(duration_days or 0)
+        if duration_days > 0:
+            p_dt = datetime.strptime(publish_date, "%Y-%m-%d")
+            expires_at = (p_dt + timedelta(days=duration_days)).strftime("%Y-%m-%d")
+    except Exception:
+        duration_days = 0
+        expires_at = None
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
     UPDATE daily_updates
     SET title = ?, category = ?, short_description = ?, full_details = ?, attachment_url = ?, 
-        is_important = ?, is_published = ?, publish_date = ?
+        is_important = ?, is_published = ?, publish_date = ?, duration_days = ?, expires_at = ?
     WHERE id = ?
-    """, (title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date, up_id))
+    """, (title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date, duration_days, expires_at, up_id))
     conn.commit()
+    try:
+        cursor.execute("SELECT * FROM daily_updates WHERE id = ?", (up_id,))
+        updated_row = dict(cursor.fetchone())
+        updates_registry.record_custom_update(updated_row)
+    except Exception:
+        pass
     conn.close()
     return True
 
@@ -1164,6 +1224,10 @@ def delete_update(up_id):
     cursor.execute("DELETE FROM daily_updates WHERE id = ?", (up_id,))
     conn.commit()
     conn.close()
+    try:
+        updates_registry.remove_custom_update(up_id)
+    except Exception:
+        pass
     return True
 
 def get_update_by_id(up_id):

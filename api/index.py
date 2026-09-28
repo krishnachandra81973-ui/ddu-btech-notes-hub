@@ -883,12 +883,13 @@ class handler(BaseHTTPRequestHandler):
                 full_details = (payload.get("full_details") or "").strip()
                 attachment_url = (payload.get("attachment_url") or "").strip() or None
                 is_important = 1 if payload.get("is_important") else 0
+                duration_days = int(payload.get("duration_days") or 0)
 
                 if not title:
                     self.send_json({"error": "Notice title is required."}, 400)
                     return
 
-                new_id = database.create_update(title, category, short_description, full_details, attachment_url, is_important, publish_date=publish_date)
+                new_id = database.create_update(title, category, short_description, full_details, attachment_url, is_important, publish_date=publish_date, duration_days=duration_days)
                 self.send_json({"success": True, "message": "Campus update published", "update_id": new_id})
                 return
 
@@ -910,12 +911,13 @@ class handler(BaseHTTPRequestHandler):
                 full_details = (payload.get("full_details") or "").strip()
                 attachment_url = (payload.get("attachment_url") or "").strip() or None
                 is_important = 1 if payload.get("is_important") else 0
+                duration_days = int(payload.get("duration_days") or 0)
 
                 if not title:
                     self.send_json({"error": "Notice title is required."}, 400)
                     return
 
-                database.update_update(up_id, title, category, short_description, full_details, attachment_url, is_important, 1, publish_date)
+                database.update_update(up_id, title, category, short_description, full_details, attachment_url, is_important, 1, publish_date, duration_days=duration_days)
                 self.send_json({"success": True, "message": "Campus update modified successfully", "update_id": up_id})
                 return
 
@@ -986,13 +988,25 @@ class handler(BaseHTTPRequestHandler):
                 sz_kb = round(len(file_bytes) / 1024, 1)
                 file_size_str = f"{sz_kb} KB" if sz_kb < 1024 else f"{round(sz_kb / 1024, 2)} MB"
 
-                # Generate unique clean file path
-                clean_name = re.sub(r'[^a-zA-Z0-9._-]', '_', orig_name).strip('_')
-                if not clean_name.lower().endswith(".pdf"):
-                    clean_name += ".pdf"
+                # Generate unique clean file path preserving original extension
+                base_part, raw_ext = os.path.splitext(orig_name)
+                ext = raw_ext.lower() if raw_ext else ".pdf"
+                if ext not in [".pdf", ".png", ".jpg", ".jpeg", ".webp"]:
+                    ext = ".pdf"
+                clean_base = re.sub(r'[^a-zA-Z0-9._-]', '_', base_part).strip('_') or "document"
                 random_hex = secrets.token_hex(4)
-                unique_filename = f"{os.path.splitext(clean_name)[0]}_{random_hex}.pdf"
+                unique_filename = f"{clean_base}_{random_hex}{ext}"
                 rel_path = f"static/uploads/notes/{unique_filename}"
+
+                # Determine accurate MIME type
+                mime_map = {
+                    ".png": "image/png",
+                    ".jpg": "image/jpeg",
+                    ".jpeg": "image/jpeg",
+                    ".webp": "image/webp",
+                    ".pdf": "application/pdf"
+                }
+                upload_mime = mime_map.get(ext, "application/pdf")
 
                 # Default fallback URL
                 saved_url = f"https://cdn.jsdelivr.net/gh/krishnachandra81973-ui/ddu-btech-notes-hub@main/{rel_path}"
@@ -1006,7 +1020,7 @@ class handler(BaseHTTPRequestHandler):
                     import base64
                     gh_api_url = f"https://api.github.com/repos/{github_repo}/contents/{rel_path}"
                     gh_payload = json.dumps({
-                        "message": f"Upload study note: {orig_name}",
+                        "message": f"Upload study note/notice: {orig_name}",
                         "content": base64.b64encode(file_bytes).decode("utf-8"),
                         "branch": "main"
                     }).encode("utf-8")
@@ -1035,7 +1049,7 @@ class handler(BaseHTTPRequestHandler):
                 except Exception:
                     pass
 
-                file_id = database.record_uploaded_file(unique_filename, orig_name, saved_url, file_size_str, "application/pdf", category=category)
+                file_id = database.record_uploaded_file(unique_filename, orig_name, saved_url, file_size_str, upload_mime, category=category)
                 self.send_json({
                     "success": True,
                     "file_id": file_id,

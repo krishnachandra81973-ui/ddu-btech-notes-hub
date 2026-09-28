@@ -1427,11 +1427,15 @@ const App = {
                   <h3 class="update-title">${escapeHtml(u.title)}</h3>
                   <p class="update-desc">${escapeHtml(u.short_description)}</p>
                   <div style="display: flex; gap: 10px; align-items: center; margin-top: 8px;">
-                    ${u.attachment_url ? `
-                      <button onclick="App.openPdfViewer('${u.attachment_url}', '${escapeHtml(u.title)}')" class="btn-secondary btn-sm" style="padding: 4px 10px; font-size: 0.78rem;">
-                        📄 View Attachment
-                      </button>
-                    ` : ''}
+                    ${u.attachment_url ? (() => {
+                      const cPath = (u.attachment_url || '').split('?')[0].toLowerCase();
+                      const isImg = cPath.endsWith('.png') || cPath.endsWith('.jpg') || cPath.endsWith('.jpeg') || cPath.endsWith('.webp') || cPath.endsWith('.gif');
+                      return `
+                        <button onclick="App.openPdfViewer('${u.attachment_url}', '${escapeHtml(u.title)}')" class="btn-secondary btn-sm" style="padding: 4px 10px; font-size: 0.78rem;">
+                          ${isImg ? '🖼️ View Image' : '📄 View Attachment'}
+                        </button>
+                      `;
+                    })() : ''}
                     <a href="#updates" style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">Read Full Notice →</a>
                   </div>
                 </div>
@@ -2130,13 +2134,22 @@ const App = {
                 </div>
               ` : ''}
 
-              ${u.attachment_url ? `
-                <div>
-                  <button onclick="App.openPdfViewer('${u.attachment_url}', '${escapeHtml(u.title)}')" class="btn-primary btn-sm">
-                    📄 View Official Attachment / Circular
-                  </button>
-                </div>
-              ` : ''}
+              ${u.attachment_url ? (() => {
+                const cPath = (u.attachment_url || '').split('?')[0].toLowerCase();
+                const isImg = cPath.endsWith('.png') || cPath.endsWith('.jpg') || cPath.endsWith('.jpeg') || cPath.endsWith('.webp') || cPath.endsWith('.gif');
+                return `
+                  <div style="margin-top: 10px;">
+                    ${isImg ? `
+                      <div style="margin-bottom: 8px; max-width: 320px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;" onclick="App.openPdfViewer('${u.attachment_url}', '${escapeHtml(u.title)}')">
+                        <img src="${u.attachment_url}" alt="Notice Preview" style="width: 100%; height: auto; display: block; max-height: 220px; object-fit: cover;" onerror="this.style.display='none'">
+                      </div>
+                    ` : ''}
+                    <button onclick="App.openPdfViewer('${u.attachment_url}', '${escapeHtml(u.title)}')" class="btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+                      ${isImg ? '🖼️ View Full Image / Notice' : '📄 View Official Attachment / Circular'}
+                    </button>
+                  </div>
+                `;
+              })() : ''}
             </div>
           </div>
         `;
@@ -2621,6 +2634,7 @@ const App = {
     if (!modal) return;
     const titleEl = document.getElementById("pdf-viewer-title");
     const frame = document.getElementById("pdf-viewer-frame");
+    const imgEl = document.getElementById("pdf-viewer-image");
     const downloadBtn = document.getElementById("pdf-viewer-download-link");
     const externalBtn = document.getElementById("pdf-viewer-external-link");
     const mobileTip = document.getElementById("pdf-viewer-mobile-tip");
@@ -2630,6 +2644,8 @@ const App = {
 
     const driveId = this.getGoogleDriveId(fileUrl);
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const cleanUrlPath = fileUrl.split("?")[0].toLowerCase();
+    const isImage = cleanUrlPath.endsWith(".png") || cleanUrlPath.endsWith(".jpg") || cleanUrlPath.endsWith(".jpeg") || cleanUrlPath.endsWith(".webp") || cleanUrlPath.endsWith(".gif");
 
     let embedUrl = fileUrl;
     let externalUrl = fileUrl;
@@ -2645,19 +2661,40 @@ const App = {
         : (window.location.origin + (fileUrl.startsWith("/") ? "" : "/") + fileUrl);
       externalUrl = absoluteUrl;
       downloadUrl = absoluteUrl;
-      if (isMobile) {
+      if (isImage) {
+        embedUrl = absoluteUrl;
+      } else if (isMobile) {
         embedUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(absoluteUrl)}&embedded=true`;
       } else {
         embedUrl = absoluteUrl;
       }
     }
 
-    if (frame) {
-      frame.src = embedUrl;
+    if (isImage && !driveId) {
+      if (frame) {
+        frame.style.display = "none";
+        frame.src = "about:blank";
+      }
+      if (imgEl) {
+        imgEl.src = embedUrl;
+        imgEl.style.display = "block";
+      }
+    } else {
+      if (imgEl) {
+        imgEl.style.display = "none";
+        imgEl.src = "";
+      }
+      if (frame) {
+        frame.style.display = "block";
+        frame.src = embedUrl;
+      }
     }
 
     if (downloadBtn) {
       downloadBtn.href = downloadUrl;
+      downloadBtn.innerHTML = isImage
+        ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download Image`
+        : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download Document`;
       if (driveId) {
         downloadBtn.removeAttribute("download");
         downloadBtn.target = "_blank";
@@ -2676,7 +2713,7 @@ const App = {
     }
 
     if (mobileTip) {
-      mobileTip.style.display = isMobile ? "block" : "none";
+      mobileTip.style.display = (isMobile && !isImage) ? "block" : "none";
     }
 
     if (noteId) {

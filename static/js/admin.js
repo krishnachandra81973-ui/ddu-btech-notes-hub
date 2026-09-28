@@ -784,14 +784,25 @@ const Admin = {
                   <tr>
                     <th>Date</th>
                     <th>Category</th>
-                    <th>Title & Short Details</th>
-                    <th>Important</th>
+                    <th>Notice Title &amp; Details</th>
+                    <th>Priority</th>
+                    <th>Duration / Expiry</th>
                     <th>Attachment</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${list.map(u => `
+                  ${list.map(u => {
+                    let expiryBadge = `<span style="color: #059669; font-weight: 600; font-size: 0.74rem;">♾️ Permanent</span>`;
+                    if (u.expires_at) {
+                      const isExpired = new Date(u.expires_at) < new Date(new Date().toISOString().split('T')[0]);
+                      if (isExpired) {
+                        expiryBadge = `<span style="background: rgba(239,68,68,0.15); color: #dc2626; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 0.72rem;">Expired (${u.expires_at})</span>`;
+                      } else {
+                        expiryBadge = `<span style="background: rgba(37,99,235,0.1); color: #2563eb; padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 0.72rem;">Till ${u.expires_at} (${u.duration_days}d)</span>`;
+                      }
+                    }
+                    return `
                     <tr>
                       <td style="white-space: nowrap; font-size: 0.82rem; color: var(--text-muted);">${u.publish_date}</td>
                       <td><span style="font-size: 0.75rem; font-weight: 700; color: var(--primary);">${escapeHtml(u.category)}</span></td>
@@ -801,6 +812,9 @@ const Admin = {
                       </td>
                       <td>
                         ${u.is_important ? `<span class="update-badge-important">Important</span>` : 'Normal'}
+                      </td>
+                      <td style="white-space: nowrap;">
+                        ${expiryBadge}
                       </td>
                       <td>
                         ${u.attachment_url ? `
@@ -815,7 +829,8 @@ const Admin = {
                         <button onclick="Admin.deleteUpdate(${u.id})" class="btn-outline-danger btn-sm" style="font-size: 0.75rem; padding: 4px 8px;">Delete</button>
                       </td>
                     </tr>
-                  `).join('')}
+                  `;
+                  }).join('')}
                 </tbody>
               </table>
             </div>
@@ -1510,6 +1525,17 @@ const Admin = {
                 <label class="form-label">Publish Date</label>
                 <input type="date" name="publish_date" value="${new Date().toISOString().split('T')[0]}" class="form-control">
               </div>
+              <div class="form-group">
+                <label class="form-label">Active Duration / Expiry ⏳</label>
+                <select name="duration_days" class="form-control" style="border-color: #2563eb; background: rgba(37,99,235,0.04);">
+                  <option value="0" selected>Permanent / Hamesha rahe (No Expiry)</option>
+                  <option value="7">7 Din tak dikhe (1 Week)</option>
+                  <option value="15">15 Din tak dikhe</option>
+                  <option value="30">30 Din tak dikhe (1 Month)</option>
+                  <option value="60">60 Din tak dikhe (2 Months)</option>
+                  <option value="90">90 Din tak dikhe (3 Months)</option>
+                </select>
+              </div>
             </div>
 
             <div class="form-group">
@@ -1609,6 +1635,17 @@ const Admin = {
                 <div class="form-group">
                   <label class="form-label">Publish Date</label>
                   <input type="date" name="publish_date" value="${u.publish_date || new Date().toISOString().split('T')[0]}" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Active Duration / Expiry ⏳</label>
+                  <select name="duration_days" class="form-control" style="border-color: #2563eb; background: rgba(37,99,235,0.04);">
+                    <option value="0" ${!u.duration_days ? 'selected' : ''}>Permanent / Hamesha rahe (No Expiry)</option>
+                    <option value="7" ${u.duration_days === 7 ? 'selected' : ''}>7 Din tak dikhe (1 Week)</option>
+                    <option value="15" ${u.duration_days === 15 ? 'selected' : ''}>15 Din tak dikhe</option>
+                    <option value="30" ${u.duration_days === 30 ? 'selected' : ''}>30 Din tak dikhe (1 Month)</option>
+                    <option value="60" ${u.duration_days === 60 ? 'selected' : ''}>60 Din tak dikhe (2 Months)</option>
+                    <option value="90" ${u.duration_days === 90 ? 'selected' : ''}>90 Din tak dikhe (3 Months)</option>
+                  </select>
                 </div>
               </div>
 
@@ -1716,6 +1753,7 @@ const Admin = {
       title: title,
       category: form.category.value,
       publish_date: form.publish_date.value,
+      duration_days: form.duration_days ? parseInt(form.duration_days.value || 0) : 0,
       short_description: short_desc,
       full_details: (form.full_details.value || "").trim(),
       attachment_url: attachmentUrl || null,
