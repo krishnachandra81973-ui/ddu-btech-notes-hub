@@ -11,12 +11,13 @@ def _get_default_db_path():
     if os.environ.get("DB_PATH"):
         return os.environ.get("DB_PATH")
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    orig = os.path.join(base_dir, "ddu_portal.db")
+    seed_db = os.path.join(base_dir, "ddu_seed.db")
+    orig = seed_db if os.path.exists(seed_db) else os.path.join(base_dir, "ddu_portal.db")
     tmp = "/tmp/ddu_portal.db"
     # If running on Vercel, AWS Lambda, or directory is read-only
     is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or not os.access(base_dir, os.W_OK))
     if is_serverless:
-        if not os.path.exists(tmp) and os.path.exists(orig):
+        if (not os.path.exists(tmp) or os.path.getsize(tmp) == 0) and os.path.exists(orig):
             try:
                 import shutil
                 shutil.copy2(orig, tmp)

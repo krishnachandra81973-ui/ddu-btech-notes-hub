@@ -14,17 +14,19 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-ORIGINAL_DB = os.path.join(BASE_DIR, "ddu_portal.db")
+SEED_DB = os.path.join(BASE_DIR, "ddu_seed.db")
+ORIGINAL_DB = SEED_DB if os.path.exists(SEED_DB) else os.path.join(BASE_DIR, "ddu_portal.db")
 TMP_DB = "/tmp/ddu_portal.db"
 
 is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or not os.access(BASE_DIR, os.W_OK))
 
 if is_serverless:
-    if not os.path.exists(TMP_DB) and os.path.exists(ORIGINAL_DB):
-        try:
-            shutil.copy2(ORIGINAL_DB, TMP_DB)
-        except Exception:
-            pass
+    if not os.path.exists(TMP_DB) or os.path.getsize(TMP_DB) == 0:
+        if os.path.exists(ORIGINAL_DB):
+            try:
+                shutil.copy2(ORIGINAL_DB, TMP_DB)
+            except Exception:
+                pass
     DB_PATH = TMP_DB
 else:
     DB_PATH = ORIGINAL_DB

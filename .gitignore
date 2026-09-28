@@ -7,6 +7,7 @@ __pycache__/
 
 # SQLite databases & runtime data
 *.db
+!ddu_seed.db
 *.db-journal
 *.db-wal
 *.db-shm
