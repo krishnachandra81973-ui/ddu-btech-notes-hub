@@ -890,7 +890,17 @@ class DDURequestHandler(BaseHTTPRequestHandler):
             self.send_error_json("Content-Type must be multipart/form-data")
             return
 
-        boundary = content_type.split("boundary=")[1].strip().encode("latin-1")
+        try:
+            boundary_str = content_type.split("boundary=")[1].strip()
+            if ";" in boundary_str:
+                boundary_str = boundary_str.split(";")[0].strip()
+            if (boundary_str.startswith('"') and boundary_str.endswith('"')) or (boundary_str.startswith("'") and boundary_str.endswith("'")):
+                boundary_str = boundary_str[1:-1]
+            boundary = boundary_str.encode("latin-1")
+        except Exception:
+            self.send_error_json("Invalid multipart boundary header.")
+            return
+
         content_length = int(self.headers.get("Content-Length", 0))
         if content_length > 25 * 1024 * 1024:
             self.send_error_json("File size exceeds maximum permitted limit of 25MB.")
@@ -907,13 +917,20 @@ class DDURequestHandler(BaseHTTPRequestHandler):
         subject = ""
 
         for part in parts:
-            if not part or part == b"--\r\n" or part == b"--":
+            if not part or part == b"--\r\n" or part == b"--" or part == b"\r\n":
                 continue
-            headers_and_body = part.split(b"\r\n\r\n", 1)
-            if len(headers_and_body) < 2:
+            if b"\r\n\r\n" in part:
+                raw_headers, body = part.split(b"\r\n\r\n", 1)
+            elif b"\n\n" in part:
+                raw_headers, body = part.split(b"\n\n", 1)
+            else:
                 continue
-            raw_headers, body = headers_and_body
-            body = body.rstrip(b"\r\n")
+
+            if body.endswith(b"\r\n"):
+                body = body[:-2]
+            elif body.endswith(b"\n"):
+                body = body[:-1]
+
             header_text = raw_headers.decode("latin-1", errors="replace")
 
             if 'name="file"' in header_text:
@@ -921,7 +938,7 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 if 'filename="' in header_text:
                     orig_filename = header_text.split('filename="')[1].split('"')[0]
                 if 'Content-Type: ' in header_text:
-                    mime_type = header_text.split('Content-Type: ')[1].split("\r\n")[0].strip()
+                    mime_type = header_text.split('Content-Type: ')[1].split("\r\n")[0].split("\n")[0].strip()
             elif 'name="category"' in header_text:
                 category = body.decode("utf-8", errors="replace").strip()
             elif 'name="semester"' in header_text:
@@ -942,10 +959,10 @@ class DDURequestHandler(BaseHTTPRequestHandler):
             return
 
         # Magic bytes validation
-        is_pdf = file_bytes.startswith(b"%PDF-")
+        is_pdf = b"%PDF-" in file_bytes[:1024]
         is_jpeg = file_bytes.startswith(b"\xff\xd8\xff")
         is_png = file_bytes.startswith(b"\x89PNG")
-        is_webp = file_bytes.startswith(b"RIFF")
+        is_webp = file_bytes.startswith(b"RIFF") and b"WEBP" in file_bytes[:16]
         if not (is_pdf or is_jpeg or is_png or is_webp):
             self.send_error_json("Invalid file content signature. File appears corrupted or unrecognized.")
             return

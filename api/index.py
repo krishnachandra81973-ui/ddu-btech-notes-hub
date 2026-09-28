@@ -975,23 +975,34 @@ class handler(BaseHTTPRequestHandler):
                     # Robust multipart boundary extractor
                     try:
                         boundary = content_type.split("boundary=")[1].strip()
-                        if boundary.startswith('"') and boundary.endswith('"'):
+                        if ";" in boundary:
+                            boundary = boundary.split(";")[0].strip()
+                        if (boundary.startswith('"') and boundary.endswith('"')) or (boundary.startswith("'") and boundary.endswith("'")):
                             boundary = boundary[1:-1]
                         boundary_bytes = boundary.encode("latin-1")
                         parts = body.split(b"--" + boundary_bytes)
                         for part in parts:
-                            if not part or part == b"--\r\n" or part == b"--":
+                            if not part or part == b"--\r\n" or part == b"--" or part == b"\r\n":
                                 continue
                             if b"\r\n\r\n" in part:
                                 raw_hdr, part_body = part.split(b"\r\n\r\n", 1)
-                                part_body = part_body.rstrip(b"\r\n")
-                                hdr_text = raw_hdr.decode("latin-1", errors="replace")
-                                if 'name="file"' in hdr_text:
-                                    file_bytes = part_body
-                                    if 'filename="' in hdr_text:
-                                        orig_name = hdr_text.split('filename="')[1].split('"')[0]
-                                elif 'name="category"' in hdr_text:
-                                    category = part_body.decode("utf-8", errors="replace").strip()
+                            elif b"\n\n" in part:
+                                raw_hdr, part_body = part.split(b"\n\n", 1)
+                            else:
+                                continue
+
+                            if part_body.endswith(b"\r\n"):
+                                part_body = part_body[:-2]
+                            elif part_body.endswith(b"\n"):
+                                part_body = part_body[:-1]
+
+                            hdr_text = raw_hdr.decode("latin-1", errors="replace")
+                            if 'name="file"' in hdr_text:
+                                file_bytes = part_body
+                                if 'filename="' in hdr_text:
+                                    orig_name = hdr_text.split('filename="')[1].split('"')[0]
+                            elif 'name="category"' in hdr_text:
+                                category = part_body.decode("utf-8", errors="replace").strip()
                     except Exception:
                         pass
 
@@ -1020,18 +1031,19 @@ class handler(BaseHTTPRequestHandler):
                     return
 
                 # Validate magic bytes / content signature (PDF and approved images only)
+                is_pdf = b"%PDF-" in file_bytes[:1024]
                 is_valid_magic = (
-                    file_bytes.startswith(b"%PDF-") or
+                    is_pdf or
                     file_bytes.startswith(b"\xff\xd8\xff") or
                     file_bytes.startswith(b"\x89PNG") or
-                    file_bytes.startswith(b"RIFF")
+                    (file_bytes.startswith(b"RIFF") and b"WEBP" in file_bytes[:16])
                 )
                 if not is_valid_magic:
                     self.send_json({"error": "Invalid or corrupted file format. Only verified PDF, JPG, PNG, and WEBP documents are allowed."}, 400)
                     return
 
                 # Strict PDF check for student contributions
-                if path == "/api/student/upload" and not file_bytes.startswith(b"%PDF-"):
+                if path == "/api/student/upload" and not is_pdf:
                     self.send_json({"error": "Student study notes must be a valid PDF document."}, 400)
                     return
 
@@ -1089,14 +1101,18 @@ class handler(BaseHTTPRequestHandler):
                     except Exception:
                         pass
 
-                # Also save locally if local static directory exists
-                try:
-                    local_dir = os.path.join(BASE_DIR, "static", "uploads", "notes")
-                    os.makedirs(local_dir, exist_ok=True)
-                    with open(os.path.join(local_dir, unique_filename), "wb") as f:
-                        f.write(file_bytes)
-                except Exception:
-                    pass
+                # Also save locally across uploads directories
+                for folder in [
+                    os.path.join(BASE_DIR, "static", "uploads", "notes"),
+                    os.path.join(BASE_DIR, "static", "uploads"),
+                    "/tmp/uploads"
+                ]:
+                    try:
+                        os.makedirs(folder, exist_ok=True)
+                        with open(os.path.join(folder, unique_filename), "wb") as f:
+                            f.write(file_bytes)
+                    except Exception:
+                        pass
 
                 file_id = database.record_uploaded_file(unique_filename, orig_name, saved_url, file_size_str, upload_mime, category=category)
                 self.send_json({

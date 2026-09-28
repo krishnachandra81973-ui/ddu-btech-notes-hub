@@ -3196,14 +3196,14 @@ const App = {
             <div class="form-group">
               <label class="form-label">Attach PDF Document *</label>
               <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                <input type="file" id="student-note-file" accept=".pdf" class="form-control" style="flex-grow: 1;">
+                <input type="file" id="student-note-file" accept=".pdf" onchange="App.uploadStudentPdf('student-note-file', 'student-note-url')" class="form-control" style="flex-grow: 1;">
                 <button type="button" id="student-upload-btn" onclick="App.uploadStudentPdf('student-note-file', 'student-note-url')" class="btn-secondary btn-sm" style="white-space: nowrap;">
                   Upload PDF
                 </button>
               </div>
               <input type="text" name="file_url" id="student-note-url" required placeholder="/static/uploads/your-note.pdf" class="form-control" style="font-size: 0.8rem; background: var(--bg-main);">
               <small style="color: var(--text-muted); font-size: 0.74rem; display: block; margin-top: 4px;">
-                💡 <strong>Tip:</strong> Upar <strong>Upload PDF</strong> button dabao — file automatically secure CDN par upload ho jayegi aur link yahan fill ho jayega.
+                💡 <strong>Tip:</strong> PDF select karte hi automatic cloud par upload ho jayegi aur link fill ho jayega.
               </small>
             </div>
           </div>
@@ -3224,21 +3224,21 @@ const App = {
     if (!Auth.currentUser) {
       this.toast("PDF upload karne ke liye kripya pahle Student Account login karein.", "warning");
       Auth.openModal("login");
-      return;
+      return null;
     }
     const input = document.getElementById(fileInputId);
     if (!input || !input.files || input.files.length === 0) {
       this.toast("Please select a PDF file first.", "warning");
-      return;
+      return null;
     }
     const file = input.files[0];
     if (!file.name.toLowerCase().endsWith(".pdf")) {
       this.toast("Only PDF files (.pdf) are allowed.", "error");
-      return;
+      return null;
     }
-    if (file.size > 15 * 1024 * 1024) {
-      this.toast("File size exceeds 15 MB limit.", "error");
-      return;
+    if (file.size > 25 * 1024 * 1024) {
+      this.toast("File size exceeds 25 MB limit.", "error");
+      return null;
     }
 
     const btn = document.getElementById("student-upload-btn");
@@ -3264,8 +3264,10 @@ const App = {
       const target = document.getElementById(targetUrlInputId);
       if (target) target.value = data.file_url;
       this.toast(`PDF uploaded successfully: ${data.original_name} (${data.file_size})`, "success");
+      return data.file_url;
     } catch (err) {
-      this.toast(err.message, "error");
+      this.toast(err.message || "Upload failed", "error");
+      return null;
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -3283,10 +3285,31 @@ const App = {
     const subject_id = parseInt(form.subject_id.value);
     const unit_id = parseInt(form.unit_number.value);
     const description = (form.description.value || "").trim();
-    const file_url = form.file_url.value.trim();
+    let file_url = (form.file_url.value || "").trim();
+
+    // Auto-upload if file is selected but not yet uploaded
+    const fileInput = document.getElementById("student-note-file");
+    if (!file_url && fileInput && fileInput.files && fileInput.files.length > 0) {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Uploading PDF...";
+      }
+      file_url = await this.uploadStudentPdf("student-note-file", "student-note-url");
+      if (!file_url) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Submit Note for Verification";
+        }
+        return;
+      }
+    }
 
     if (!title || !subject_id || !file_url) {
-      this.toast("Please fill all required fields.", "warning");
+      this.toast("Kripya sabhi fields bharein aur PDF attach karein.", "warning");
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Submit Note for Verification";
+      }
       return;
     }
 

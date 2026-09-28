@@ -1088,14 +1088,14 @@ const Admin = {
             <div class="form-group">
               <label class="form-label">Attach PDF Document *</label>
               <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                <input type="file" id="note-file-upload" accept=".pdf" class="form-control" style="flex-grow: 1;">
+                <input type="file" id="note-file-upload" accept=".pdf" onchange="Admin.uploadFileField('note-file-upload', 'note-file-url-input', 'Notes')" class="form-control" style="flex-grow: 1;">
                 <button type="button" onclick="Admin.uploadFileField('note-file-upload', 'note-file-url-input', 'Notes')" class="btn-secondary btn-sm">
                   Upload File
                 </button>
               </div>
               <input type="text" name="file_url" id="note-file-url-input" required value="${isEdit ? escapeHtml(note.file_url) : ''}" placeholder="/static/uploads/document.pdf" class="form-control" style="font-size: 0.8rem; background: var(--bg-main);">
               <small style="color: var(--text-muted); font-size: 0.76rem; display: block; margin-top: 4px;">
-                💡 <strong>Tip:</strong> Upar <strong>Upload File</strong> button dabao — PDF/image securely CDN par upload ho jayega aur link automatic fill ho jayega.
+                💡 <strong>Tip:</strong> PDF select karte hi automatically upload ho jayega ya direct URL paste karein.
               </small>
             </div>
 
@@ -1127,12 +1127,26 @@ const Admin = {
   async handleSaveNote(e, noteId) {
     e.preventDefault();
     const form = e.target;
+    let fileUrl = (form.file_url.value || "").trim();
+
+    // Auto-upload if file is selected in input and file_url is empty
+    const fileInput = document.getElementById("note-file-upload");
+    if (!fileUrl && fileInput && fileInput.files && fileInput.files.length > 0) {
+      fileUrl = await Admin.uploadFileField("note-file-upload", "note-file-url-input", "Notes");
+      if (!fileUrl) return;
+    }
+
+    if (!fileUrl) {
+      App.toast("Please select a PDF file or enter a document URL.", "warning");
+      return;
+    }
+
     const body = {
-      title: form.title.value.strip ? form.title.value.trim() : form.title.value,
+      title: form.title.value.trim ? form.title.value.trim() : form.title.value,
       subject_id: parseInt(form.subject_id.value),
       unit_id: parseInt(form.unit_number.value), // maps to unit
       description: (form.description.value || "").trim(),
-      file_url: (form.file_url.value || "").trim(),
+      file_url: fileUrl,
       is_important: form.is_important.checked,
       is_published: form.is_published.checked
     };
@@ -1334,7 +1348,7 @@ const Admin = {
             <div class="form-group">
               <label class="form-label">Upload Syllabus PDF *</label>
               <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                <input type="file" id="syl-file-upload" accept=".pdf" class="form-control">
+                <input type="file" id="syl-file-upload" accept=".pdf" onchange="Admin.uploadFileField('syl-file-upload', 'syl-file-url-input', 'Syllabus')" class="form-control">
                 <button type="button" onclick="Admin.uploadFileField('syl-file-upload', 'syl-file-url-input', 'Syllabus')" class="btn-secondary btn-sm">
                   Upload File
                 </button>
@@ -1355,13 +1369,26 @@ const Admin = {
   async handleSaveSyllabus(e) {
     e.preventDefault();
     const form = e.target;
+    let fileUrl = (form.file_url.value || "").trim();
+
+    const fileInput = document.getElementById("syl-file-upload");
+    if (!fileUrl && fileInput && fileInput.files && fileInput.files.length > 0) {
+      fileUrl = await Admin.uploadFileField("syl-file-upload", "syl-file-url-input", "Syllabus");
+      if (!fileUrl) return;
+    }
+
+    if (!fileUrl) {
+      App.toast("Please select a syllabus PDF or enter a valid URL.", "warning");
+      return;
+    }
+
     const body = {
       title: form.title.value.trim(),
       semester_id: parseInt(form.semester_id.value),
       branch: form.branch ? form.branch.value : "All Branches",
       subject_id: form.subject_id.value ? parseInt(form.subject_id.value) : null,
       description: form.description.value.trim(),
-      file_url: form.file_url.value.trim(),
+      file_url: fileUrl,
       is_published: true
     };
 
@@ -1438,7 +1465,7 @@ const Admin = {
             <div class="form-group">
               <label class="form-label">Upload Question Paper PDF *</label>
               <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                <input type="file" id="pyq-file-upload" accept=".pdf" class="form-control">
+                <input type="file" id="pyq-file-upload" accept=".pdf" onchange="Admin.uploadFileField('pyq-file-upload', 'pyq-file-url-input', 'PYQ')" class="form-control">
                 <button type="button" onclick="Admin.uploadFileField('pyq-file-upload', 'pyq-file-url-input', 'PYQ')" class="btn-secondary btn-sm">
                   Upload File
                 </button>
@@ -1459,13 +1486,26 @@ const Admin = {
   async handleSavePyq(e) {
     e.preventDefault();
     const form = e.target;
+    let fileUrl = (form.file_url.value || "").trim();
+
+    const fileInput = document.getElementById("pyq-file-upload");
+    if (!fileUrl && fileInput && fileInput.files && fileInput.files.length > 0) {
+      fileUrl = await Admin.uploadFileField("pyq-file-upload", "pyq-file-url-input", "PYQ");
+      if (!fileUrl) return;
+    }
+
+    if (!fileUrl) {
+      App.toast("Please select a question paper PDF or enter a valid URL.", "warning");
+      return;
+    }
+
     const body = {
       paper_title: form.paper_title.value.trim(),
       exam_year: parseInt(form.exam_year.value),
       semester_id: parseInt(form.semester_id.value),
       subject_id: parseInt(form.subject_id.value),
       branch: form.branch.value.trim(),
-      file_url: form.file_url.value.trim()
+      file_url: fileUrl
     };
 
     try {
@@ -2100,7 +2140,7 @@ const Admin = {
     const input = document.getElementById(fileInputId);
     if (!input || !input.files || input.files.length === 0) {
       App.toast("Please select a file to upload first.", "warning");
-      return;
+      return null;
     }
     const file = input.files[0];
     const formData = new FormData();
@@ -2120,8 +2160,10 @@ const Admin = {
       const target = document.getElementById(targetUrlInputId);
       if (target) target.value = data.file_url;
       App.toast(`File uploaded: ${data.original_name} (${data.file_size})`, "success");
+      return data.file_url;
     } catch (err) {
-      App.toast(err.message, "error");
+      App.toast(err.message || "Upload failed", "error");
+      return null;
     }
   },
 
