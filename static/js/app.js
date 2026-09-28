@@ -398,6 +398,15 @@ const App = {
     } else if (hash === "pyq") {
       this.renderPyq(container);
     } else if (hash === "updates") {
+      if (!Auth.currentUser) {
+        this.renderLockGate(
+          container,
+          "Daily Academic Notices & Campus Updates Locked",
+          "DDU Gorakhpur University ki sabhi daily campus notices, examination circulars aur official announcements dekhne ke liye kripya pehle Apna Student Account Login karein ya Register karein."
+        );
+        Auth.openModal("login");
+        return;
+      }
       this.renderUpdates(container);
     } else if (hash === "about") {
       this.renderAbout(container);
@@ -1479,10 +1488,33 @@ const App = {
 
   // 1C. Load Home Updates
   async loadHomeUpdates() {
+    const listEl = document.getElementById("home-updates-list");
+    if (!listEl) return;
+
+    if (!Auth.currentUser) {
+      listEl.innerHTML = `
+        <div style="background: var(--bg-card); border: 2px dashed rgba(217, 119, 6, 0.4); border-radius: var(--radius-md); padding: 32px 20px; text-align: center; margin: 12px 0;">
+          <span style="font-size: 2.2rem; display: block; margin-bottom: 8px;">🔒</span>
+          <div style="font-weight: 800; font-size: 1.05rem; color: var(--text-main); margin-bottom: 6px;">Daily Academic Notices & Campus Updates Locked</div>
+          <p style="color: var(--text-muted); font-size: 0.85rem; max-width: 480px; margin: 0 auto 16px; line-height: 1.5;">
+            DDU Gorakhpur University ki sabhi daily campus notices, examination circulars aur updates dekhne ke liye kripya pehle Apna Student Account Login karein.
+          </p>
+          <div style="display: flex; justify-content: center; gap: 10px;">
+            <button onclick="Auth.openModal('login')" class="btn-primary btn-sm" style="font-weight: 700; padding: 8px 18px;">
+              🔑 Student Login
+            </button>
+            <button onclick="Auth.openModal('register')" class="btn-secondary btn-sm" style="font-weight: 600; padding: 8px 14px;">
+              ✨ Register Free
+            </button>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
     try {
       const data = await this.safeFetch("/api/updates");
       const updates = (data.updates || []).slice(0, 3);
-      const listEl = document.getElementById("home-updates-list");
       if (listEl) {
         if (updates.length === 0) {
           listEl.innerHTML = `<p style="color: var(--text-muted);">No recent updates posted.</p>`;
@@ -2147,6 +2179,16 @@ const App = {
 
   // ------------------- 7. Daily Updates View -------------------
   async renderUpdates(container) {
+    if (!Auth.currentUser) {
+      this.renderLockGate(
+        container,
+        "Daily Academic Notices & Campus Updates Locked",
+        "DDU Gorakhpur University ki sabhi daily campus notices, examination schedules aur departmental circulars dekhne ke liye kripya pehle Apna Student Account Login karein ya Register karein."
+      );
+      Auth.openModal("login");
+      return;
+    }
+
     container.innerHTML = `
       <div class="container" style="padding: 40px 20px 80px;">
         <div class="section-header">
