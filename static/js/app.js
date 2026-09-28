@@ -2154,9 +2154,9 @@ const App = {
           <span class="section-tag" style="background: rgba(217, 119, 6, 0.12); color: #d97706; border: 1px solid rgba(217, 119, 6, 0.3);">
             🏛️ DDU B.Tech Notes Hub
           </span>
-          <h1 class="section-title">About the Platform &amp; Founders</h1>
+          <h1 class="section-title">About the Platform &amp; Creator</h1>
           <p class="section-description">
-            Complete academic overview, official university engineering department profile, and detailed biography of platform founders — Keshav Narayan &amp; Akash Yadav.
+            Complete academic overview, university engineering department profile, and system architectural dossier of platform founder &amp; lead developer — <strong>Keshav Narayan</strong> (with co-founding support from Akash Yadav).
           </p>
         </div>
 
@@ -2170,7 +2170,7 @@ const App = {
             </div>
             <div class="dev-main-info">
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                <span class="brand-naac-badge">LEAD ARCHITECT & CREATOR</span>
+                <span class="brand-naac-badge" style="background: linear-gradient(135deg, #1e40af, #0284c7); color: #fff; font-weight: 800; letter-spacing: 0.5px; padding: 4px 10px;">⭐ FOUNDER &amp; LEAD ARCHITECT (MAIN CREATOR)</span>
                 <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">DDU Gorakhpur University</span>
               </div>
               <h2 class="dev-hero-name">
@@ -2370,49 +2370,24 @@ const App = {
           </div>
         </div>
 
-        <!-- ==================== Co-Founder: AKASH YADAV ==================== -->
-        <div class="dev-dossier-card" style="margin-top: 28px;">
-          <div class="dev-header-banner" style="background: linear-gradient(135deg, rgba(16,185,129,0.18) 0%, rgba(14,165,233,0.12) 100%);">
-            <div class="dev-photo-ring" style="background: linear-gradient(135deg, #10b981, #059669);">
-              <div class="dev-photo-inner" style="background: linear-gradient(135deg, #10b981, #059669); font-size: 1.1rem;">AY</div>
-              <div class="dev-badge-verified" title="Verified Co-Founder" style="background: #10b981;">✓</div>
+        <!-- ==================== Supporting Co-Founder: AKASH YADAV ==================== -->
+        <div style="margin-top: 24px; background: var(--bg-card); border: 1px solid var(--border); border-left: 4px solid #10b981; border-radius: var(--radius-md); padding: 18px 22px; box-shadow: var(--shadow-sm); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <div style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.95rem; flex-shrink: 0; box-shadow: 0 2px 8px rgba(16,185,129,0.25);">
+              AY
             </div>
-            <div class="dev-main-info">
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                <span class="brand-naac-badge" style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.35);">CO-FOUNDER</span>
-                <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">DDU Gorakhpur University</span>
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin: 0;">AKASH YADAV</h4>
+                <span style="font-size: 0.7rem; font-weight: 800; background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 1px 7px; border-radius: 4px;">CO-FOUNDER</span>
               </div>
-              <h2 class="dev-hero-name" style="color: #10b981;">
-                AKASH YADAV
-              </h2>
-              <div class="dev-hero-title">
-                B.Tech in Computer Science &amp; Engineering, Deen Dayal Upadhyaya Gorakhpur University
-              </div>
-              <div class="dev-hero-sub">
-                Department of Computer Science &amp; Engineering, Institute of Engineering &amp; Technology (IET), DDUGU • Gorakhpur, UP
-              </div>
-              <div class="dev-skill-tags-group" style="margin-top: 10px;">
-                <span class="dev-skill-tag" style="border-color: rgba(16,185,129,0.4); color: #10b981;">🤝 Community &amp; Student Outreach</span>
-                <span class="dev-skill-tag" style="border-color: rgba(16,185,129,0.4); color: #10b981;">📚 Academic Resource Curation</span>
-                <span class="dev-skill-tag" style="border-color: rgba(16,185,129,0.4); color: #10b981;">🎯 Portal Growth &amp; Adoption</span>
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+                B.Tech Computer Science &amp; Engineering, DDUGU • Student Community &amp; Resource Outreach
               </div>
             </div>
           </div>
-          <div class="dev-body-content">
-            <div class="dev-section-heading">
-              <span>🚀</span> Role &amp; Contribution to DDU B.Tech Notes Hub
-            </div>
-            <p style="color: var(--text-muted); line-height: 1.8; margin-bottom: 16px;">
-              <strong>Akash Yadav</strong> is a B.Tech student at Deen Dayal Upadhyaya Gorakhpur University and a core Co-Founder of DDU B.Tech Notes Hub. His vision for making academic resources freely accessible to every DDU student played a pivotal role in shaping the platform's direction.
-            </p>
-            <p style="color: var(--text-muted); line-height: 1.8; margin-bottom: 16px;">
-              Akash contributed to building the student community around the portal, ensuring that study materials, PYQ papers, and campus notices reach every student — regardless of their network or access to expensive coaching resources.
-            </p>
-            <div class="dev-quote-box" style="border-left-color: #10b981;">
-              <strong style="color: #10b981;">Co-Founder's Mission:</strong><br>
-              <em>"Every DDU student deserves access to quality study material. This portal is our promise to the student community — free, always available, and built by students, for students."</em><br>
-              <span style="display: block; text-align: right; margin-top: 6px; font-weight: 700; font-size: 0.85rem; color: var(--text-main);">— Akash Yadav</span>
-            </div>
+          <div style="font-size: 0.82rem; color: var(--text-muted); max-width: 440px; line-height: 1.5; font-style: italic;">
+            "Contributed towards student outreach, community coordination, and academic study material curation for DDU B.Tech Notes Hub."
           </div>
         </div>
 

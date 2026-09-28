@@ -11,31 +11,5 @@
     "role": "ADMIN",
     "is_active": 1,
     "created_at": "2026-09-26 16:58:15"
-  },
-  {
-    "id": 36,
-    "full_name": "Aman Verma",
-    "email": "contributor_1790529803@gmail.com",
-    "plain_password": "enc_v1:JyiaFlb7zDeGQWivE-Onh-aNcVYZiscSyCkhXHwcXs2mwf5OuNXiAL7aoC0LhWY",
-    "college": "Deen Dayal Upadhyaya Gorakhpur University",
-    "course": "B.Tech",
-    "branch": "CSE",
-    "semester": 3,
-    "role": "STUDENT",
-    "is_active": 1,
-    "created_at": "2026-09-27 10:53:23 PM (IST)"
-  },
-  {
-    "id": 29,
-    "full_name": "Security Check Student",
-    "email": "sec_test_1790529803@gmail.com",
-    "plain_password": "enc_v1:YAOVjS1nKIRSJX4QN-P40Odu48GA_yR8o7ICOXKy6er00ZsoXwW6VglrfwViz-_kp3Tk",
-    "college": "Deen Dayal Upadhyaya Gorakhpur University",
-    "course": "B.Tech",
-    "branch": "CSE",
-    "semester": 1,
-    "role": "STUDENT",
-    "is_active": 1,
-    "created_at": "2026-09-27 10:53:23 PM (IST)"
   }
 ]
