@@ -2804,16 +2804,8 @@ const App = {
     }
 
     if (mobileTip) {
-      mobileTip.style.display = "block";
-      mobileTip.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-          <span>📱 <strong>Preview:</strong> Agar mobile browser me document na dikhe:</span>
-          <div style="display: flex; gap: 8px;">
-            <a href="${externalUrl}" target="_blank" rel="noopener noreferrer" style="background: #2563eb; color: #fff; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 0.78rem;">Open Fullscreen ↗</a>
-            <a href="${downloadUrl}" download style="background: #10b981; color: #fff; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 0.78rem;">Download PDF ⬇</a>
-          </div>
-        </div>
-      `;
+      mobileTip.style.display = "none";
+      mobileTip.innerHTML = "";
     }
 
     if (noteId) {
