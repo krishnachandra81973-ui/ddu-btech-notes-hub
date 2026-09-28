@@ -16,6 +16,30 @@ def get_connection():
     conn.execute("PRAGMA journal_mode = WAL;")
     return conn
 
+def ensure_db_initialized():
+    """Initializes and seeds database if users table is missing or DB file is empty"""
+    needs_init = False
+    if not os.path.exists(DB_PATH) or os.path.getsize(DB_PATH) == 0:
+        needs_init = True
+    else:
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=10.0)
+            cur = conn.cursor()
+            cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users';")
+            if not cur.fetchone():
+                needs_init = True
+            conn.close()
+        except Exception:
+            needs_init = True
+
+    if needs_init:
+        init_db()
+        try:
+            import seed_data
+            seed_data.seed()
+        except Exception:
+            pass
+
 def hash_password(password: str, salt: str = None) -> tuple[str, str]:
     if not salt:
         salt = secrets.token_hex(16)
@@ -31,18 +55,11 @@ def verify_password(password: str, password_hash: str, salt: str) -> bool:
     new_hash, _ = hash_password(password, salt)
     return secrets.compare_digest(new_hash, password_hash)
 
-def ensure_db_initialized():
-    """Initializes and seeds database if DB file does not exist or is empty"""
-    if not os.path.exists(DB_PATH) or os.path.getsize(DB_PATH) == 0:
-        init_db()
-        try:
-            import seed_data
-            seed_data.seed()
-        except Exception as e:
-            pass
-
 def init_db():
-    conn = get_connection()
+    conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON;")
+    conn.execute("PRAGMA journal_mode = WAL;")
     cursor = conn.cursor()
     
     # 1. Users
@@ -53,13 +70,24 @@ def init_db():
         email TEXT NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
         salt TEXT NOT NULL,
-        plain_password TEXT,
         college TEXT DEFAULT 'Deen Dayal Upadhyaya Gorakhpur University',
         course TEXT DEFAULT 'B.Tech',
         branch TEXT DEFAULT 'CSE',
         semester INTEGER DEFAULT 1,
         role TEXT NOT NULL DEFAULT 'STUDENT', -- 'STUDENT' or 'ADMIN'
         is_active INTEGER NOT NULL DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    # 1b. Password Resets
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS password_resets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        expires_at DATETIME NOT NULL,
+        used INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     """)
@@ -247,11 +275,32 @@ def init_db():
 def ensure_db_schema():
     conn = get_connection()
     cursor = conn.cursor()
+    # Create password_resets if missing
     try:
-        cursor.execute("ALTER TABLE users ADD COLUMN plain_password TEXT;")
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            expires_at DATETIME NOT NULL,
+            used INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
         conn.commit()
     except Exception:
         pass
+
+    # Purge plain_password column from existing databases
+    try:
+        cursor.execute("ALTER TABLE users DROP COLUMN plain_password;")
+        conn.commit()
+    except Exception:
+        try:
+            cursor.execute("UPDATE users SET plain_password = NULL;")
+            conn.commit()
+        except Exception:
+            pass
 
     for col, col_type in [
         ("is_verified", "INTEGER DEFAULT 1"),
@@ -283,7 +332,6 @@ def ensure_db_schema():
         pass
 
     try:
-        cursor.execute("UPDATE users SET plain_password = 'AdminPassword123!' WHERE email = 'admin@ddunotes.ac.in' AND (plain_password IS NULL OR plain_password = '');")
         # Ensure any leftover dummy accounts are removed
         cursor.execute("DELETE FROM users WHERE email IN ('student@ddu.ac.in', 'priya.sharma@ddu.ac.in');")
         conn.commit()
@@ -292,6 +340,7 @@ def ensure_db_schema():
     conn.close()
 
 try:
+    ensure_db_initialized()
     ensure_db_schema()
 except Exception:
     pass
@@ -339,9 +388,9 @@ def create_user(full_name, email, password, college="Deen Dayal Upadhyaya Gorakh
     ist_time = get_ist_now_str()
     try:
         cursor.execute("""
-        INSERT INTO users (full_name, email, password_hash, salt, plain_password, college, course, branch, semester, role, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (full_name, email_clean, hash_val, salt, password, college, course, branch, semester, role, ist_time))
+        INSERT INTO users (full_name, email, password_hash, salt, college, course, branch, semester, role, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (full_name, email_clean, hash_val, salt, college, course, branch, semester, role, ist_time))
         user_id = cursor.lastrowid
         conn.commit()
     except sqlite3.IntegrityError:
@@ -353,12 +402,13 @@ def create_user(full_name, email, password, college="Deen Dayal Upadhyaya Gorakh
         except Exception:
             pass
 
-    # Always persist in multi-instance registry with allow_update=False
+    # Always persist in multi-instance registry with allow_update=False (hash & salt only, NO plain password)
     user_record = {
         "id": user_id or int(datetime.now().timestamp()),
         "full_name": full_name,
         "email": email_clean,
-        "plain_password": password,
+        "password_hash": hash_val,
+        "salt": salt,
         "college": college,
         "course": course,
         "branch": branch,
@@ -373,11 +423,12 @@ def create_user(full_name, email, password, college="Deen Dayal Upadhyaya Gorakh
 def authenticate_user(email, password):
     email_clean = email.lower().strip()
     
-    # 1. Direct Master Admin Bypass
-    if email_clean == user_registry.ADMIN_EMAIL.lower() and password == user_registry.ADMIN_PASSWORD:
-        return dict(user_registry.ADMIN_USER)
+    # 1. Check if ADMIN_PASSWORD environment variable is explicitly set
+    env_admin_pw = os.environ.get("ADMIN_PASSWORD")
+    if env_admin_pw and email_clean == user_registry.ADMIN_EMAIL.lower() and secrets.compare_digest(password, env_admin_pw):
+        return {k: v for k, v in user_registry.ADMIN_USER.items() if k not in ("password_hash", "salt", "plain_password")}
 
-    # 2. Check Database
+    # 2. Check Database with PBKDF2 verification
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE email = ?", (email_clean,))
@@ -387,41 +438,35 @@ def authenticate_user(email, password):
     if user:
         if not user["is_active"]:
             return "INACTIVE"
-        if verify_password(password, user["password_hash"], user["salt"]) or (user["plain_password"] and user["plain_password"] == password):
-            if not user["plain_password"]:
-                try:
-                    conn_up = get_connection()
-                    cur_up = conn_up.cursor()
-                    cur_up.execute("UPDATE users SET plain_password = ? WHERE id = ?", (password, user["id"]))
-                    conn_up.commit()
-                    conn_up.close()
-                except Exception:
-                    pass
+        if verify_password(password, user["password_hash"], user["salt"]):
             user_dict = dict(user)
+            user_dict.pop("password_hash", None)
+            user_dict.pop("salt", None)
+            user_dict.pop("plain_password", None)
             user_registry.save_user_to_registry(user_dict)
             return user_dict
 
-    # 3. Fallback to Registry if container lacks SQLite row
+    # 3. Fallback to Registry if container lacks SQLite row (Serverless cold-start sync)
     reg_user = user_registry.find_user_in_registry(email_clean)
     if reg_user:
         if not reg_user.get("is_active", 1):
             return "INACTIVE"
-        if reg_user.get("plain_password") == password:
+        reg_hash = reg_user.get("password_hash")
+        reg_salt = reg_user.get("salt")
+        if reg_hash and reg_salt and verify_password(password, reg_hash, reg_salt):
             # Sync user into this container's SQLite
             try:
-                hash_val, salt = hash_password(password)
                 conn_sync = get_connection()
                 cur_sync = conn_sync.cursor()
                 cur_sync.execute("""
-                INSERT OR REPLACE INTO users (id, full_name, email, password_hash, salt, plain_password, college, course, branch, semester, role, is_active)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO users (id, full_name, email, password_hash, salt, college, course, branch, semester, role, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     reg_user.get("id"),
                     reg_user.get("full_name"),
                     email_clean,
-                    hash_val,
-                    salt,
-                    password,
+                    reg_hash,
+                    reg_salt,
                     reg_user.get("college", "Deen Dayal Upadhyaya Gorakhpur University"),
                     reg_user.get("course", "B.Tech"),
                     reg_user.get("branch", "CSE"),
@@ -433,7 +478,11 @@ def authenticate_user(email, password):
                 conn_sync.close()
             except Exception:
                 pass
-            return dict(reg_user)
+            clean_reg = dict(reg_user)
+            clean_reg.pop("password_hash", None)
+            clean_reg.pop("salt", None)
+            clean_reg.pop("plain_password", None)
+            return clean_reg
 
     return None
 
@@ -518,11 +567,15 @@ def get_all_users(search=""):
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("""
-        SELECT id, full_name, email, plain_password, college, course, branch, semester, role, is_active, created_at
+        SELECT id, full_name, email, college, course, branch, semester, role, is_active, created_at
         FROM users
         """)
         for r in cursor.fetchall():
-            db_users[r["email"].lower().strip()] = dict(r)
+            row_dict = dict(r)
+            row_dict.pop("password_hash", None)
+            row_dict.pop("salt", None)
+            row_dict.pop("plain_password", None)
+            db_users[r["email"].lower().strip()] = row_dict
         conn.close()
     except Exception:
         pass
@@ -533,21 +586,33 @@ def get_all_users(search=""):
     for ru in reg_users:
         em = ru.get("email", "").lower().strip()
         if em:
-            combined[em] = ru
+            clean_ru = dict(ru)
+            clean_ru.pop("password_hash", None)
+            clean_ru.pop("salt", None)
+            clean_ru.pop("plain_password", None)
+            combined[em] = clean_ru
 
     # Filter out any legacy fake accounts from database
     db_users = {em: du for em, du in db_users.items() if em not in user_registry.FAKE_EMAILS}
 
-    # Merge database users into combined (giving priority to latest plain_password)
+    # Merge database users into combined
     for em, du in db_users.items():
         if em in combined:
-            combined[em].update({k: v for k, v in du.items() if v is not None and v != ""})
+            combined[em].update({k: v for k, v in du.items() if v is not None and v != "" and k not in ("password_hash", "salt", "plain_password")})
         elif du.get("role") == "ADMIN":
-            combined[em] = du
+            clean_admin = dict(du)
+            clean_admin.pop("password_hash", None)
+            clean_admin.pop("salt", None)
+            clean_admin.pop("plain_password", None)
+            combined[em] = clean_admin
 
     # Ensure admin is always present
     if user_registry.ADMIN_EMAIL.lower() not in combined:
-        combined[user_registry.ADMIN_EMAIL.lower()] = dict(user_registry.ADMIN_USER)
+        clean_adm = dict(user_registry.ADMIN_USER)
+        clean_adm.pop("password_hash", None)
+        clean_adm.pop("salt", None)
+        clean_adm.pop("plain_password", None)
+        combined[user_registry.ADMIN_EMAIL.lower()] = clean_adm
 
     all_list = list(combined.values())
 
@@ -604,13 +669,96 @@ def update_user_password(user_id, new_password):
         cursor = conn.cursor()
         hash_val, salt = hash_password(new_password)
         cursor.execute("""
-        UPDATE users SET password_hash = ?, salt = ?, plain_password = ? WHERE id = ?
-        """, (hash_val, salt, new_password, user_id))
+        UPDATE users SET password_hash = ?, salt = ? WHERE id = ?
+        """, (hash_val, salt, user_id))
+        # Invalidate old sessions for this user on password change
+        cursor.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
         conn.commit()
         conn.close()
     except Exception:
         pass
     return True
+
+def create_password_reset_token(email):
+    """
+    Generates a secure 32-byte hex token for password reset with a 15-minute expiry.
+    Returns the token string if user exists, or None.
+    """
+    email_clean = email.lower().strip()
+    user = get_user_by_email(email_clean)
+    if not user:
+        reg_user = user_registry.find_user_in_registry(email_clean)
+        if not reg_user:
+            return None
+    
+    token = secrets.token_hex(24)
+    expires_at = (datetime.utcnow() + timedelta(minutes=15)).isoformat()
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        # Invalidate existing unused tokens for this email
+        cursor.execute("UPDATE password_resets SET used = 1 WHERE email = ?", (email_clean,))
+        cursor.execute("""
+        INSERT INTO password_resets (email, token, expires_at, used)
+        VALUES (?, ?, ?, 0)
+        """, (email_clean, token, expires_at))
+        conn.commit()
+        conn.close()
+        return token
+    except Exception:
+        return token
+
+def verify_and_use_reset_token(token, new_password):
+    """
+    Verifies that the reset token is valid, unexpired, and unused,
+    then updates the user's password using PBKDF2 hashing.
+    """
+    if not token or not new_password or len(new_password) < 6:
+        return False, "Password must be at least 6 characters."
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT id, email, expires_at, used FROM password_resets WHERE token = ?
+    """, (token.strip(),))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return False, "Invalid or expired password reset link."
+
+    if row["used"]:
+        conn.close()
+        return False, "This reset link has already been used."
+
+    try:
+        expires_at = datetime.fromisoformat(row["expires_at"])
+        if datetime.utcnow() > expires_at:
+            conn.close()
+            return False, "Reset link has expired. Please request a new one."
+    except Exception:
+        conn.close()
+        return False, "Invalid reset token format."
+
+    email = row["email"].lower().strip()
+    cursor.execute("UPDATE password_resets SET used = 1 WHERE token = ?", (token.strip(),))
+    conn.commit()
+    conn.close()
+
+    # Find user ID
+    user = get_user_by_email(email)
+    user_id = user["id"] if user else None
+    if not user_id:
+        reg_u = user_registry.find_user_in_registry(email)
+        if reg_u:
+            user_id = reg_u.get("id")
+
+    if user_id:
+        update_user_password(user_id, new_password)
+    else:
+        user_registry.update_password_in_registry(email, new_password)
+
+    return True, "Password has been successfully updated. You can now login."
 
 # ----------------- Semesters, Subjects, Units -----------------
 

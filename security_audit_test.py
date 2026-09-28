@@ -287,17 +287,17 @@ def run_security_audit():
         else:
             print("  ✅ Registration response is cleanly sanitized (No passwords or salts exposed).")
             
-        # Verify Cloud Firestore encryption format
+        # Verify Cloud Firestore schema never stores plain_password
         firestore_dict = user_registry.user_dict_to_firestore({
             "email": test_email,
             "plain_password": "SecretPassword@2026",
             "role": "STUDENT"
         })
-        stored_pw = firestore_dict.get("fields", {}).get("plain_password", {}).get("stringValue", "")
-        if stored_pw.startswith("enc_v1:") and "SecretPassword" not in stored_pw:
-            print(f"  ✅ Cloud Firestore schema stores encrypted ciphertext: {stored_pw[:32]}...")
+        has_plain_pw = "plain_password" in firestore_dict.get("fields", {})
+        if not has_plain_pw:
+            print("  ✅ Cloud Firestore schema completely strips plain_password (Zero credential leakage).")
         else:
-            print(f"  ❌ FAILED: Cloud Firestore stores unencrypted password: {stored_pw}")
+            print("  ❌ FAILED: Cloud Firestore schema retained plain_password field!")
             leaked = True
     else:
         print(f"  ❌ Registration failed with status {st}: {reg_resp}")

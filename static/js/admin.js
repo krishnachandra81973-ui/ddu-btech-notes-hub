@@ -889,9 +889,6 @@ const Admin = {
               <button onclick="Admin.exportStudentsCsv()" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;" title="Export student data in CSV (Excel)">
                 📊 Export CSV
               </button>
-              <button onclick="Admin.revealAllPasswords()" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
-                👁️ Toggle Passwords
-              </button>
             </div>
           </div>
 
@@ -906,7 +903,7 @@ const Admin = {
                   <tr>
                     <th>Student Name & Email</th>
                     <th>Branch, Sem & College</th>
-                    <th>Account Password</th>
+                    <th>Security / Auth</th>
                     <th>Signed Up Date & Time</th>
                     <th>Account Status</th>
                     <th>Actions</th>
@@ -931,12 +928,9 @@ const Admin = {
                         <div style="font-size: 0.71rem; color: var(--text-muted); opacity: 0.85;">🏛️ ${escapeHtml(u.college || 'DDU Gorakhpur University')}</div>
                       </td>
                       <td style="white-space: nowrap;">
-                        <div style="display: flex; align-items: center; gap: 6px;">
-                          <code id="pass-field-${u.id}" data-revealed="false" data-pass="${escapeHtml(u.plain_password || 'StudentPassword123!')}" style="font-family: monospace; font-size: 0.84rem; background: var(--bg-surface); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); color: #2563eb; font-weight: 700; min-width: 80px; text-align: center; display: inline-block;">••••••••</code>
-                          <button onclick="Admin.togglePasswordVisibility(${u.id})" class="btn-secondary btn-sm" style="padding: 2px 7px; font-size: 0.78rem;" title="Show/Hide Password">
-                            👁️
-                          </button>
-                        </div>
+                        <span style="font-family: monospace; font-size: 0.78rem; background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.25); font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                          🔒 PBKDF2 Hashed
+                        </span>
                       </td>
                       <td style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">
                         📅 ${u.created_at || 'Recently'}
@@ -2073,12 +2067,12 @@ const Admin = {
         App.toast("No student accounts found to export.", "info");
         return;
       }
-      const headers = ["ID", "Full Name", "Email", "Password", "Branch", "Semester", "College", "Registration Time (IST)", "Status"];
+      const headers = ["ID", "Full Name", "Email", "Auth Status", "Branch", "Semester", "College", "Registration Time (IST)", "Status"];
       const rows = users.map(u => [
         u.id || "",
         `"${(u.full_name || "").replace(/"/g, '""')}"`,
         `"${(u.email || "").replace(/"/g, '""')}"`,
-        `"${(u.plain_password || "").replace(/"/g, '""')}"`,
+        `"PBKDF2 Hashed"`,
         `"${(u.branch || "CSE").replace(/"/g, '""')}"`,
         u.semester || 1,
         `"${(u.college || "Deen Dayal Upadhyaya Gorakhpur University").replace(/"/g, '""')}"`,

@@ -3009,8 +3009,11 @@ const App = {
       };
     }
 
-    // Forgot password form
+    // Forgot password form (Step 1: Request token)
     const forgotForm = document.getElementById("forgot-form-element");
+    const resetConfirmForm = document.getElementById("reset-confirm-form-element");
+    const forgotInstructions = document.getElementById("forgot-instructions");
+
     if (forgotForm) {
       forgotForm.onsubmit = async (e) => {
         e.preventDefault();
@@ -3022,10 +3025,55 @@ const App = {
             body: JSON.stringify({ email })
           });
           const data = await res.json();
-          App.toast(data.message || "Reset link sent.", "info");
-          Auth.switchTab("login");
+          if (data.success) {
+            App.toast(data.message || "Reset token generated.", "success");
+            if (resetConfirmForm) {
+              forgotForm.style.display = "none";
+              resetConfirmForm.style.display = "block";
+              if (data.reset_token) {
+                const tokenInput = document.getElementById("reset-token-input");
+                if (tokenInput) tokenInput.value = data.reset_token;
+              }
+              if (forgotInstructions) {
+                forgotInstructions.innerHTML = `Token generated for <strong>${escapeHtml(email)}</strong>. Enter your new password below:`;
+              }
+            }
+          } else {
+            App.toast(data.error || "Failed to initiate reset.", "error");
+          }
         } catch (err) {
           App.toast("Error sending reset request", "error");
+        }
+      };
+    }
+
+    // Reset password form (Step 2: Submit new password)
+    if (resetConfirmForm) {
+      resetConfirmForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const token = resetConfirmForm.token.value.trim();
+        const new_password = resetConfirmForm.new_password.value;
+        try {
+          const res = await fetch("/api/auth/reset-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token, new_password })
+          });
+          const data = await res.json();
+          if (data.success) {
+            App.toast(data.message || "Password updated successfully! Please login.", "success");
+            resetConfirmForm.reset();
+            resetConfirmForm.style.display = "none";
+            if (forgotForm) {
+              forgotForm.reset();
+              forgotForm.style.display = "block";
+            }
+            Auth.switchTab("login");
+          } else {
+            App.toast(data.error || "Password reset failed.", "error");
+          }
+        } catch (err) {
+          App.toast("Error resetting password", "error");
         }
       };
     }

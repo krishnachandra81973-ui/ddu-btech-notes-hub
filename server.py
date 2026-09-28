@@ -13,6 +13,14 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 UPLOADS_DIR = os.path.join(STATIC_DIR, "uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
+ALLOWED_ORIGINS = [
+    "https://ddu-btech-kn-notes.vercel.app",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:3000",
+    "http://localhost:5000",
+]
+
 class DDURequestHandler(BaseHTTPRequestHandler):
     server_version = "DDU-NotesHub/1.0"
 
@@ -20,11 +28,28 @@ class DDURequestHandler(BaseHTTPRequestHandler):
         # Clean logging
         sys.stderr.write(f"[{self.log_date_time_string()}] {self.command} {self.path} - {format % args}\n")
 
+    def is_https(self):
+        proto = self.headers.get("X-Forwarded-Proto", "").lower()
+        return proto == "https"
+
     def send_cors_headers(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
+        origin = self.headers.get("Origin", "")
+        if origin:
+            is_allowed = (
+                origin in ALLOWED_ORIGINS
+                or origin.endswith(".vercel.app")
+                or "localhost" in origin
+                or "127.0.0.1" in origin
+            )
+            if is_allowed:
+                self.send_header("Access-Control-Allow-Origin", origin)
+                self.send_header("Access-Control-Allow-Credentials", "true")
+            else:
+                self.send_header("Access-Control-Allow-Origin", "https://ddu-btech-kn-notes.vercel.app")
+        else:
+            self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        self.send_header("Access-Control-Allow-Credentials", "true")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
 
     def send_security_headers(self):
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -74,8 +99,11 @@ class DDURequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(response_bytes)))
         self.send_cors_headers()
         self.send_security_headers()
-        if set_cookie:
-            self.send_header("Set-Cookie", f"session_token={set_cookie}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800")
+        if set_cookie is not None:
+            cookie_str = f"session_token={set_cookie}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800"
+            if self.is_https():
+                cookie_str += "; Secure"
+            self.send_header("Set-Cookie", cookie_str)
         self.end_headers()
         self.wfile.write(response_bytes)
 
@@ -83,27 +111,47 @@ class DDURequestHandler(BaseHTTPRequestHandler):
         self.send_json({"error": message, "status": status}, status=status)
 
     def serve_static(self, filepath):
-        if not os.path.exists(filepath) or os.path.isdir(filepath):
-            # SPA fallback: serve index.html for non-asset routes
-            filepath = os.path.join(STATIC_DIR, "index.html")
+        # Canonical path resolution to prevent directory traversal
+        real_base = os.path.realpath(BASE_DIR)
+        real_static = os.path.realpath(STATIC_DIR)
+        real_target = os.path.realpath(filepath)
 
-        mime_type, _ = mimetypes.guess_type(filepath)
+        # Block traversal outside BASE_DIR
+        if not (real_target.startswith(real_base) or real_target.startswith(real_static)):
+            self.send_error_json("Access denied: Invalid path traversal", status=403)
+            return
+
+        # Block access to internal/sensitive files
+        base_name = os.path.basename(real_target).lower()
+        if (
+            base_name.startswith(".")
+            or base_name.endswith((".py", ".db", ".sqlite", ".sqlite3", ".env", ".log", ".bak"))
+            or "students_registry" in base_name
+        ):
+            self.send_error_json("Access forbidden", status=403)
+            return
+
+        if not os.path.exists(real_target) or os.path.isdir(real_target):
+            # SPA fallback: serve index.html for non-asset routes
+            real_target = os.path.join(STATIC_DIR, "index.html")
+
+        mime_type, _ = mimetypes.guess_type(real_target)
         if not mime_type:
-            if filepath.endswith(".js"):
+            if real_target.endswith(".js"):
                 mime_type = "application/javascript"
-            elif filepath.endswith(".css"):
+            elif real_target.endswith(".css"):
                 mime_type = "text/css"
-            elif filepath.endswith(".pdf"):
+            elif real_target.endswith(".pdf"):
                 mime_type = "application/pdf"
-            elif filepath.endswith(".ico"):
+            elif real_target.endswith(".ico"):
                 mime_type = "image/x-icon"
-            elif filepath.endswith(".png"):
+            elif real_target.endswith(".png"):
                 mime_type = "image/png"
             else:
                 mime_type = "text/html"
 
         try:
-            file_size = os.path.getsize(filepath)
+            file_size = os.path.getsize(real_target)
             
             # Handle HTTP Range request for PDFs
             range_header = self.headers.get("Range")
@@ -119,9 +167,10 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(length))
                 self.send_header("Accept-Ranges", "bytes")
                 self.send_cors_headers()
+                self.send_security_headers()
                 self.end_headers()
                 
-                with open(filepath, "rb") as f:
+                with open(real_target, "rb") as f:
                     f.seek(start)
                     self.wfile.write(f.read(length))
                 return
@@ -130,18 +179,18 @@ class DDURequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", mime_type)
             self.send_header("Content-Length", str(file_size))
             self.send_header("Accept-Ranges", "bytes")
-            if filepath.endswith(".pdf"):
-                # Suggest inline preview
-                filename = os.path.basename(filepath)
+            if real_target.endswith(".pdf"):
+                filename = os.path.basename(real_target)
                 self.send_header("Content-Disposition", f'inline; filename="{filename}"')
             self.send_cors_headers()
+            self.send_security_headers()
             self.end_headers()
 
-            with open(filepath, "rb") as f:
+            with open(real_target, "rb") as f:
                 while chunk := f.read(65536):
                     self.wfile.write(chunk)
         except Exception as e:
-            sys.stderr.write(f"Error serving {filepath}: {e}\n")
+            sys.stderr.write(f"Error serving {real_target}: {e}\n")
 
     # ------------------- GET Requests -------------------
     def do_GET(self):
@@ -480,12 +529,36 @@ class DDURequestHandler(BaseHTTPRequestHandler):
 
         if path == "/api/auth/forgot-password":
             body = self.read_json_body()
-            email = body.get("email", "")
-            # In a demo/academic environment, return a helpful token confirmation
+            email = (body.get("email") or "").strip().lower()
+            if not email:
+                self.send_error_json("Please provide your registered email address.")
+                return
+
+            reset_token = db.create_password_reset_token(email)
+            # Return token for direct academic UI password reset workflow
             self.send_json({
                 "success": True,
-                "message": f"Password reset instructions have been dispatched to {email}. For campus portal support, contact Dean of Student Welfare."
+                "message": f"Password reset instructions and verification code generated for {email}.",
+                "reset_token": reset_token or "dummy-token"
             })
+            return
+
+        if path == "/api/auth/reset-password":
+            body = self.read_json_body()
+            token = (body.get("token") or "").strip()
+            new_password = (body.get("new_password") or "").strip()
+            if not token or not new_password:
+                self.send_error_json("Reset token and new password are required.")
+                return
+            if len(new_password) < 6:
+                self.send_error_json("New password must be at least 6 characters long.")
+                return
+
+            ok, msg = db.verify_and_use_reset_token(token, new_password)
+            if ok:
+                self.send_json({"success": True, "message": msg})
+            else:
+                self.send_error_json(msg, status=400)
             return
 
         # 2. Student Actions

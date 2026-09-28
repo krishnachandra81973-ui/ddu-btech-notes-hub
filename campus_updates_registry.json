@@ -354,5 +354,61 @@
     "created_at": "2026-09-28 02:29:06",
     "duration_days": 0,
     "expires_at": null
+  },
+  {
+    "id": 39,
+    "title": "Urgent: Library Reading Room Extended Hours for End-Sem Exam Prep",
+    "category": "University Notice",
+    "short_description": "Central Library will remain open 24x7 during examination weeks.",
+    "full_details": "Special quiet study zones and high-speed Wi-Fi access available for all B.Tech students.",
+    "attachment_url": null,
+    "is_important": 1,
+    "is_published": 1,
+    "publish_date": "2026-09-26",
+    "created_at": "2026-09-28 09:56:31",
+    "duration_days": 0,
+    "expires_at": null
+  },
+  {
+    "id": 40,
+    "title": "Urgent: Library Reading Room Extended Hours for End-Sem Exam Prep",
+    "category": "University Notice",
+    "short_description": "Central Library will remain open 24x7 during examination weeks.",
+    "full_details": "Special quiet study zones and high-speed Wi-Fi access available for all B.Tech students.",
+    "attachment_url": null,
+    "is_important": 1,
+    "is_published": 1,
+    "publish_date": "2026-09-26",
+    "created_at": "2026-09-28 09:57:44",
+    "duration_days": 0,
+    "expires_at": null
+  },
+  {
+    "id": 41,
+    "title": "Urgent: Library Reading Room Extended Hours for End-Sem Exam Prep",
+    "category": "University Notice",
+    "short_description": "Central Library will remain open 24x7 during examination weeks.",
+    "full_details": "Special quiet study zones and high-speed Wi-Fi access available for all B.Tech students.",
+    "attachment_url": null,
+    "is_important": 1,
+    "is_published": 1,
+    "publish_date": "2026-09-26",
+    "created_at": "2026-09-28 10:07:56",
+    "duration_days": 0,
+    "expires_at": null
+  },
+  {
+    "id": 42,
+    "title": "Urgent: Library Reading Room Extended Hours for End-Sem Exam Prep",
+    "category": "University Notice",
+    "short_description": "Central Library will remain open 24x7 during examination weeks.",
+    "full_details": "Special quiet study zones and high-speed Wi-Fi access available for all B.Tech students.",
+    "attachment_url": null,
+    "is_important": 1,
+    "is_published": 1,
+    "publish_date": "2026-09-26",
+    "duration_days": 0,
+    "expires_at": null,
+    "created_at": "2026-09-28 10:34:31"
   }
 ]

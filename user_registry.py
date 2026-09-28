@@ -19,7 +19,7 @@ TMP_REGISTRY = "/tmp/students_registry.json"
 SECRET_KEY = os.environ.get("DDU_PORTAL_SECRET", "ddu_btech_portal_secure_jwt_2026_xyz98124_prod")
 
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@ddunotes.ac.in")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "AdminPassword123!")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 ADMIN_USER = {
     "id": 9,
     "full_name": "Keshav Narayan (Admin)",
@@ -116,16 +116,12 @@ def decrypt_sensitive_string(cipher_text):
         return s_cipher
 
 def user_dict_to_firestore(u):
-    """Converts a standard user dict to Firestore document schema, encrypting passwords"""
+    """Converts a standard user dict to Firestore document schema, omitting sensitive passwords"""
     fields = {}
     for k, v in u.items():
-        if v is None:
+        if v is None or k == "plain_password":
             continue
-        if k == "plain_password" and v:
-            # Store password encrypted in Firestore so it is never exposed in plaintext
-            enc_v = encrypt_sensitive_string(v)
-            fields[k] = {"stringValue": enc_v}
-        elif isinstance(v, bool):
+        if isinstance(v, bool):
             fields[k] = {"booleanValue": v}
         elif isinstance(v, int):
             fields[k] = {"integerValue": str(v)}
@@ -136,10 +132,12 @@ def user_dict_to_firestore(u):
     return {"fields": fields}
 
 def firestore_doc_to_user_dict(doc):
-    """Converts a Firestore document schema back to standard user dict, decrypting passwords"""
+    """Converts a Firestore document schema back to standard user dict"""
     fields = doc.get("fields", {})
     user = {}
     for k, fval in fields.items():
+        if k == "plain_password":
+            continue
         if "stringValue" in fval:
             user[k] = fval["stringValue"]
         elif "integerValue" in fval:
@@ -152,9 +150,7 @@ def firestore_doc_to_user_dict(doc):
         elif "doubleValue" in fval:
             user[k] = fval["doubleValue"]
 
-    # Decrypt password if stored encrypted
-    if user.get("plain_password"):
-        user["plain_password"] = decrypt_sensitive_string(user["plain_password"])
+    user.pop("plain_password", None)
     return user
 
 # ----------------- Firestore REST Operations -----------------
@@ -234,8 +230,7 @@ def load_registry(fetch_remote=True):
             with open(path, "r", encoding="utf-8") as f:
                 users = json.load(f)
                 for u in users:
-                    if u.get("plain_password"):
-                        u["plain_password"] = decrypt_sensitive_string(u["plain_password"])
+                    u.pop("plain_password", None)
         except Exception:
             users = []
 
@@ -246,8 +241,7 @@ def load_registry(fetch_remote=True):
                 repo_users = json.load(f)
                 known_emails = {u.get("email", "").lower().strip() for u in users}
                 for ru in repo_users:
-                    if ru.get("plain_password"):
-                        ru["plain_password"] = decrypt_sensitive_string(ru["plain_password"])
+                    ru.pop("plain_password", None)
                     if ru.get("email", "").lower().strip() not in known_emails:
                         users.append(ru)
         except Exception:
@@ -287,14 +281,11 @@ def load_registry(fetch_remote=True):
 def save_registry(users, sync_remote=False):
     # Filter fake accounts before saving
     cleaned_users = [u for u in users if u.get("email", "").lower().strip() not in FAKE_EMAILS]
-    # Encrypt passwords before serializing to disk JSON; completely omit admin plain password
+    # Ensure plain_password is NEVER written to disk
     disk_users = []
     for u in cleaned_users:
         du = dict(u)
-        if du.get("role") == "ADMIN":
-            du.pop("plain_password", None)
-        elif du.get("plain_password"):
-            du["plain_password"] = encrypt_sensitive_string(du["plain_password"])
+        du.pop("plain_password", None)
         disk_users.append(du)
 
     for target in [TMP_REGISTRY, REPO_REGISTRY]:
@@ -316,6 +307,9 @@ def save_user_to_registry(user_dict, allow_update=True):
     email_clean = user_dict.get("email", "").lower().strip()
     if email_clean in FAKE_EMAILS:
         return None
+
+    # Never store plain_password in memory or registry
+    user_dict.pop("plain_password", None)
 
     users = load_registry(fetch_remote=False)
     updated = False
@@ -359,6 +353,7 @@ def find_user_in_registry(email):
     users = load_registry(fetch_remote=False)
     for u in users:
         if u.get("email", "").lower().strip() == email_clean:
+            u.pop("plain_password", None)
             return u
 
     # Check remote Firestore directly if not in local cache
@@ -380,9 +375,15 @@ def find_user_in_registry(email):
 def update_password_in_registry(user_id_or_email, new_password):
     users = load_registry(fetch_remote=False)
     target_user = None
+    salt = secrets.token_hex(16)
+    key = hashlib.pbkdf2_hmac("sha256", new_password.encode("utf-8"), salt.encode("utf-8"), 100000)
+    hash_val = key.hex()
+
     for u in users:
         if str(u.get("id")) == str(user_id_or_email) or u.get("email", "").lower().strip() == str(user_id_or_email).lower().strip():
-            u["plain_password"] = new_password
+            u["password_hash"] = hash_val
+            u["salt"] = salt
+            u.pop("plain_password", None)
             target_user = u
             break
     if target_user:

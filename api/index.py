@@ -466,14 +466,7 @@ class handler(BaseHTTPRequestHandler):
                     }, 429)
                     return
 
-                # Master Admin Fast Login (Guarantee access regardless of DB state)
-                if email.lower() == user_registry.ADMIN_EMAIL.lower() and password == user_registry.ADMIN_PASSWORD:
-                    record_successful_login(client_ip, email)
-                    token = user_registry.generate_auth_token(user_registry.ADMIN_USER)
-                    admin_clean = {k: v for k, v in user_registry.ADMIN_USER.items() if k not in ("password_hash", "salt", "plain_password")}
-                    self.send_json({"token": token, "user": admin_clean, "success": True})
-                    return
-
+                # Admin & Student Authentication via PBKDF2 Hashing
                 user = database.authenticate_user(email, password)
                 if user == "INACTIVE":
                     self.send_json({"error": "Your account has been deactivated. Please contact administrator."}, 403)
@@ -558,7 +551,6 @@ class handler(BaseHTTPRequestHandler):
                     "id": user_id,
                     "full_name": full_name,
                     "email": email_clean,
-                    "plain_password": password,
                     "branch": branch,
                     "semester": semester,
                     "college": college,
@@ -610,7 +602,40 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"success": True, "message": "Student account created successfully.", "user_id": user_id})
                 return
 
-            # 4. Logout
+            # 4. Forgot Password Flow
+            if path == "/api/auth/forgot-password":
+                email = (payload.get("email") or "").strip().lower()
+                if not email:
+                    self.send_json({"error": "Please provide your registered email address."}, 400)
+                    return
+
+                reset_token = database.create_password_reset_token(email)
+                self.send_json({
+                    "success": True,
+                    "message": f"Password reset instructions and verification code generated for {email}.",
+                    "reset_token": reset_token or "dummy-token"
+                })
+                return
+
+            # 5. Reset Password Flow
+            if path == "/api/auth/reset-password":
+                token = (payload.get("token") or "").strip()
+                new_password = (payload.get("new_password") or "").strip()
+                if not token or not new_password:
+                    self.send_json({"error": "Reset token and new password are required."}, 400)
+                    return
+                if len(new_password) < 6:
+                    self.send_json({"error": "New password must be at least 6 characters long."}, 400)
+                    return
+
+                ok, msg = database.verify_and_use_reset_token(token, new_password)
+                if ok:
+                    self.send_json({"success": True, "message": msg})
+                else:
+                    self.send_json({"error": msg}, 400)
+                return
+
+            # 6. Logout
             if path == "/api/auth/logout":
                 auth_header = self.headers.get("Authorization", "")
                 if auth_header.startswith("Bearer "):

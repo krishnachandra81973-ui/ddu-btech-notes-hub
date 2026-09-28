@@ -428,18 +428,33 @@
         <div id="auth-forgot-section" style="display: none;">
           <div style="margin-bottom: 20px;">
             <h3 style="font-size: 1.3rem; font-weight: 800;">Reset Password</h3>
-            <p style="color: var(--text-muted); font-size: 0.85rem;">Enter your registered university email to receive recovery instructions.</p>
+            <p style="color: var(--text-muted); font-size: 0.85rem;" id="forgot-instructions">Enter your registered email to generate a secure recovery token.</p>
           </div>
+          <!-- Step 1: Request Code -->
           <form id="forgot-form-element">
             <div class="form-group">
-              <label class="form-label">Registered Email</label>
-              <input type="email" name="email" required placeholder="your.email@ddu.ac.in" class="form-control">
+              <label class="form-label">Registered University Email</label>
+              <input type="email" name="email" id="forgot-email-input" required placeholder="your.email@ddu.ac.in" class="form-control">
             </div>
-            <button type="submit" class="btn-primary" style="width: 100%; padding: 11px;">Send Reset Link</button>
-            <div style="text-align: center; margin-top: 14px;">
-              <a href="javascript:void(0)" onclick="Auth.switchTab('login')" style="font-size: 0.85rem; color: var(--primary);">← Back to Login</a>
-            </div>
+            <button type="submit" id="forgot-submit-btn" class="btn-primary" style="width: 100%; padding: 11px;">Generate Reset Token</button>
           </form>
+
+          <!-- Step 2: Set New Password -->
+          <form id="reset-confirm-form-element" style="display: none; margin-top: 15px;">
+            <div class="form-group">
+              <label class="form-label">Recovery Token / Code</label>
+              <input type="text" name="token" id="reset-token-input" required placeholder="Enter received 48-char token" class="form-control" style="font-family: monospace; font-size: 0.85rem;">
+            </div>
+            <div class="form-group">
+              <label class="form-label">New Password (min 6 characters)</label>
+              <input type="password" name="new_password" id="reset-newpass-input" minlength="6" required placeholder="••••••••" class="form-control">
+            </div>
+            <button type="submit" id="reset-submit-btn" class="btn-primary" style="width: 100%; padding: 11px; background: var(--accent-emerald);">Update Password</button>
+          </form>
+
+          <div style="text-align: center; margin-top: 14px;">
+            <a href="javascript:void(0)" onclick="Auth.switchTab('login')" style="font-size: 0.85rem; color: var(--primary);">← Back to Login</a>
+          </div>
         </div>
       </div>
     </div>
