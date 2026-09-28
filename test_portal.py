@@ -279,7 +279,15 @@ def run_tests():
         assert b"og:title" in note_html
         assert b"og:description" in note_html
         assert b"/#note/210/Unit-1-Introduction-To-Algorithms" in note_html
-        print("  ✓ Shared note link with chapter slug returns 200 OK with rich OpenGraph tags and client redirect!")
+        print("  ✓ Shared note link with chapter slug returns 200 OK with rich OpenGraph tags and in-page web PDF reader!")
+
+        # TEST 6.6: Verify 1st Page Preview Image for WhatsApp / Telegram Groups
+        print("\n[TEST 6.6] Verifying Dynamic 1st Page Preview Image for WhatsApp Group Cards...")
+        status, img_bytes, img_headers = request("/api/notes/210/preview.png")
+        assert status == 200
+        assert "image/png" in img_headers.get("Content-Type", "")
+        assert len(img_bytes) > 1000
+        print(f"  ✓ 1st Page Preview Image generated successfully: {len(img_bytes)} bytes PNG with DDU seal & chapter name!")
 
         # TEST 7: Secure Multipart File Upload
         print("\n[TEST 7] Verifying Secure Multipart File Upload & PDF Serving...")

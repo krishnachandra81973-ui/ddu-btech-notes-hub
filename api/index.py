@@ -11,6 +11,11 @@ import threading
 import re
 import html
 
+try:
+    import notes_preview
+except Exception:
+    notes_preview = None
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
@@ -259,7 +264,7 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
 
-            # Dynamic Shared Note Landing with Rich OpenGraph & 1st Page Preview Meta
+            # Dynamic Shared Note Landing with Direct In-Page Web PDF Viewer & OpenGraph Meta
             if path.startswith("/note/"):
                 parts = [p for p in path.split("/") if p]
                 # parts[0] == 'note', parts[1] == note_id, parts[2] == optional slug
@@ -274,49 +279,16 @@ class handler(BaseHTTPRequestHandler):
                         note = notes[0]
                 
                 if note:
-                    title = html.escape(str(note.get("title") or "B.Tech Lecture Note"))
-                    sub_name = html.escape(str(note.get("subject_name") or "B.Tech Engineering"))
-                    sub_code = html.escape(str(note.get("subject_code") or "DDU"))
-                    sem = note.get("semester_number") or 1
-                    unit = note.get("unit_number") or 1
-                    slug = parts[2] if len(parts) >= 3 and parts[2] else re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '-')
-                    desc = f"DDU Gorakhpur University B.Tech Sem {sem} • {sub_name} ({sub_code}) • Unit {unit} Lecture Notes & PDF Document."
+                    slug = parts[2] if len(parts) >= 3 and parts[2] else re.sub(r'[^\w\s-]', '', str(note.get("title") or "")).strip().replace(' ', '-')
+                    host_header = self.headers.get("Host", "ddu-btech-kn-notes.vercel.app")
+                    scheme = "https" if "vercel.app" in host_header else "http"
+                    base_url = f"{scheme}://{host_header}"
+                    if notes_preview:
+                        page_html = notes_preview.render_note_landing_html(note, note_id, slug, base_url=base_url)
+                    else:
+                        title = html.escape(str(note.get("title") or "B.Tech Lecture Note"))
+                        page_html = f"<!DOCTYPE html><html><head><title>{title}</title><meta http-equiv='refresh' content='0; url=/#note/{note_id}/{slug}'></head><body><p>Opening note...</p></body></html>"
                     
-                    page_html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{title} — DDU B.Tech Notes Hub</title>
-  <meta name="description" content="{desc}">
-  
-  <!-- OpenGraph Metadata for WhatsApp, Telegram, Twitter, LinkedIn -->
-  <meta property="og:title" content="{title}">
-  <meta property="og:description" content="{desc}">
-  <meta property="og:type" content="article">
-  <meta property="og:url" content="https://ddu-btech-kn-notes.vercel.app/note/{note_id}/{slug}">
-  <meta property="og:image" content="https://ddu-btech-kn-notes.vercel.app/logo.png">
-  <meta property="og:site_name" content="DDU B.Tech Notes Hub">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="{title}">
-  <meta name="twitter:description" content="{desc}">
-  <meta name="twitter:image" content="https://ddu-btech-kn-notes.vercel.app/logo.png">
-  
-  <link rel="stylesheet" href="/static/css/style.css?v=3">
-  <script>
-    // Seamless browser transition to single page app
-    window.location.replace("/#note/{note_id}/{slug}");
-  </script>
-</head>
-<body style="font-family: sans-serif; background: #0f172a; color: #f8fafc; padding: 40px 20px; text-align: center;">
-  <div style="max-width: 600px; margin: 0 auto; background: #1e293b; border-radius: 12px; padding: 30px; border: 1px solid #334155;">
-    <div style="font-size: 0.85rem; color: #38bdf8; font-weight: 700; text-transform: uppercase;">DDU B.Tech Study Note</div>
-    <h1 style="font-size: 1.6rem; margin: 12px 0;">{title}</h1>
-    <p style="color: #94a3b8; font-size: 0.95rem;">{sub_name} • Semester {sem} • Unit {unit}</p>
-    <p style="margin-top: 20px;"><a href="/#note/{note_id}/{slug}" style="display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 700;">Open Note in DDU Hub →</a></p>
-  </div>
-</body>
-</html>"""
                     self.send_response(200)
                     self.send_header("Content-Type", "text/html; charset=utf-8")
                     self.send_header("Cache-Control", "public, max-age=3600")
@@ -376,6 +348,45 @@ class handler(BaseHTTPRequestHandler):
                 )
                 self.send_json({"notes": notes})
                 return
+
+            # Note 1st Page Preview Image for WhatsApp/Telegram OG Cards
+            if path.startswith("/api/notes/") and (path.endswith("/preview.png") or path.endswith("/preview-image.png") or path.endswith("/preview")):
+                nid_str = path.split("/api/notes/")[1].split("/")[0]
+                note = None
+                if nid_str.isdigit():
+                    notes = database.get_notes(note_id=int(nid_str), only_published=True)
+                    if notes:
+                        note = notes[0]
+                
+                img_data = None
+                if note and notes_preview:
+                    img_data = notes_preview.generate_note_og_image(note, base_dir=BASE_DIR)
+                
+                if img_data:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "image/png")
+                    self.send_header("Cache-Control", "public, max-age=86400")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(img_data)
+                    return
+                else:
+                    fb_path = os.path.join(BASE_DIR, "icon-192.png")
+                    if not os.path.exists(fb_path):
+                        fb_path = os.path.join(BASE_DIR, "logo.png")
+                    if os.path.exists(fb_path):
+                        with open(fb_path, "rb") as f:
+                            fb_data = f.read()
+                        self.send_response(200)
+                        self.send_header("Content-Type", "image/png")
+                        self.send_header("Cache-Control", "public, max-age=86400")
+                        self.send_header("Access-Control-Allow-Origin", "*")
+                        self.end_headers()
+                        self.wfile.write(fb_data)
+                        return
+                    self.send_response(404)
+                    self.end_headers()
+                    return
 
             if path.startswith("/api/notes/") and not path.endswith("/view"):
                 nid = path.split("/api/notes/")[1].strip("/")

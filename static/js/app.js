@@ -3003,7 +3003,7 @@ const App = {
     const origin = window.location.origin;
     const pathname = window.location.pathname.replace(/\/+$/, "");
     const shareUrl = noteId 
-      ? `${origin}${pathname}/#note/${noteId}/${topicSlug}`
+      ? `${origin}/note/${noteId}/${topicSlug}`
       : `${origin}${pathname}/#preview/${topicSlug}`;
 
     this.currentShareData = { noteId, topic, shareUrl, fileUrl, topicSlug };
@@ -3142,6 +3142,22 @@ const App = {
     }
   },
 
+  sharedViewerIsGdocs: false,
+  toggleSharedViewerMode(directUrl, gdocsUrl) {
+    const frame = document.getElementById("shared-note-web-pdf-frame");
+    const btn = document.getElementById("btn-shared-toggle-viewer");
+    if (!frame) return;
+    if (this.sharedViewerIsGdocs) {
+      frame.src = directUrl + "#view=FitH&toolbar=1";
+      if (btn) btn.innerText = "🔄 Switch to Google Docs Viewer";
+      this.sharedViewerIsGdocs = false;
+    } else {
+      frame.src = gdocsUrl;
+      if (btn) btn.innerText = "🔄 Switch to Native PDF";
+      this.sharedViewerIsGdocs = true;
+    }
+  },
+
   // ------------------- Shared Note Direct Landing -------------------
   async renderSharedNote(container, noteId) {
     if (!noteId || isNaN(noteId)) {
@@ -3200,12 +3216,18 @@ const App = {
       return;
     }
 
+    const rawFileUrl = note.file_url || "";
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const absolutePdfUrl = rawFileUrl ? (rawFileUrl.startsWith("http") ? rawFileUrl : (window.location.origin + (rawFileUrl.startsWith("/") ? "" : "/") + rawFileUrl)) : "";
+    const gdocsEmbedUrl = absolutePdfUrl ? `https://docs.google.com/viewer?url=${encodeURIComponent(absolutePdfUrl)}&embedded=true` : "";
+    const defaultEmbedUrl = isMobileDevice ? gdocsEmbedUrl : (absolutePdfUrl ? `${absolutePdfUrl}#view=FitH&toolbar=1` : "");
+
     // Render Shared Note Card & Exploration Options
     container.innerHTML = `
-      <div class="container" style="padding: 40px 20px 80px; max-width: 900px; margin: 0 auto;">
+      <div class="container" style="padding: 30px 16px 80px; max-width: 1000px; margin: 0 auto;">
         
         <!-- Navigation Link -->
-        <div style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div style="margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
           <a href="#notes" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
             ← Back to All Notes Explorer
           </a>
@@ -3215,11 +3237,11 @@ const App = {
         </div>
 
         <!-- Shared Note Hero Card -->
-        <div style="background: var(--bg-card); border: 2px solid var(--primary-light); border-radius: var(--radius-lg); padding: 32px 28px; box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08); margin-bottom: 30px; position: relative;">
+        <div style="background: var(--bg-card); border: 2px solid var(--primary-light); border-radius: var(--radius-lg); padding: 26px 24px; box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08); margin-bottom: 24px; position: relative;">
           
           <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
             <span style="background: rgba(37, 99, 235, 0.12); color: var(--primary); font-weight: 700; font-size: 0.78rem; padding: 4px 10px; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.5px;">
-              Shared Note
+              Study Note
             </span>
             <span class="subject-code-tag" style="margin: 0; font-size: 0.8rem;">
               ${escapeHtml(note.subject_code || 'B.Tech')}
@@ -3229,40 +3251,62 @@ const App = {
             </span>
           </div>
 
-          <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--text-main); line-height: 1.3; margin-bottom: 10px;">
+          <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-main); line-height: 1.3; margin-bottom: 8px;">
             ${escapeHtml(note.title)}
           </h1>
 
-          <div style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 20px;">
+          <div style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 18px;">
             ${escapeHtml(note.subject_name || '')} • Semester ${note.semester_number || '1'} • ${note.unit_title || (note.unit_number ? 'Unit ' + note.unit_number : 'General')} • ${note.file_size || 'PDF'}
           </div>
 
-          <!-- Document 1st Page Preview Display -->
-          <div style="margin: 22px 0; border: 1.5px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: #ffffff; box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
-            <div style="background: linear-gradient(135deg, #1e40af, #0284c7); padding: 8px 16px; color: #ffffff; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
-              <span style="display: flex; align-items: center; gap: 6px;">
-                <span>📄</span> 1st Page Document Preview
-              </span>
-              <span style="background: rgba(255,255,255,0.22); padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 800;">
-                PAGE 1 OF PDF
-              </span>
-            </div>
+          <!-- ================= DIRECT IN-PAGE WEB PDF VIEWER ================= -->
+          <div style="margin: 20px 0; border: 2px solid var(--primary); border-radius: var(--radius-md); overflow: hidden; background: #1e293b; box-shadow: 0 8px 30px rgba(0,0,0,0.25);">
             
-            ${note.file_url && note.file_url.toLowerCase().includes('.pdf') ? `
-              <div style="width: 100%; height: 380px; background: #f8fafc; position: relative;">
-                <iframe src="${note.file_url.startsWith('http') ? note.file_url : (window.location.origin + (note.file_url.startsWith('/') ? '' : '/') + note.file_url)}#page=1&view=FitH&toolbar=0&navpanes=0&scrollbar=0" style="width: 100%; height: 100%; border: none;" title="1st Page of PDF Note"></iframe>
+            <!-- Viewer Toolbar -->
+            <div style="background: linear-gradient(135deg, #1e40af, #0284c7); padding: 10px 16px; color: #ffffff; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700;">
+                <span>📖</span>
+                <span>In-Page Web PDF Viewer</span>
+                <span style="background: rgba(255,255,255,0.2); padding: 2px 7px; border-radius: 10px; font-size: 0.7rem;">Live</span>
               </div>
-            ` : `
-              <div style="padding: 24px; text-align: center; color: var(--text-muted);">
-                <p style="margin: 0; font-size: 0.9rem;">Document preview available in online reader.</p>
+              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <button onclick="App.toggleSharedViewerMode('${absolutePdfUrl}', '${gdocsEmbedUrl}')" id="btn-shared-toggle-viewer" class="btn-secondary btn-sm" style="background: rgba(255,255,255,0.18); color: #fff; border: none; padding: 5px 10px; font-size: 0.75rem; font-weight: 700; cursor: pointer;">
+                  🔄 Switch Viewer
+                </button>
+                <a href="${absolutePdfUrl}" target="_blank" class="btn-secondary btn-sm" style="background: rgba(255,255,255,0.18); color: #fff; border: none; padding: 5px 10px; font-size: 0.75rem; font-weight: 700; text-decoration: none;">
+                  ↗ Fullscreen
+                </a>
+                <a href="${absolutePdfUrl}" target="_blank" download class="btn-secondary btn-sm" style="background: #ffffff; color: #1e40af; border: none; padding: 5px 12px; font-size: 0.75rem; font-weight: 800; text-decoration: none;">
+                  ⬇ Download PDF
+                </a>
               </div>
-            `}
+            </div>
+
+            <!-- In-Page PDF Frame (Visible directly on web page) -->
+            <div style="height: 75vh; min-height: 560px; max-height: 850px; background: #334155; position: relative;">
+              ${absolutePdfUrl ? `
+                <iframe id="shared-note-web-pdf-frame" src="${defaultEmbedUrl}" style="width: 100%; height: 100%; border: none; display: block;" title="Direct Web PDF Reader" allow="fullscreen"></iframe>
+              ` : `
+                <div style="padding: 40px; text-align: center; color: #94a3b8;">
+                  <p>Document is being prepared for online viewing.</p>
+                </div>
+              `}
+            </div>
+
+            <!-- Viewer Bottom Tip -->
+            <div style="background: #0f172a; padding: 8px 16px; font-size: 0.78rem; color: #94a3b8; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+              <span>📄 Note: Agar browser me document render na ho, 'Switch Viewer' dabayein ya direct download karein.</span>
+              <button onclick="App.copyShareUrl('${window.location.origin}/note/${note.id}/${App.slugify(note.title)}')" style="background: #1e293b; border: 1px solid #334155; color: #38bdf8; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 600;">
+                🔗 Copy Share Link
+              </button>
+            </div>
+
           </div>
 
           <!-- Note Actions -->
           <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding-top: 14px; border-top: 1px solid var(--border);">
-            <button onclick="App.openPdfViewer('${note.file_url}', '${escapeHtml(note.title)}', ${note.id}, true)" class="btn-primary" style="padding: 12px 24px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; font-size: 1rem; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);">
-              👁️ Read Full Note Online
+            <button onclick="App.openPdfViewer('${note.file_url}', '${escapeHtml(note.title)}', ${note.id}, true)" class="btn-primary" style="padding: 12px 24px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; font-size: 0.95rem;">
+              👁️ Open Modal Reader
             </button>
             <button onclick="App.downloadFile('${note.file_url}', '${escapeHtml(note.title)}', ${note.id})" class="btn-secondary" style="padding: 12px 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
               ⬇ Download PDF
