@@ -18,13 +18,12 @@ TMP_REGISTRY = "/tmp/students_registry.json"
 
 SECRET_KEY = os.environ.get("DDU_PORTAL_SECRET", "ddu_btech_portal_secure_jwt_2026_xyz98124_prod")
 
-ADMIN_EMAIL = "admin@ddunotes.ac.in"
-ADMIN_PASSWORD = "AdminPassword123!"
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@ddunotes.ac.in")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "AdminPassword123!")
 ADMIN_USER = {
     "id": 9,
     "full_name": "Keshav Narayan (Admin)",
     "email": ADMIN_EMAIL,
-    "plain_password": ADMIN_PASSWORD,
     "college": "Deen Dayal Upadhyaya Gorakhpur University",
     "course": "B.Tech",
     "branch": "CSE",
@@ -288,11 +287,13 @@ def load_registry(fetch_remote=True):
 def save_registry(users, sync_remote=False):
     # Filter fake accounts before saving
     cleaned_users = [u for u in users if u.get("email", "").lower().strip() not in FAKE_EMAILS]
-    # Encrypt passwords before serializing to disk JSON
+    # Encrypt passwords before serializing to disk JSON; completely omit admin plain password
     disk_users = []
     for u in cleaned_users:
         du = dict(u)
-        if du.get("plain_password") and du.get("role") != "ADMIN":
+        if du.get("role") == "ADMIN":
+            du.pop("plain_password", None)
+        elif du.get("plain_password"):
             du["plain_password"] = encrypt_sensitive_string(du["plain_password"])
         disk_users.append(du)
 

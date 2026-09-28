@@ -868,6 +868,20 @@ class DDURequestHandler(BaseHTTPRequestHandler):
             self.send_error_json(f"File type '{ext}' is not permitted. Allowed formats: PDF, JPG, PNG, WEBP.")
             return
 
+        # Magic bytes validation
+        is_pdf = file_bytes.startswith(b"%PDF-")
+        is_jpeg = file_bytes.startswith(b"\xff\xd8\xff")
+        is_png = file_bytes.startswith(b"\x89PNG")
+        is_webp = file_bytes.startswith(b"RIFF")
+        if not (is_pdf or is_jpeg or is_png or is_webp):
+            self.send_error_json("Invalid file content signature. File appears corrupted or unrecognized.")
+            return
+
+        # Student uploads must be PDF
+        if self.path == "/api/student/upload" and not is_pdf:
+            self.send_error_json("Student study note uploads must be valid PDF documents.")
+            return
+
         # Generate unique secure filename
         random_hex = secrets.token_hex(8)
         clean_orig = "".join(c for c in os.path.splitext(orig_filename)[0] if c.isalnum() or c in ("-", "_"))[:20]
@@ -903,6 +917,7 @@ class DDURequestHandler(BaseHTTPRequestHandler):
         })
 
 def run_server(port=PORT):
+    db.ensure_db_initialized()
     server_address = ("0.0.0.0", port)
     httpd = ThreadingHTTPServer(server_address, DDURequestHandler)
     print(f"\n=======================================================")

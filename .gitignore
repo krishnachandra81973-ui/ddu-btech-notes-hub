@@ -1,4 +1,26 @@
+# Python bytecode & cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# SQLite databases & runtime data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+ddu_portal.db
+students_registry.json
+
+# Environment variables & secrets
+.env
+.env.*
+*.env
+
+# Operating system & logs
 *.log
 .DS_Store
+Thumbs.db

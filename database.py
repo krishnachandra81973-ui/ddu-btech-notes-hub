@@ -31,6 +31,16 @@ def verify_password(password: str, password_hash: str, salt: str) -> bool:
     new_hash, _ = hash_password(password, salt)
     return secrets.compare_digest(new_hash, password_hash)
 
+def ensure_db_initialized():
+    """Initializes and seeds database if DB file does not exist or is empty"""
+    if not os.path.exists(DB_PATH) or os.path.getsize(DB_PATH) == 0:
+        init_db()
+        try:
+            import seed_data
+            seed_data.seed()
+        except Exception as e:
+            pass
+
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()

@@ -2974,12 +2974,12 @@ const App = {
         const full_name = regForm.full_name.value.trim();
         const email = regForm.email.value.trim();
         const password = regForm.password.value;
-        const confirm_password = regForm.confirm_password.value;
-        const college = regForm.college.value.trim();
+        const confirm_password = regForm.confirm_password ? regForm.confirm_password.value : null;
+        const college = regForm.college ? regForm.college.value.trim() : "Deen Dayal Upadhyaya Gorakhpur University";
         const branch = regForm.branch.value;
         const semester = parseInt(regForm.semester.value);
 
-        if (password !== confirm_password) {
+        if (confirm_password !== null && password !== confirm_password) {
           App.toast("Passwords do not match.", "error");
           return;
         }
@@ -2988,7 +2988,7 @@ const App = {
           full_name,
           email,
           password,
-          college,
+          college: college || "Deen Dayal Upadhyaya Gorakhpur University",
           branch,
           semester,
           course: "B.Tech"
@@ -3173,6 +3173,11 @@ const App = {
   },
 
   async uploadStudentPdf(fileInputId, targetUrlInputId) {
+    if (!Auth.currentUser) {
+      this.toast("PDF upload karne ke liye kripya pahle Student Account login karein.", "warning");
+      Auth.openModal("login");
+      return;
+    }
     const input = document.getElementById(fileInputId);
     if (!input || !input.files || input.files.length === 0) {
       this.toast("Please select a PDF file first.", "warning");

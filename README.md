@@ -45,12 +45,17 @@ Open your browser at:
 
 ---
 
-## 🔐 Default Credentials
+## 🔐 Administrator Configuration
 
-| Role | Email | Password |
-|---|---|---|
-| **Administrator** | `admin@ddunotes.ac.in` | `AdminPassword123!` |
-| **Demo Student** | `student@ddu.ac.in` | `StudentPassword123!` |
+Configure administrator credentials and secrets securely using environment variables before running in production:
+
+```bash
+export ADMIN_EMAIL="admin@ddunotes.ac.in"
+export ADMIN_PASSWORD="<Your-Strong-Random-Password>"
+export DDU_PORTAL_SECRET="<Your-Cryptographic-Secret-Key>"
+```
+
+> **Security Notice:** Never commit administrative passwords, API keys, or live SQLite database files to public version control.
 
 ---
 

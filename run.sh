@@ -31,9 +31,6 @@ PORT=${PORT:-8000}
 echo "Starting portal server on http://localhost:$PORT..."
 echo "Student Dashboard: http://localhost:$PORT/#dashboard"
 echo "Admin Portal:      http://localhost:$PORT/#admin"
-echo "Credentials:"
-echo " - Admin:   admin@ddunotes.ac.in / AdminPassword123!"
-echo " - Student: student@ddu.ac.in   / StudentPassword123!"
 echo "=========================================================="
 
 exec python3 server.py

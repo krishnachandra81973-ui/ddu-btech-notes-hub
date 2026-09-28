@@ -994,6 +994,22 @@ class handler(BaseHTTPRequestHandler):
                     self.send_json({"error": "No file received or file content is empty."}, 400)
                     return
 
+                # Validate magic bytes / content signature (PDF and approved images only)
+                is_valid_magic = (
+                    file_bytes.startswith(b"%PDF-") or
+                    file_bytes.startswith(b"\xff\xd8\xff") or
+                    file_bytes.startswith(b"\x89PNG") or
+                    file_bytes.startswith(b"RIFF")
+                )
+                if not is_valid_magic:
+                    self.send_json({"error": "Invalid or corrupted file format. Only verified PDF, JPG, PNG, and WEBP documents are allowed."}, 400)
+                    return
+
+                # Strict PDF check for student contributions
+                if path == "/api/student/upload" and not file_bytes.startswith(b"%PDF-"):
+                    self.send_json({"error": "Student study notes must be a valid PDF document."}, 400)
+                    return
+
                 sz_kb = round(len(file_bytes) / 1024, 1)
                 file_size_str = f"{sz_kb} KB" if sz_kb < 1024 else f"{round(sz_kb / 1024, 2)} MB"
 
@@ -1017,37 +1033,36 @@ class handler(BaseHTTPRequestHandler):
                 }
                 upload_mime = mime_map.get(ext, "application/pdf")
 
-                # Default fallback URL
-                saved_url = f"https://cdn.jsdelivr.net/gh/krishnachandra81973-ui/ddu-btech-notes-hub@main/{rel_path}"
+                # Default relative URL
+                saved_url = f"/{rel_path}"
 
-                # Commit permanently to GitHub repository
-                _gh_prefix = "gh" + "p_"
-                _gh_key = "pcr9i94dTrcnCvsgaFuhjqRDRFU0iN25Gkcp"
-                github_token = os.environ.get("GITHUB_TOKEN", _gh_prefix + _gh_key)
-                github_repo = "krishnachandra81973-ui/ddu-btech-notes-hub"
-                try:
-                    import base64
-                    gh_api_url = f"https://api.github.com/repos/{github_repo}/contents/{rel_path}"
-                    gh_payload = json.dumps({
-                        "message": f"Upload study note/notice: {orig_name}",
-                        "content": base64.b64encode(file_bytes).decode("utf-8"),
-                        "branch": "main"
-                    }).encode("utf-8")
-                    req = urllib.request.Request(
-                        gh_api_url,
-                        data=gh_payload,
-                        headers={
-                            "Authorization": f"Bearer {github_token}",
-                            "User-Agent": "DDU-Portal-Serverless",
-                            "Content-Type": "application/json"
-                        },
-                        method="PUT"
-                    )
-                    with urllib.request.urlopen(req, timeout=12) as resp:
-                        if resp.status in (200, 201):
-                            saved_url = f"https://cdn.jsdelivr.net/gh/{github_repo}@main/{rel_path}"
-                except Exception:
-                    pass
+                # Commit permanently to GitHub repository only if GITHUB_TOKEN environment variable is set
+                github_token = os.environ.get("GITHUB_TOKEN", "")
+                github_repo = os.environ.get("GITHUB_REPO", "krishnachandra81973-ui/ddu-btech-notes-hub")
+                if github_token:
+                    try:
+                        import base64
+                        gh_api_url = f"https://api.github.com/repos/{github_repo}/contents/{rel_path}"
+                        gh_payload = json.dumps({
+                            "message": f"Upload study note/notice: {orig_name}",
+                            "content": base64.b64encode(file_bytes).decode("utf-8"),
+                            "branch": "main"
+                        }).encode("utf-8")
+                        req = urllib.request.Request(
+                            gh_api_url,
+                            data=gh_payload,
+                            headers={
+                                "Authorization": f"Bearer {github_token}",
+                                "User-Agent": "DDU-Portal-Serverless",
+                                "Content-Type": "application/json"
+                            },
+                            method="PUT"
+                        )
+                        with urllib.request.urlopen(req, timeout=12) as resp:
+                            if resp.status in (200, 201):
+                                saved_url = f"https://cdn.jsdelivr.net/gh/{github_repo}@main/{rel_path}"
+                    except Exception:
+                        pass
 
                 # Also save locally if local static directory exists
                 try:
