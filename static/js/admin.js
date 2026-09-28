@@ -147,6 +147,14 @@ const Admin = {
   async renderDashboardTab(container) {
     try {
       const res = await fetch("/api/admin/stats", { headers: Auth.getAuthHeaders() });
+      if (res.status === 401 || res.status === 403) {
+        App.toast("Administrator session expired. Please sign in.", "warning");
+        Auth.logout(false);
+        if (typeof AdminApp !== "undefined") {
+          AdminApp.renderState();
+        }
+        return;
+      }
       const data = await res.json();
       const stats = data.stats || {
         total_students: 0,

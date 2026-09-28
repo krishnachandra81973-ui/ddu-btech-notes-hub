@@ -22,11 +22,7 @@ const Auth = {
           this.currentUser = data.user;
           localStorage.setItem("ddu_user", JSON.stringify(this.currentUser));
         } else if (res.status === 401) {
-          if (this.currentUser && this.currentUser.role === "ADMIN") {
-            console.warn("Preserving administrator session");
-          } else {
-            this.logout(false);
-          }
+          this.logout(false);
         }
       } catch (e) {
         console.warn("Auth network check fallback", e);
@@ -105,6 +101,9 @@ const Auth = {
   },
 
   getAuthHeaders() {
+    if (!this.token) {
+      this.token = localStorage.getItem("ddu_token") || null;
+    }
     return this.token ? { "Authorization": `Bearer ${this.token}` } : {};
   },
 

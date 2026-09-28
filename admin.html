@@ -83,16 +83,21 @@
     const AdminApp = {
       async init() {
         App.initTheme();
-        const localUser = localStorage.getItem("ddu_user");
-        if (localUser) {
-          try {
-            Auth.currentUser = JSON.parse(localUser);
-          } catch(e) {}
-        }
-        if (Auth.currentUser && Auth.currentUser.role === "ADMIN") {
+        Auth.token = localStorage.getItem("ddu_token") || null;
+        if (!Auth.token) {
+          Auth.currentUser = null;
           this.renderState();
+          return;
         }
         await Auth.init();
+        if (!Auth.currentUser || Auth.currentUser.role !== "ADMIN") {
+          Auth.currentUser = null;
+          Auth.token = null;
+          localStorage.removeItem("ddu_token");
+          localStorage.removeItem("ddu_user");
+          this.renderState();
+          return;
+        }
         this.renderState();
       },
 
@@ -128,12 +133,12 @@
                 <form id="standalone-admin-login-form" onsubmit="AdminApp.handleLogin(event)">
                   <div class="form-group">
                     <label class="form-label">Administrator Email *</label>
-                    <input type="email" name="email" required placeholder="admin@ddunotes.ac.in" class="form-control" autofocus>
+                    <input type="email" name="email" required value="admin@ddunotes.ac.in" placeholder="admin@ddunotes.ac.in" class="form-control" autofocus>
                   </div>
 
                   <div class="form-group">
                     <label class="form-label">Administrator Password *</label>
-                    <input type="password" name="password" required placeholder="••••••••••••" class="form-control">
+                    <input type="password" name="password" required placeholder="Enter Admin Password (e.g. AdminPassword123!)" class="form-control">
                   </div>
 
                   <div id="admin-login-error" style="display: none; background: rgba(239, 68, 68, 0.12); color: var(--accent-rose); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.82rem; margin-bottom: 16px; font-weight: 600;">

@@ -441,6 +441,25 @@ class DDURequestHandler(BaseHTTPRequestHandler):
         # 7. Static files and SPA serving
         if path == "/" or path == "":
             self.serve_static(os.path.join(STATIC_DIR, "index.html"))
+        elif path.startswith("/static/uploads/"):
+            rel_file = path.replace("/static/uploads/", "").lstrip("/")
+            fname = os.path.basename(rel_file)
+            candidates = [
+                os.path.join(STATIC_DIR, "uploads", rel_file),
+                os.path.join(STATIC_DIR, "uploads", "notes", fname),
+                os.path.join(STATIC_DIR, "uploads", fname),
+                os.path.join("/tmp", "uploads", fname),
+                os.path.join("/tmp", "uploads", "notes", fname),
+            ]
+            found = None
+            for c in candidates:
+                if os.path.exists(c) and os.path.isfile(c):
+                    found = c
+                    break
+            if found:
+                self.serve_static(found)
+            else:
+                self.send_error_json("Document file not found", status=404)
         elif path.startswith("/static/"):
             rel_path = path.replace("/static/", "")
             file_to_serve = os.path.join(STATIC_DIR, rel_path)

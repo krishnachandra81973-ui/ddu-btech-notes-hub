@@ -381,22 +381,8 @@ const App = {
 
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    // Check Registration / Auth Access Gate for protected routes
-    const protectedContentRoutes = ["notes", "pyq", "syllabus"];
-    if (protectedContentRoutes.includes(hash) && !Auth.currentUser) {
-      let title = "B.Tech Lecture Notes & Study Materials Locked";
-      let desc = "DDU Gorakhpur University B.Tech semester notes dekhne ke liye kripya pahle Apna Free Student Account banayein (Register karein).";
-      if (hash === "pyq") {
-        title = "Previous Year Question Papers (2021-2025) Locked";
-        desc = "DDU B.Tech 5-year end-term examination question papers aur answer keys download karne ke liye kripya pehle Register karein.";
-      } else if (hash === "syllabus") {
-        title = "Official CBCS Syllabus Curricula Locked";
-        desc = "Official university course scheme aur syllabus download karne ke liye kripya pehle Register karein.";
-      }
-      this.renderLockGate(container, title, desc);
-      Auth.openModal("register");
-      return;
-    }
+    // Public educational materials (Notes, Syllabus, PYQ) are open to all students
+
 
     if (hash === "home") {
       this.renderHome(container);
@@ -1763,16 +1749,6 @@ const App = {
 
   // ------------------- 4. Syllabus Section -------------------
   async renderSyllabus(container) {
-    if (!Auth.currentUser) {
-      this.renderLockGate(
-        container,
-        "Official CBCS Syllabus Curricula Locked",
-        "Official university course schemes aur syllabus download karne ke liye kripya pehle Apna Free Student Account banayein (Register karein)."
-      );
-      Auth.openModal("register");
-      return;
-    }
-
     container.innerHTML = `
       <div class="container" style="padding: 40px 20px 80px;">
         <div class="section-header">
@@ -1962,16 +1938,6 @@ const App = {
 
   // ------------------- 5. All Notes Explorer -------------------
   async renderNotes(container) {
-    if (!Auth.currentUser) {
-      this.renderLockGate(
-        container,
-        "B.Tech Lecture Notes & Study Materials Locked",
-        "DDU Gorakhpur University B.Tech semester notes dekhne ke liye kripya pahle Apna Free Student Account banayein (Register karein)."
-      );
-      Auth.openModal("register");
-      return;
-    }
-
     container.innerHTML = `
       <div class="container" style="padding: 40px 20px 80px;">
         <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
@@ -2075,16 +2041,6 @@ const App = {
 
   // ------------------- 6. Previous Year Papers (PYQs) -------------------
   async renderPyq(container) {
-    if (!Auth.currentUser) {
-      this.renderLockGate(
-        container,
-        "Previous Year Question Papers (2021-2025) Locked",
-        "DDU B.Tech 5-year end-term examination question papers aur answer keys download karne ke liye kripya pehle Apna Free Student Account banayein (Register karein)."
-      );
-      Auth.openModal("register");
-      return;
-    }
-
     container.innerHTML = `
       <div class="container" style="padding: 40px 20px 80px;">
         <div class="section-header">
@@ -2761,12 +2717,6 @@ const App = {
 
   // ------------------- PDF Viewer Modal -------------------
   openPdfViewer(fileUrl, title = "Document Preview", noteId = null) {
-    if (!Auth.currentUser) {
-      Auth.openModal("register");
-      App.toast("Study notes aur PDF dekhne ke liye kripya pahle Register / Login karein.", "warning");
-      return;
-    }
-
     const modal = document.getElementById("pdf-viewer-modal");
     if (!modal) return;
     const titleEl = document.getElementById("pdf-viewer-title");
@@ -2777,6 +2727,10 @@ const App = {
     const mobileTip = document.getElementById("pdf-viewer-mobile-tip");
 
     fileUrl = (fileUrl || "").trim();
+    if (!fileUrl) {
+      App.toast("Study document link is currently being prepared.", "info");
+      return;
+    }
     if (titleEl) titleEl.innerText = title;
 
     const driveId = this.getGoogleDriveId(fileUrl);
@@ -2800,7 +2754,7 @@ const App = {
       downloadUrl = absoluteUrl;
       if (isImage) {
         embedUrl = absoluteUrl;
-      } else if (isMobile) {
+      } else if (isMobile && absoluteUrl.startsWith("https://") && !absoluteUrl.includes("localhost") && !absoluteUrl.includes("127.0.0.1")) {
         embedUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(absoluteUrl)}&embedded=true`;
       } else {
         embedUrl = absoluteUrl;
@@ -2850,7 +2804,16 @@ const App = {
     }
 
     if (mobileTip) {
-      mobileTip.style.display = (isMobile && !isImage) ? "block" : "none";
+      mobileTip.style.display = "block";
+      mobileTip.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <span>📱 <strong>Preview:</strong> Agar mobile browser me document na dikhe:</span>
+          <div style="display: flex; gap: 8px;">
+            <a href="${externalUrl}" target="_blank" rel="noopener noreferrer" style="background: #2563eb; color: #fff; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 0.78rem;">Open Fullscreen ↗</a>
+            <a href="${downloadUrl}" download style="background: #10b981; color: #fff; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 0.78rem;">Download PDF ⬇</a>
+          </div>
+        </div>
+      `;
     }
 
     if (noteId) {
@@ -2862,11 +2825,6 @@ const App = {
 
   // ------------------- Secure File Download -------------------
   downloadFile(fileUrl, title = "Document", noteId = null) {
-    if (!Auth.currentUser) {
-      Auth.openModal("register");
-      App.toast("PDF download karne ke liye kripya pahle Register / Login karein.", "warning");
-      return;
-    }
     if (noteId) {
       this.recordDownload(noteId);
     }

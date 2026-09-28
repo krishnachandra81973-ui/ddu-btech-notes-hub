@@ -96,6 +96,10 @@
       "dest": "api/index.py"
     },
     {
+      "src": "/static/uploads/(.*)",
+      "dest": "api/index.py"
+    },
+    {
       "src": "/admin",
       "dest": "/admin.html"
     },

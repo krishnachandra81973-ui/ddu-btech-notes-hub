@@ -204,6 +204,60 @@ class handler(BaseHTTPRequestHandler):
         query = urllib.parse.parse_qs(parsed.query)
 
         try:
+            # 0. Direct File Serving for Uploaded PDFs, Images & Academic Assets
+            if path.startswith("/static/uploads/") or path.startswith("/api/files/"):
+                if path.startswith("/static/uploads/"):
+                    rel_file = path.replace("/static/uploads/", "").lstrip("/")
+                else:
+                    rel_file = path.replace("/api/files/", "").lstrip("/")
+                
+                fname = os.path.basename(rel_file)
+                candidates = [
+                    os.path.join(BASE_DIR, "static", "uploads", rel_file),
+                    os.path.join(BASE_DIR, "static", "uploads", "notes", fname),
+                    os.path.join(BASE_DIR, "static", "uploads", fname),
+                    os.path.join("/tmp", "uploads", fname),
+                    os.path.join("/tmp", "uploads", "notes", fname),
+                    os.path.join("/tmp", fname),
+                ]
+                found_path = None
+                for c in candidates:
+                    if os.path.exists(c) and os.path.isfile(c):
+                        found_path = c
+                        break
+                
+                if found_path:
+                    ext = os.path.splitext(found_path)[1].lower()
+                    mime_types = {
+                        ".pdf": "application/pdf",
+                        ".png": "image/png",
+                        ".jpg": "image/jpeg",
+                        ".jpeg": "image/jpeg",
+                        ".webp": "image/webp",
+                        ".svg": "image/svg+xml"
+                    }
+                    ct = mime_types.get(ext, "application/octet-stream")
+                    with open(found_path, "rb") as f:
+                        file_data = f.read()
+                    self.send_response(200)
+                    self.send_header("Content-Type", ct)
+                    self.send_header("Content-Length", str(len(file_data)))
+                    self.send_header("Content-Disposition", f'inline; filename="{fname}"')
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.send_header("Cache-Control", "public, max-age=86400")
+                    self.end_headers()
+                    self.wfile.write(file_data)
+                    return
+
+                # If not found in local containers, redirect to CDN / GitHub Raw
+                github_repo = os.environ.get("GITHUB_REPO", "krishnachandra81973-ui/ddu-btech-notes-hub")
+                cdn_url = f"https://cdn.jsdelivr.net/gh/{github_repo}@main/static/uploads/{rel_file}"
+                self.send_response(302)
+                self.send_header("Location", cdn_url)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                return
+
             # 1. Semesters
             if path == "/api/semesters":
                 semesters = database.get_semesters()
@@ -1082,7 +1136,7 @@ class handler(BaseHTTPRequestHandler):
                 # Default relative URL
                 saved_url = f"/{rel_path}"
 
-                # Commit permanently to GitHub repository only if GITHUB_TOKEN environment variable is set
+                # Commit permanently to GitHub repository for global CDN accessibility
                 github_token = os.environ.get("GITHUB_TOKEN", "")
                 github_repo = os.environ.get("GITHUB_REPO", "krishnachandra81973-ui/ddu-btech-notes-hub")
                 if github_token:
@@ -1106,7 +1160,7 @@ class handler(BaseHTTPRequestHandler):
                         )
                         with urllib.request.urlopen(req, timeout=12) as resp:
                             if resp.status in (200, 201):
-                                saved_url = f"https://cdn.jsdelivr.net/gh/{github_repo}@main/{rel_path}"
+                                saved_url = f"https://raw.githubusercontent.com/{github_repo}/main/{rel_path}"
                     except Exception:
                         pass
 
