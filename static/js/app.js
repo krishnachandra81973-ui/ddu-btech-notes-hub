@@ -302,11 +302,11 @@ const App = {
           </p>
           
           <div style="display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin-bottom: 28px;">
-            <button onclick="Auth.openModal('register')" class="btn-primary" style="padding: 13px 26px; font-weight: 800; font-size: 0.98rem; border-radius: var(--radius-md); box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35); display: inline-flex; align-items: center; gap: 8px;">
-              <span>✨</span> Create Free Student Account (Register)
+            <button onclick="Auth.openModal('login')" class="btn-primary" style="padding: 13px 26px; font-weight: 800; font-size: 0.98rem; border-radius: var(--radius-md); box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35); display: inline-flex; align-items: center; gap: 8px;">
+              <span>🔑</span> Student Log In
             </button>
-            <button onclick="Auth.openModal('login')" class="btn-secondary" style="padding: 13px 22px; font-weight: 700; font-size: 0.98rem; border-radius: var(--radius-md); display: inline-flex; align-items: center; gap: 6px;">
-              <span>🔑</span> Already Registered? Log In
+            <button onclick="Auth.openModal('register')" class="btn-secondary" style="padding: 13px 22px; font-weight: 700; font-size: 0.98rem; border-radius: var(--radius-md); display: inline-flex; align-items: center; gap: 6px;">
+              <span>✨</span> Create Free Student Account (Register)
             </button>
           </div>
 
@@ -381,8 +381,33 @@ const App = {
 
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    // Public educational materials (Notes, Syllabus, PYQ) are open to all students
+    // Authentication Access Gate: Student must be logged in to view notes, pyq, syllabus, semesters, updates
+    const protectedContentRoutes = ["notes", "pyq", "syllabus", "semesters", "updates"];
+    const isProtected = protectedContentRoutes.includes(hash) || hash.startsWith("semester/");
 
+    if (isProtected && !Auth.currentUser) {
+      let title = "B.Tech Study Materials & Curriculum Locked";
+      let desc = "DDU Gorakhpur University B.Tech portal ka study material dekhne ke liye kripya pehle Apna Student Account Login karein ya Free Register karein.";
+      if (hash === "notes") {
+        title = "B.Tech Lecture Notes & Study Materials Locked";
+        desc = "DDU Gorakhpur University ke B.Tech semester-wise lecture notes dekhne ke liye kripya pehle Student Login karein ya Register karein.";
+      } else if (hash === "pyq") {
+        title = "Previous Year Question Papers (2021-2025) Locked";
+        desc = "DDU B.Tech 5-year end-term examination question papers aur answer keys download karne ke liye kripya pehle Student Login karein.";
+      } else if (hash === "syllabus") {
+        title = "Official CBCS Syllabus Curricula Locked";
+        desc = "Official university course scheme aur subject-wise syllabus dekhne ke liye kripya pehle Student Login karein.";
+      } else if (hash === "semesters" || hash.startsWith("semester/")) {
+        title = "B.Tech Academic Semesters Curriculum Locked";
+        desc = "DDU Gorakhpur University 1st to 8th Semester curriculum aur subjects dekhne ke liye kripya pehle Student Login karein.";
+      } else if (hash === "updates") {
+        title = "Daily Academic Notices & Campus Updates Locked";
+        desc = "DDU Gorakhpur University ki sabhi daily campus notices, examination circulars aur official announcements dekhne ke liye kripya pehle Student Login karein.";
+      }
+      this.renderLockGate(container, title, desc);
+      Auth.openModal("login");
+      return;
+    }
 
     if (hash === "home") {
       this.renderHome(container);
@@ -398,15 +423,6 @@ const App = {
     } else if (hash === "pyq") {
       this.renderPyq(container);
     } else if (hash === "updates") {
-      if (!Auth.currentUser) {
-        this.renderLockGate(
-          container,
-          "Daily Academic Notices & Campus Updates Locked",
-          "DDU Gorakhpur University ki sabhi daily campus notices, examination circulars aur official announcements dekhne ke liye kripya pehle Apna Student Account Login karein ya Register karein."
-        );
-        Auth.openModal("login");
-        return;
-      }
       this.renderUpdates(container);
     } else if (hash === "about") {
       this.renderAbout(container);
@@ -739,9 +755,9 @@ const App = {
                   <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_cse_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech CSE Structure & Syllabus 2024-25')" class="btn-primary btn-sm" style="flex: 1;">
                     👁️ Read Online
                   </button>
-                  <a href="/static/uploads/ddu_official_btech_cse_structure_syllabus_2024_25.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                  <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_cse_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech CSE Structure & Syllabus 2024-25')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
                     ⬇ Download
-                  </a>
+                  </button>
                 </div>
               </div>
 
@@ -762,9 +778,9 @@ const App = {
                   <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_cse_aiml_syllabus.pdf', 'Official DDU B.Tech CSE (AIML) Syllabus')" class="btn-primary btn-sm" style="flex: 1;">
                     👁️ Read Online
                   </button>
-                  <a href="/static/uploads/ddu_official_btech_cse_aiml_syllabus.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                  <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_cse_aiml_syllabus.pdf', 'Official DDU B.Tech CSE (AIML) Syllabus')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
                     ⬇ Download
-                  </a>
+                  </button>
                 </div>
               </div>
 
@@ -785,9 +801,9 @@ const App = {
                   <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_cse_aids_syllabus.pdf', 'Official DDU B.Tech CSE (AI & DS) Syllabus')" class="btn-primary btn-sm" style="flex: 1;">
                     👁️ Read Online
                   </button>
-                  <a href="/static/uploads/ddu_official_btech_cse_aids_syllabus.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                  <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_cse_aids_syllabus.pdf', 'Official DDU B.Tech CSE (AI & DS) Syllabus')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
                     ⬇ Download
-                  </a>
+                  </button>
                 </div>
               </div>
 
@@ -808,9 +824,9 @@ const App = {
                   <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_it_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech IT Structure & Syllabus 2024-25')" class="btn-primary btn-sm" style="flex: 1;">
                     👁️ Read Online
                   </button>
-                  <a href="/static/uploads/ddu_official_btech_it_structure_syllabus_2024_25.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                  <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_it_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech IT Structure & Syllabus 2024-25')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
                     ⬇ Download
-                  </a>
+                  </button>
                 </div>
               </div>
 
@@ -831,9 +847,9 @@ const App = {
                   <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_me_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech ME Structure & Syllabus 2024-25')" class="btn-primary btn-sm" style="flex: 1;">
                     👁️ Read Online
                   </button>
-                  <a href="/static/uploads/ddu_official_btech_me_structure_syllabus_2024_25.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                  <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_me_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech ME Structure & Syllabus 2024-25')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
                     ⬇ Download
-                  </a>
+                  </button>
                 </div>
               </div>
 
@@ -854,9 +870,9 @@ const App = {
                   <button onclick="App.openPdfViewer('/static/uploads/ddu_official_mtech_cse_syllabus.pdf', 'Official DDU M.Tech CSE Syllabus')" class="btn-primary btn-sm" style="flex: 1;">
                     👁️ Read Online
                   </button>
-                  <a href="/static/uploads/ddu_official_mtech_cse_syllabus.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                  <button onclick="App.downloadFile('/static/uploads/ddu_official_mtech_cse_syllabus.pdf', 'Official DDU M.Tech CSE Syllabus')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
                     ⬇ Download
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1181,9 +1197,9 @@ const App = {
                 <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_cse_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech CSE Structure & Syllabus 2024-25')" class="btn-primary btn-sm" style="flex: 1;">
                   👁️ Read Online
                 </button>
-                <a href="/static/uploads/ddu_official_btech_cse_structure_syllabus_2024_25.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_cse_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech CSE Structure & Syllabus 2024-25')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
                   ⬇ Download
-                </a>
+                </button>
               </div>
             </div>
 
@@ -1204,9 +1220,9 @@ const App = {
                 <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_cse_aiml_syllabus.pdf', 'Official DDU B.Tech CSE (AIML) Syllabus')" class="btn-primary btn-sm" style="flex: 1;">
                   👁️ Read Online
                 </button>
-                <a href="/static/uploads/ddu_official_btech_cse_aiml_syllabus.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_cse_aiml_syllabus.pdf', 'Official DDU B.Tech CSE (AIML) Syllabus')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
                   ⬇ Download
-                </a>
+                </button>
               </div>
             </div>
 
@@ -1227,9 +1243,9 @@ const App = {
                 <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_cse_aids_syllabus.pdf', 'Official DDU B.Tech CSE (AI & DS) Syllabus')" class="btn-primary btn-sm" style="flex: 1;">
                   👁️ Read Online
                 </button>
-                <a href="/static/uploads/ddu_official_btech_cse_aids_syllabus.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_cse_aids_syllabus.pdf', 'Official DDU B.Tech CSE (AI & DS) Syllabus')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
                   ⬇ Download
-                </a>
+                </button>
               </div>
             </div>
 
@@ -1250,9 +1266,9 @@ const App = {
                 <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_it_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech IT Structure & Syllabus 2024-25')" class="btn-primary btn-sm" style="flex: 1;">
                   👁️ Read Online
                 </button>
-                <a href="/static/uploads/ddu_official_btech_it_structure_syllabus_2024_25.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_it_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech IT Structure & Syllabus 2024-25')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
                   ⬇ Download
-                </a>
+                </button>
               </div>
             </div>
 
@@ -1273,9 +1289,9 @@ const App = {
                 <button onclick="App.openPdfViewer('/static/uploads/ddu_official_btech_me_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech ME Structure & Syllabus 2024-25')" class="btn-primary btn-sm" style="flex: 1;">
                   👁️ Read Online
                 </button>
-                <a href="/static/uploads/ddu_official_btech_me_structure_syllabus_2024_25.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                <button onclick="App.downloadFile('/static/uploads/ddu_official_btech_me_structure_syllabus_2024_25.pdf', 'Official DDU B.Tech ME Structure & Syllabus 2024-25')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
                   ⬇ Download
-                </a>
+                </button>
               </div>
             </div>
 
@@ -1296,9 +1312,9 @@ const App = {
                 <button onclick="App.openPdfViewer('/static/uploads/ddu_official_mtech_cse_syllabus.pdf', 'Official DDU M.Tech CSE Syllabus')" class="btn-primary btn-sm" style="flex: 1;">
                   👁️ Read Online
                 </button>
-                <a href="/static/uploads/ddu_official_mtech_cse_syllabus.pdf" download class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
+                <button onclick="App.downloadFile('/static/uploads/ddu_official_mtech_cse_syllabus.pdf', 'Official DDU M.Tech CSE Syllabus')" class="btn-secondary btn-sm" style="flex: 1; text-align: center;">
                   ⬇ Download
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -1559,6 +1575,11 @@ const App = {
 
   // ------------------- 2. Semesters Overview -------------------
   renderSemesters(container) {
+    if (!Auth.currentUser) {
+      this.renderLockGate(container, "B.Tech Academic Semesters Curriculum Locked", "DDU Gorakhpur University 1st to 8th Semester curriculum aur subjects dekhne ke liye kripya pehle Student Login karein.");
+      Auth.openModal("login");
+      return;
+    }
     container.innerHTML = `
       <div class="container" style="padding: 50px 20px 80px;">
         <div class="section-header">
@@ -1593,6 +1614,11 @@ const App = {
 
   // ------------------- 3. Dedicated Semester Page -------------------
   async renderSemesterDetail(container, semNumber) {
+    if (!Auth.currentUser) {
+      this.renderLockGate(container, `Semester ${semNumber} Study Materials Locked`, `DDU B.Tech Semester ${semNumber} ke unit-wise notes, syllabus aur PYQs dekhne ke liye kripya pehle Apna Student Account Login karein.`);
+      Auth.openModal("login");
+      return;
+    }
     container.innerHTML = `
       <div class="container" style="padding: 40px 20px 60px;">
         <div style="margin-bottom: 24px;">
@@ -1781,6 +1807,11 @@ const App = {
 
   // ------------------- 4. Syllabus Section -------------------
   async renderSyllabus(container) {
+    if (!Auth.currentUser) {
+      this.renderLockGate(container, "Official CBCS Syllabus Curricula Locked", "Official university course scheme aur subject-wise syllabus dekhne ke liye kripya pehle Student Login karein.");
+      Auth.openModal("login");
+      return;
+    }
     container.innerHTML = `
       <div class="container" style="padding: 40px 20px 80px;">
         <div class="section-header">
@@ -1970,6 +2001,11 @@ const App = {
 
   // ------------------- 5. All Notes Explorer -------------------
   async renderNotes(container) {
+    if (!Auth.currentUser) {
+      this.renderLockGate(container, "B.Tech Lecture Notes & Study Materials Locked", "DDU Gorakhpur University ke B.Tech semester notes dekhne ke liye kripya pehle Student Login karein ya Register karein.");
+      Auth.openModal("login");
+      return;
+    }
     container.innerHTML = `
       <div class="container" style="padding: 40px 20px 80px;">
         <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
@@ -2073,6 +2109,11 @@ const App = {
 
   // ------------------- 6. Previous Year Papers (PYQs) -------------------
   async renderPyq(container) {
+    if (!Auth.currentUser) {
+      this.renderLockGate(container, "Previous Year Question Papers (2021-2025) Locked", "DDU B.Tech 5-year end-term examination question papers aur answer keys download karne ke liye kripya pehle Student Login karein.");
+      Auth.openModal("login");
+      return;
+    }
     container.innerHTML = `
       <div class="container" style="padding: 40px 20px 80px;">
         <div class="section-header">
@@ -2759,6 +2800,11 @@ const App = {
 
   // ------------------- PDF Viewer Modal -------------------
   openPdfViewer(fileUrl, title = "Document Preview", noteId = null) {
+    if (!Auth.currentUser) {
+      Auth.openModal("login");
+      this.toast("Study notes aur documents dekhne ke liye kripya pahle Student Login karein.", "warning");
+      return;
+    }
     const modal = document.getElementById("pdf-viewer-modal");
     if (!modal) return;
     const titleEl = document.getElementById("pdf-viewer-title");
@@ -2859,6 +2905,11 @@ const App = {
 
   // ------------------- Secure File Download -------------------
   downloadFile(fileUrl, title = "Document", noteId = null) {
+    if (!Auth.currentUser) {
+      Auth.openModal("login");
+      this.toast("Study notes aur documents download karne ke liye kripya pahle Student Login karein.", "warning");
+      return;
+    }
     if (noteId) {
       this.recordDownload(noteId);
     }
