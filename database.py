@@ -49,15 +49,6 @@ def get_connection():
             except Exception:
                 pass
 
-        try:
-            conn.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);")
-            del_ids = notes_registry.load_local_deleted_ids()
-            if del_ids:
-                ph = ",".join("?" for _ in del_ids)
-                conn.execute(f"DELETE FROM notes WHERE id IN ({ph});", tuple(del_ids))
-        except Exception:
-            pass
-
         return conn
     except sqlite3.OperationalError:
         # Fallback to /tmp/ddu_portal.db if original was on a read-only filesystem
@@ -69,14 +60,6 @@ def get_connection():
             conn.execute("PRAGMA foreign_keys = ON;")
             try:
                 conn.execute("PRAGMA journal_mode = MEMORY;")
-            except Exception:
-                pass
-            try:
-                conn.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);")
-                del_ids = notes_registry.load_local_deleted_ids()
-                if del_ids:
-                    ph = ",".join("?" for _ in del_ids)
-                    conn.execute(f"DELETE FROM notes WHERE id IN ({ph});", tuple(del_ids))
             except Exception:
                 pass
             return conn
@@ -365,6 +348,12 @@ def ensure_db_schema():
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
         """)
+        conn.commit()
+    except Exception:
+        pass
+
+    try:
+        cursor.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);")
         conn.commit()
     except Exception:
         pass
