@@ -362,14 +362,28 @@ const Admin = {
           </div>
 
           <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; box-shadow: var(--shadow-sm);">
-            <div style="display: flex; gap: 10px; margin-bottom: 16px;">
-              <input type="text" id="notes-filter-input" onkeyup="Admin.filterTable('notes-filter-input', 'notes-admin-table')" placeholder="Search notes by title, subject or code..." class="form-control" style="max-width: 380px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; gap: 10px; align-items: center; flex: 1; min-width: 260px;">
+                <input type="text" id="notes-filter-input" onkeyup="Admin.filterTable('notes-filter-input', 'notes-admin-table')" placeholder="Search notes by title, subject or code..." class="form-control" style="max-width: 380px;">
+              </div>
+              <div id="notes-bulk-action-bar" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <span id="notes-selected-count" style="display: none; background: rgba(59, 130, 246, 0.12); color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.25); padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">0 Selected</span>
+                <button id="notes-bulk-delete-btn" onclick="Admin.bulkDeleteSelectedNotes()" class="btn-sm" style="display: none; background: #ef4444; color: white; border: none; padding: 7px 16px; border-radius: var(--radius-sm); font-weight: 700; font-size: 0.85rem; cursor: pointer; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35); align-items: center; gap: 6px; transition: transform 0.1s ease;">
+                  🗑️ Delete Selected (<span id="notes-delete-btn-count">0</span>)
+                </button>
+                <button id="notes-deselect-all-btn" onclick="Admin.deselectAllNotes()" class="btn-secondary btn-sm" style="display: none; padding: 6px 12px; font-size: 0.85rem;">
+                  ✕ Deselect
+                </button>
+              </div>
             </div>
 
             <div class="table-responsive">
               <table class="modern-table" id="notes-admin-table">
                 <thead>
                   <tr>
+                    <th style="width: 44px; text-align: center;">
+                      <input type="checkbox" id="notes-select-all-cb" onchange="Admin.toggleSelectAllNotes(this.checked)" title="Select / Deselect All Notes" style="cursor: pointer; width: 18px; height: 18px; accent-color: var(--primary);">
+                    </th>
                     <th>Title & Description</th>
                     <th>Subject & Sem</th>
                     <th>Unit</th>
@@ -380,7 +394,10 @@ const Admin = {
                 </thead>
                 <tbody>
                   ${notes.map(n => `
-                    <tr>
+                    <tr id="note-row-${n.id}">
+                      <td style="text-align: center; vertical-align: middle;">
+                        <input type="checkbox" class="note-row-cb" value="${n.id}" onchange="Admin.onNoteSelectionChanged()" title="Select note ${n.id}" style="cursor: pointer; width: 18px; height: 18px; accent-color: var(--primary);">
+                      </td>
                       <td style="max-width: 250px;">
                         <div style="font-weight: 700;">${escapeHtml(n.title)}</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
@@ -1045,6 +1062,9 @@ const Admin = {
       const text = tr[i].textContent || tr[i].innerText;
       tr[i].style.display = text.toLowerCase().indexOf(filter) > -1 ? "" : "none";
     }
+    if (tableId === "notes-admin-table" && typeof this.onNoteSelectionChanged === "function") {
+      this.onNoteSelectionChanged();
+    }
   },
 
   // Modal: Add / Edit Note
@@ -1193,6 +1213,139 @@ const Admin = {
       }
     } catch (e) {
       App.toast("Delete failed", "error");
+    }
+  },
+
+  toggleSelectAllNotes(checked) {
+    const table = document.getElementById("notes-admin-table");
+    if (!table) return;
+    const cbs = table.querySelectorAll("tbody tr input.note-row-cb");
+    cbs.forEach(cb => {
+      const tr = cb.closest("tr");
+      if (!tr || tr.style.display !== "none") {
+        cb.checked = checked;
+      }
+    });
+    this.onNoteSelectionChanged();
+  },
+
+  deselectAllNotes() {
+    const table = document.getElementById("notes-admin-table");
+    if (!table) return;
+    const allCb = document.getElementById("notes-select-all-cb");
+    if (allCb) allCb.checked = false;
+    const cbs = table.querySelectorAll("tbody tr input.note-row-cb");
+    cbs.forEach(cb => {
+      cb.checked = false;
+    });
+    this.onNoteSelectionChanged();
+  },
+
+  onNoteSelectionChanged() {
+    const table = document.getElementById("notes-admin-table");
+    if (!table) return;
+    const cbs = Array.from(table.querySelectorAll("tbody tr input.note-row-cb"));
+    const selected = cbs.filter(cb => cb.checked);
+    const count = selected.length;
+
+    // Highlight selected rows
+    cbs.forEach(cb => {
+      const tr = cb.closest("tr");
+      if (tr) {
+        if (cb.checked) {
+          tr.style.backgroundColor = "rgba(59, 130, 246, 0.08)";
+        } else {
+          tr.style.backgroundColor = "";
+        }
+      }
+    });
+
+    const countBadge = document.getElementById("notes-selected-count");
+    const bulkDeleteBtn = document.getElementById("notes-bulk-delete-btn");
+    const deselectBtn = document.getElementById("notes-deselect-all-btn");
+    const btnCount = document.getElementById("notes-delete-btn-count");
+    const allCb = document.getElementById("notes-select-all-cb");
+
+    if (btnCount) btnCount.textContent = count;
+
+    if (count > 0) {
+      if (countBadge) {
+        countBadge.style.display = "inline-flex";
+        countBadge.textContent = `${count} note${count > 1 ? 's' : ''} selected`;
+      }
+      if (bulkDeleteBtn) bulkDeleteBtn.style.display = "inline-flex";
+      if (deselectBtn) deselectBtn.style.display = "inline-flex";
+    } else {
+      if (countBadge) countBadge.style.display = "none";
+      if (bulkDeleteBtn) bulkDeleteBtn.style.display = "none";
+      if (deselectBtn) deselectBtn.style.display = "none";
+    }
+
+    if (allCb) {
+      const visibleCbs = cbs.filter(cb => {
+        const tr = cb.closest("tr");
+        return !tr || tr.style.display !== "none";
+      });
+      allCb.checked = visibleCbs.length > 0 && visibleCbs.every(cb => cb.checked);
+      allCb.indeterminate = count > 0 && count < visibleCbs.length;
+    }
+  },
+
+  async bulkDeleteSelectedNotes() {
+    const table = document.getElementById("notes-admin-table");
+    if (!table) return;
+    const cbs = Array.from(table.querySelectorAll("tbody tr input.note-row-cb:checked"));
+    const noteIds = cbs.map(cb => parseInt(cb.value)).filter(id => !isNaN(id) && id > 0);
+
+    if (noteIds.length === 0) {
+      App.toast("Kripya delete karne ke liye kam se kam ek note select karein.", "warning");
+      return;
+    }
+
+    const confirmMsg = `Kya aap sach me in ${noteIds.length} notes ko delete karna chahte hain? Yeh action permanent hoga.`;
+    if (!confirm(confirmMsg)) return;
+
+    const deleteBtn = document.getElementById("notes-bulk-delete-btn");
+    if (deleteBtn) {
+      deleteBtn.disabled = true;
+      deleteBtn.innerHTML = `⏳ Deleting ${noteIds.length}...`;
+    }
+
+    try {
+      const res = await fetch("/api/admin/notes/bulk-delete", {
+        method: "POST",
+        headers: {
+          ...Auth.getAuthHeaders(),
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ note_ids: noteIds })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        App.toast(`${data.deleted_count || noteIds.length} notes safaltapoorvak delete ho gaye!`, "success");
+        await this.renderNotesTab(document.getElementById("admin-tab-content"));
+      } else {
+        // Fallback: sequential delete
+        let deleted = 0;
+        for (const nid of noteIds) {
+          try {
+            const r = await fetch(`/api/admin/notes/${nid}`, {
+              method: "DELETE",
+              headers: Auth.getAuthHeaders()
+            });
+            if (r.ok) deleted++;
+          } catch (_) {}
+        }
+        App.toast(`${deleted} notes delete ho gaye.`, "info");
+        await this.renderNotesTab(document.getElementById("admin-tab-content"));
+      }
+    } catch (e) {
+      App.toast(`Delete error: ${e.message}`, "error");
+      if (deleteBtn) {
+        deleteBtn.disabled = false;
+        deleteBtn.innerHTML = `🗑️ Delete Selected (<span id="notes-delete-btn-count">${noteIds.length}</span>)`;
+      }
     }
   },
 

@@ -952,6 +952,20 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"success": True, "message": msg, "action": action, "note_id": note_id})
                 return
 
+            if path in ("/api/admin/notes/bulk-delete", "/api/admin/notes/delete-multiple"):
+                current_user = self.get_auth_user()
+                if not current_user or current_user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+                note_ids = payload.get("note_ids", [])
+                if not isinstance(note_ids, list) or not note_ids:
+                    self.send_json({"error": "Please provide a non-empty list of note_ids."}, 400)
+                    return
+                valid_ids = [int(nid) for nid in note_ids if str(nid).isdigit()]
+                deleted_count = database.delete_notes_bulk(valid_ids)
+                self.send_json({"success": True, "message": f"{deleted_count} notes deleted successfully.", "deleted_count": deleted_count})
+                return
+
             # 5. Admin Reset Student Password
             if path == "/api/admin/users/reset-password":
                 current_user = self.get_auth_user()
@@ -1352,6 +1366,18 @@ class handler(BaseHTTPRequestHandler):
                 user_id = int(path.split("/api/admin/users/")[1].split("/")[0])
                 database.delete_user(user_id)
                 self.send_json({"success": True, "message": "User deleted"})
+                return
+
+            if path in ("/api/admin/notes/bulk", "/api/admin/notes/bulk-delete"):
+                try:
+                    content_length = int(self.headers.get("Content-Length", 0))
+                    body = json.loads(self.rfile.read(content_length).decode("utf-8")) if content_length > 0 else {}
+                except Exception:
+                    body = {}
+                note_ids = body.get("note_ids", [])
+                valid_ids = [int(nid) for nid in note_ids if str(nid).isdigit()]
+                deleted_count = database.delete_notes_bulk(valid_ids)
+                self.send_json({"success": True, "deleted_count": deleted_count})
                 return
 
             if path.startswith("/api/admin/notes/"):

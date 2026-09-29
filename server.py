@@ -820,6 +820,17 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"success": True, "message": msg, "action": action, "note_id": note_id})
                 return
 
+            if path in ("/api/admin/notes/bulk-delete", "/api/admin/notes/delete-multiple"):
+                body = self.read_json_body()
+                note_ids = body.get("note_ids", [])
+                if not isinstance(note_ids, list) or not note_ids:
+                    self.send_error_json("Please provide note_ids as a non-empty list.", status=400)
+                    return
+                valid_ids = [int(nid) for nid in note_ids if str(nid).isdigit()]
+                deleted_count = db.delete_notes_bulk(valid_ids)
+                self.send_json({"success": True, "message": f"{deleted_count} notes deleted successfully.", "deleted_count": deleted_count})
+                return
+
             if path == "/api/admin/upload":
                 self.handle_multipart_upload()
                 return
@@ -1020,6 +1031,14 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 sub_id = int(path.split("/api/admin/subjects/")[1])
                 db.delete_subject(sub_id)
                 self.send_json({"success": True})
+                return
+
+            if path in ("/api/admin/notes/bulk", "/api/admin/notes/bulk-delete"):
+                body = self.read_json_body()
+                note_ids = body.get("note_ids", []) if body else []
+                valid_ids = [int(nid) for nid in note_ids if str(nid).isdigit()]
+                deleted_count = db.delete_notes_bulk(valid_ids)
+                self.send_json({"success": True, "deleted_count": deleted_count})
                 return
 
             if path.startswith("/api/admin/notes/"):

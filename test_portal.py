@@ -247,6 +247,18 @@ def run_tests():
         assert len(json.loads(content.decode())["notes"]) == 0
         print("  ✓ Admin deleted note verified.")
 
+        # 5.5 Bulk Delete Notes Test (Multi-select check boxes)
+        status, content, _ = request("/api/admin/notes", method="POST", body=new_note, token=admin_token)
+        bulk_n1 = json.loads(content.decode())["note_id"]
+        status, content, _ = request("/api/admin/notes", method="POST", body=new_note, token=admin_token)
+        bulk_n2 = json.loads(content.decode())["note_id"]
+        status, content, _ = request("/api/admin/notes/bulk-delete", method="POST", body={"note_ids": [bulk_n1, bulk_n2]}, token=admin_token)
+        assert status == 200
+        assert json.loads(content.decode())["deleted_count"] == 2
+        status, content, _ = request(f"/api/notes?subject_id={new_sub_id}")
+        assert len(json.loads(content.decode())["notes"]) == 0
+        print("  ✓ Admin bulk deleted multiple notes verified (multi-select check box).")
+
         # 6. Delete Subject
         status, _, _ = request(f"/api/admin/subjects/{new_sub_id}", method="DELETE", token=admin_token)
         assert status == 200

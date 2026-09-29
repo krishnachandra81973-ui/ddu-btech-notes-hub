@@ -1041,6 +1041,28 @@ def delete_note(note_id):
         pass
     return True
 
+def delete_notes_bulk(note_ids):
+    """Deletes multiple notes in a single batch operation."""
+    if not note_ids:
+        return 0
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        placeholders = ",".join("?" for _ in note_ids)
+        cursor.execute(f"DELETE FROM notes WHERE id IN ({placeholders})", tuple(note_ids))
+        deleted_count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        for nid in note_ids:
+            try:
+                notes_registry.remove_custom_note(nid)
+            except Exception:
+                pass
+        return deleted_count
+    except Exception as e:
+        print("[Database] Error in delete_notes_bulk:", e)
+        return 0
+
 def create_student_note_submission(student_id, student_name, student_email, subject_id, unit_id, title, description, file_url, file_name, file_size):
     conn = get_connection()
     cursor = conn.cursor()
