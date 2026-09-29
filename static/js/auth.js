@@ -7,26 +7,39 @@ const Auth = {
   token: localStorage.getItem("ddu_token") || null,
 
   async init() {
+    this.token = localStorage.getItem("ddu_token") || null;
+    if (!this.token) {
+      this.currentUser = null;
+      localStorage.removeItem("ddu_token");
+      localStorage.removeItem("ddu_user");
+      this.updateUI();
+      return;
+    }
+
     const localUser = localStorage.getItem("ddu_user");
     if (localUser) {
       try { this.currentUser = JSON.parse(localUser); } catch(err){}
     }
 
-    if (this.token) {
-      try {
-        const res = await fetch("/api/auth/me", {
-          headers: { "Authorization": `Bearer ${this.token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          this.currentUser = data.user;
-          localStorage.setItem("ddu_user", JSON.stringify(this.currentUser));
-        } else if (res.status === 401) {
-          this.logout(false);
+    try {
+      const res = await fetch(`/api/auth/me?_t=${Date.now()}`, {
+        cache: "no-store",
+        headers: {
+          "Authorization": `Bearer ${this.token}`,
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache"
         }
-      } catch (e) {
-        console.warn("Auth network check fallback", e);
+      });
+      if (res.ok) {
+        const data = await res.json();
+        this.currentUser = data.user;
+        localStorage.setItem("ddu_user", JSON.stringify(this.currentUser));
+      } else if (res.status === 401 || res.status === 403) {
+        await this.logout(false);
+        return;
       }
+    } catch (e) {
+      console.warn("Auth network check fallback", e);
     }
     this.updateUI();
   },
@@ -83,15 +96,25 @@ const Auth = {
   async logout(redirect = true) {
     if (this.token) {
       try {
-        await fetch("/api/auth/logout", {
+        await fetch(`/api/auth/logout?_t=${Date.now()}`, {
           method: "POST",
-          headers: { "Authorization": `Bearer ${this.token}` }
+          cache: "no-store",
+          headers: {
+            "Authorization": `Bearer ${this.token}`,
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache"
+          }
         });
       } catch (e) {}
     }
     this.token = null;
     this.currentUser = null;
-    localStorage.removeItem("ddu_token");
+    try {
+      localStorage.removeItem("ddu_token");
+      localStorage.removeItem("ddu_user");
+      sessionStorage.removeItem("ddu_token");
+      sessionStorage.removeItem("ddu_user");
+    } catch (e) {}
     this.updateUI();
     window.dispatchEvent(new CustomEvent("auth:changed", { detail: null }));
     if (redirect) {

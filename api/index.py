@@ -152,6 +152,9 @@ class handler(BaseHTTPRequestHandler):
     def send_json(self, data, status=200):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
         self.send_cors()
         self.send_security_headers()
         self.end_headers()
@@ -854,7 +857,14 @@ class handler(BaseHTTPRequestHandler):
                 if auth_header.startswith("Bearer "):
                     token = auth_header.split(" ", 1)[1].strip()
                     database.delete_user_session(token)
-                self.send_json({"success": True})
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+                self.send_header("Set-Cookie", "session_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT")
+                self.send_cors()
+                self.send_security_headers()
+                self.end_headers()
+                self.wfile.write(b'{"success": true}')
                 return
 
             # 4. Bookmark Toggle

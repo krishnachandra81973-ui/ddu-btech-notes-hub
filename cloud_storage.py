@@ -30,6 +30,7 @@ def get_github_token():
 def commit_file_to_github(rel_path, file_bytes, commit_message="Upload study note to DDU Notes Hub"):
     """
     Permanently commits uploaded file to GitHub repository main branch via GitHub REST API.
+    Handles existing file updates gracefully by retrieving SHA first.
     Returns (success: bool, permanent_url: str).
     """
     token = get_github_token()
@@ -37,8 +38,9 @@ def commit_file_to_github(rel_path, file_bytes, commit_message="Upload study not
         return False, None
 
     repo = os.environ.get("GITHUB_REPO", REPO_OWNER_NAME).strip()
-    # Normalize path
-    clean_path = rel_path.lstrip("/")
+    fname = os.path.basename(rel_path.strip("/"))
+    # Standardized storage location in repo
+    clean_path = f"static/uploads/notes/{fname}"
     api_url = f"https://api.github.com/repos/{repo}/contents/{clean_path}"
 
     payload = {
@@ -46,6 +48,23 @@ def commit_file_to_github(rel_path, file_bytes, commit_message="Upload study not
         "content": base64.b64encode(file_bytes).decode("utf-8"),
         "branch": "main"
     }
+
+    # Fetch existing SHA if file already exists in repo to prevent 422 errors
+    try:
+        check_req = urllib.request.Request(
+            api_url + "?ref=main",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "User-Agent": "DDU-Portal-CloudStorage/1.0"
+            }
+        )
+        with urllib.request.urlopen(check_req, timeout=10) as resp:
+            if resp.status == 200:
+                data = json.loads(resp.read().decode("utf-8"))
+                if "sha" in data:
+                    payload["sha"] = data["sha"]
+    except Exception:
+        pass
 
     req = urllib.request.Request(
         api_url,
@@ -61,7 +80,7 @@ def commit_file_to_github(rel_path, file_bytes, commit_message="Upload study not
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:
             if resp.status in (200, 201):
-                # Trigger instant cache warm/purge on jsDelivr
+                # Trigger instant cache purge on jsDelivr
                 try:
                     purge_url = f"https://purge.jsdelivr.net/gh/{repo}@main/{clean_path}"
                     p_req = urllib.request.Request(purge_url, headers={"User-Agent": "DDU-Portal-Purge"})
@@ -77,17 +96,36 @@ def commit_file_to_github(rel_path, file_bytes, commit_message="Upload study not
 
 
 def fetch_github_raw(rel_file):
-    """Fetches real-time document bytes directly from GitHub Raw."""
+    """Fetches real-time document bytes directly from GitHub Raw across potential candidate paths."""
     repo = os.environ.get("GITHUB_REPO", REPO_OWNER_NAME).strip()
-    clean_file = rel_file.lstrip("/")
-    url = f"https://raw.githubusercontent.com/{repo}/main/static/uploads/{clean_file}"
-    req = urllib.request.Request(url, headers={"User-Agent": "DDU-Portal-Fetcher/1.0"})
-    try:
-        with urllib.request.urlopen(req, timeout=12) as resp:
-            if resp.status == 200:
-                return resp.read()
-    except Exception:
-        pass
+    fname = os.path.basename(rel_file.strip("/"))
+    clean_path = rel_file.strip("/")
+
+    candidates = [
+        f"https://raw.githubusercontent.com/{repo}/main/static/uploads/notes/{fname}",
+        f"https://raw.githubusercontent.com/{repo}/main/static/uploads/{fname}",
+        f"https://raw.githubusercontent.com/{repo}/main/notes/{fname}",
+        f"https://raw.githubusercontent.com/{repo}/main/{clean_path}",
+    ]
+
+    seen = set()
+    unique_candidates = []
+    for c in candidates:
+        if c not in seen:
+            seen.add(c)
+            unique_candidates.append(c)
+
+    for url in unique_candidates:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "DDU-Portal-Fetcher/1.0"})
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                if resp.status == 200:
+                    data = resp.read()
+                    if data:
+                        return data
+        except Exception:
+            continue
+
     return None
 
 

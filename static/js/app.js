@@ -219,12 +219,20 @@ const App = {
   // ------------------- Safe Fetch with Static DDU Data Fallback -------------------
   async safeFetch(url) {
     try {
-      const res = await fetch(url);
+      const cacheBustUrl = url + (url.includes("?") ? "&" : "?") + `_t=${Date.now()}`;
+      const res = await fetch(cacheBustUrl, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
+          ...(typeof Auth !== "undefined" && Auth.getAuthHeaders ? Auth.getAuthHeaders() : {})
+        }
+      });
       if (res.ok) {
         return await res.json();
       }
     } catch (e) {
-      console.warn("API offline, falling back to static cache:", url);
+      console.warn("API offline, falling back to static cache:", url, e);
     }
     if (window.DDU_DATA) {
       if (url.includes("/api/updates")) {
@@ -2860,13 +2868,7 @@ const App = {
         : (window.location.origin + (fileUrl.startsWith("/") ? "" : "/") + fileUrl);
       externalUrl = absoluteUrl;
       downloadUrl = absoluteUrl;
-      if (isImage) {
-        embedUrl = absoluteUrl;
-      } else if (isMobile && absoluteUrl.startsWith("https://") && !absoluteUrl.includes("localhost") && !absoluteUrl.includes("127.0.0.1")) {
-        embedUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(absoluteUrl)}&embedded=true`;
-      } else {
-        embedUrl = absoluteUrl;
-      }
+      embedUrl = absoluteUrl;
     }
 
     if (isImage && !driveId) {

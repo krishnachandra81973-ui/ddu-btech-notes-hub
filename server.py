@@ -110,10 +110,16 @@ class DDURequestHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(response_bytes)))
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
         self.send_cors_headers()
         self.send_security_headers()
         if set_cookie is not None:
-            cookie_str = f"session_token={set_cookie}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800"
+            if set_cookie == "":
+                cookie_str = "session_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+            else:
+                cookie_str = f"session_token={set_cookie}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800"
             if self.is_https():
                 cookie_str += "; Secure"
             self.send_header("Set-Cookie", cookie_str)

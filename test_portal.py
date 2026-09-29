@@ -94,6 +94,13 @@ def run_tests():
         assert status == 401
         print("  ✓ Invalid password rejected with HTTP 401.")
 
+        # Student Logout check
+        status, content, logout_headers = request("/api/auth/logout", method="POST", token=student_token)
+        assert status == 200, f"Logout failed: {status}"
+        set_cookie = logout_headers.get("Set-Cookie", "")
+        assert "Max-Age=0" in set_cookie or "session_token=;" in set_cookie, "Set-Cookie should clear session"
+        print("  ✓ Student logout successfully invalidates cookie and session.")
+
         # TEST 3: Admin Login & Role Protection (RBAC)
         print("\n[TEST 3] Verifying Admin Authentication & RBAC Protection...")
         admin_login = {"email": "admin@ddunotes.ac.in", "password": "AdminPassword123!"}
@@ -180,9 +187,11 @@ def run_tests():
         assert len(json.loads(content.decode())["pyqs"]) > 0
         print("  ✓ Previous Year Papers API verified.")
 
-        status, content, _ = request("/api/updates")
+        status, content, updates_headers = request("/api/updates")
         assert len(json.loads(content.decode())["updates"]) > 0
-        print("  ✓ Daily Campus Notices API verified.")
+        cc = updates_headers.get("Cache-Control", "")
+        assert "no-cache" in cc and "no-store" in cc, f"Expected no-cache, no-store headers, got: {cc}"
+        print("  ✓ Daily Campus Notices API verified with strict no-cache/no-store headers.")
 
         status, content, _ = request("/api/search?q=Data")
         search_res = json.loads(content.decode())
@@ -335,6 +344,13 @@ def run_tests():
         assert headers.get("Content-Type") == "application/pdf"
         assert b"%PDF-1.4" in downloaded_bytes
         print(f"  ✓ PDF document streamed and verified ({len(downloaded_bytes)} bytes).")
+
+        # Fallback PDF test for non-existent or remote documents
+        status, fallback_bytes, fb_headers = request("/static/uploads/notes/IMG-20260928-WA0040_56b62042.pdf")
+        assert status == 200, f"Fallback PDF returned {status}"
+        assert fb_headers.get("Content-Type") == "application/pdf"
+        assert b"%PDF" in fallback_bytes
+        print(f"  ✓ Resilient PDF Fallback verified: remote or missing file gracefully returns valid PDF ({len(fallback_bytes)} bytes).")
 
         print("\n==================================================")
         print(" ALL TESTS PASSED! (100% SUCCESS)")
