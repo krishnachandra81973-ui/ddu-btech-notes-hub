@@ -48,6 +48,16 @@ def get_connection():
                 conn.execute("PRAGMA journal_mode = DELETE;")
             except Exception:
                 pass
+
+        try:
+            conn.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);")
+            del_ids = notes_registry.load_local_deleted_ids()
+            if del_ids:
+                ph = ",".join("?" for _ in del_ids)
+                conn.execute(f"DELETE FROM notes WHERE id IN ({ph});", tuple(del_ids))
+        except Exception:
+            pass
+
         return conn
     except sqlite3.OperationalError:
         # Fallback to /tmp/ddu_portal.db if original was on a read-only filesystem
@@ -59,6 +69,14 @@ def get_connection():
             conn.execute("PRAGMA foreign_keys = ON;")
             try:
                 conn.execute("PRAGMA journal_mode = MEMORY;")
+            except Exception:
+                pass
+            try:
+                conn.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);")
+                del_ids = notes_registry.load_local_deleted_ids()
+                if del_ids:
+                    ph = ",".join("?" for _ in del_ids)
+                    conn.execute(f"DELETE FROM notes WHERE id IN ({ph});", tuple(del_ids))
             except Exception:
                 pass
             return conn
@@ -925,7 +943,7 @@ def get_notes(semester_id=None, subject_id=None, unit_number=None, branch=None, 
     JOIN subjects sub ON n.subject_id = sub.id
     JOIN semesters sem ON sub.semester_id = sem.id
     LEFT JOIN units u ON n.unit_id = u.id
-    WHERE 1=1
+    WHERE 1=1 AND n.id NOT IN (SELECT note_id FROM deleted_notes)
     """
     params = []
     if note_id:
@@ -1032,32 +1050,73 @@ def update_note(note_id, subject_id, unit_id, title, description, file_url, file
 def delete_note(note_id):
     conn = get_connection()
     cursor = conn.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP)")
+    cursor.execute("INSERT OR IGNORE INTO deleted_notes (note_id) VALUES (?)", (note_id,))
     cursor.execute("DELETE FROM notes WHERE id = ?", (note_id,))
     conn.commit()
     conn.close()
+
+    # Update ddu_seed.db if accessible
     try:
-        notes_registry.remove_custom_note(note_id)
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        seed_db = os.path.join(base_dir, "ddu_seed.db")
+        if os.path.exists(seed_db) and os.access(seed_db, os.W_OK):
+            sconn = sqlite3.connect(seed_db, timeout=5.0)
+            scursor = sconn.cursor()
+            scursor.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP)")
+            scursor.execute("INSERT OR IGNORE INTO deleted_notes (note_id) VALUES (?)", (note_id,))
+            scursor.execute("DELETE FROM notes WHERE id = ?", (note_id,))
+            sconn.commit()
+            sconn.close()
     except Exception:
         pass
+
+    try:
+        notes_registry.record_deleted_notes([note_id])
+    except Exception as e:
+        print("[Database] record_deleted_notes notice:", e)
     return True
 
 def delete_notes_bulk(note_ids):
-    """Deletes multiple notes in a single batch operation."""
+    """Deletes multiple notes in a single batch operation and ensures permanent removal."""
     if not note_ids:
+        return 0
+    clean_ids = [int(nid) for nid in note_ids if str(nid).isdigit()]
+    if not clean_ids:
         return 0
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        placeholders = ",".join("?" for _ in note_ids)
-        cursor.execute(f"DELETE FROM notes WHERE id IN ({placeholders})", tuple(note_ids))
+        cursor.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP)")
+        for nid in clean_ids:
+            cursor.execute("INSERT OR IGNORE INTO deleted_notes (note_id) VALUES (?)", (nid,))
+        placeholders = ",".join("?" for _ in clean_ids)
+        cursor.execute(f"DELETE FROM notes WHERE id IN ({placeholders})", tuple(clean_ids))
         deleted_count = cursor.rowcount
         conn.commit()
         conn.close()
-        for nid in note_ids:
-            try:
-                notes_registry.remove_custom_note(nid)
-            except Exception:
-                pass
+
+        # Update ddu_seed.db if accessible
+        try:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            seed_db = os.path.join(base_dir, "ddu_seed.db")
+            if os.path.exists(seed_db) and os.access(seed_db, os.W_OK):
+                sconn = sqlite3.connect(seed_db, timeout=5.0)
+                scursor = sconn.cursor()
+                scursor.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP)")
+                for nid in clean_ids:
+                    scursor.execute("INSERT OR IGNORE INTO deleted_notes (note_id) VALUES (?)", (nid,))
+                scursor.execute(f"DELETE FROM notes WHERE id IN ({placeholders})", tuple(clean_ids))
+                sconn.commit()
+                sconn.close()
+        except Exception:
+            pass
+
+        try:
+            notes_registry.record_deleted_notes(clean_ids)
+        except Exception as e:
+            print("[Database] record_deleted_notes notice:", e)
+
         return deleted_count
     except Exception as e:
         print("[Database] Error in delete_notes_bulk:", e)
@@ -1617,7 +1676,7 @@ def global_search(term):
     FROM notes n
     JOIN subjects sub ON n.subject_id = sub.id
     JOIN semesters sem ON sub.semester_id = sem.id
-    WHERE n.is_published = 1 AND (n.title LIKE ? OR n.description LIKE ? OR sub.name LIKE ?)
+    WHERE n.is_published = 1 AND n.id NOT IN (SELECT note_id FROM deleted_notes) AND (n.title LIKE ? OR n.description LIKE ? OR sub.name LIKE ?)
     LIMIT 8
     """, (term_pattern, term_pattern, term_pattern))
     notes = [dict(r) for r in cursor.fetchall()]
@@ -1680,7 +1739,7 @@ def get_admin_stats():
         total_subjects = 0
 
     try:
-        cursor.execute("SELECT COUNT(*) FROM notes")
+        cursor.execute("SELECT COUNT(*) FROM notes WHERE id NOT IN (SELECT note_id FROM deleted_notes)")
         total_notes = cursor.fetchone()[0]
     except Exception:
         total_notes = 0

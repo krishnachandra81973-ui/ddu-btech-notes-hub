@@ -9,8 +9,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_REGISTRY = os.path.join(BASE_DIR, "custom_notes_registry.json")
 TMP_REGISTRY = "/tmp/custom_notes_registry.json"
 
+DELETED_REPO_REGISTRY = os.path.join(BASE_DIR, "deleted_notes_registry.json")
+DELETED_TMP_REGISTRY = "/tmp/deleted_notes_registry.json"
+
 FIRESTORE_PROJECT = "keshav-ai-education"
 FIRESTORE_COLLECTION_URL = f"https://firestore.googleapis.com/v1/projects/{FIRESTORE_PROJECT}/databases/(default)/documents/ddu_custom_notes"
+FIRESTORE_DELETED_URL = f"https://firestore.googleapis.com/v1/projects/{FIRESTORE_PROJECT}/databases/(default)/documents/ddu_deleted_notes"
 
 _SYNC_LOCK = threading.Lock()
 _LAST_SYNC_TIME = 0
@@ -132,6 +136,114 @@ def delete_firestore_note(note_id):
     except Exception:
         return False
 
+
+def get_deleted_registry_path():
+    if not os.path.exists(DELETED_TMP_REGISTRY):
+        if os.path.exists(DELETED_REPO_REGISTRY):
+            try:
+                import shutil
+                shutil.copy2(DELETED_REPO_REGISTRY, DELETED_TMP_REGISTRY)
+            except Exception:
+                pass
+    return DELETED_TMP_REGISTRY if os.path.exists(DELETED_TMP_REGISTRY) else DELETED_REPO_REGISTRY
+
+
+def load_local_deleted_ids():
+    path = get_deleted_registry_path()
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return [int(x) for x in data if str(x).isdigit()]
+        except Exception:
+            return []
+    return []
+
+
+def save_local_deleted_ids(ids):
+    clean_ids = sorted(list(set([int(x) for x in ids if str(x).isdigit()])))
+    for p in [DELETED_TMP_REGISTRY, DELETED_REPO_REGISTRY]:
+        try:
+            with open(p, "w", encoding="utf-8") as f:
+                json.dump(clean_ids, f, indent=2)
+        except Exception:
+            pass
+
+
+def fetch_firestore_deleted_ids():
+    """Fetches deleted note IDs from Cloud Firestore collection"""
+    try:
+        url = f"{FIRESTORE_DELETED_URL}?pageSize=300"
+        req = urllib.request.Request(url, headers={"User-Agent": "DDU-Portal-Serverless"})
+        with urllib.request.urlopen(req, timeout=3.5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            docs = data.get("documents", [])
+            ids = []
+            for doc in docs:
+                fields = doc.get("fields", {})
+                if "note_id" in fields:
+                    val = fields["note_id"].get("integerValue") or fields["note_id"].get("stringValue")
+                    if val and str(val).isdigit():
+                        ids.append(int(val))
+            return ids
+    except Exception:
+        return []
+
+
+def save_firestore_deleted_id(note_id):
+    """Persists a deleted note ID to Cloud Firestore so it is permanently deleted across all serverless instances"""
+    if not note_id:
+        return False
+    doc_id = f"deleted_{note_id}"
+    url = f"{FIRESTORE_DELETED_URL}/{doc_id}"
+    try:
+        payload = json.dumps({
+            "fields": {
+                "note_id": {"integerValue": str(note_id)},
+                "deleted_at": {"stringValue": str(int(time.time()))}
+            }
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json", "User-Agent": "DDU-Portal-Serverless"},
+            method="PATCH"
+        )
+        with urllib.request.urlopen(req, timeout=3.0) as resp:
+            return resp.status in (200, 201)
+    except Exception:
+        return False
+
+
+def record_deleted_notes(note_ids):
+    """
+    Permanently records note IDs as deleted across local JSON, Cloud Firestore,
+    and purges them from custom notes cache.
+    """
+    if not note_ids:
+        return
+    deleted_ids = load_local_deleted_ids()
+    updated = False
+    for nid in note_ids:
+        try:
+            nid_int = int(nid)
+            if nid_int not in deleted_ids:
+                deleted_ids.append(nid_int)
+                updated = True
+            # Synchronously delete from Firestore custom notes & save to Firestore deleted notes
+            delete_firestore_note(nid_int)
+            save_firestore_deleted_id(nid_int)
+        except Exception:
+            pass
+
+    if updated:
+        save_local_deleted_ids(deleted_ids)
+
+    # Clean from local custom notes
+    custom_notes = [n for n in load_local_notes() if int(n.get("id", 0)) not in deleted_ids]
+    save_local_notes(custom_notes)
+
+
 def record_custom_note(note_dict):
     """Records note to local cache and persists to Firestore in a worker thread"""
     notes = load_local_notes()
@@ -150,20 +262,16 @@ def record_custom_note(note_dict):
 
     threading.Thread(target=_sync, daemon=True).start()
 
+
 def remove_custom_note(note_id):
-    """Removes note from local cache and deletes from Firestore"""
-    notes = [n for n in load_local_notes() if n.get("id") != note_id]
-    save_local_notes(notes)
+    """Removes note from local cache, marks as deleted, and removes from Firestore"""
+    record_deleted_notes([note_id])
 
-    def _sync():
-        delete_firestore_note(note_id)
-
-    threading.Thread(target=_sync, daemon=True).start()
 
 def ensure_custom_notes_synced(conn):
     """
-    Ensures that any custom notes created by the admin in Cloud Firestore
-    are mirrored in the SQLite notes table on Vercel serverless cold starts.
+    1. Synchronizes deleted note IDs and permanently purges them from SQLite.
+    2. Mirrors active custom notes from Firestore / JSON into SQLite without resurrecting deleted notes.
     """
     global _LAST_SYNC_TIME
     now = time.time()
@@ -176,19 +284,36 @@ def ensure_custom_notes_synced(conn):
         _LAST_SYNC_TIME = now
 
         try:
-            # 1. Fetch remote notes from Cloud Firestore
+            # 1. Fetch remote and local deleted IDs
+            remote_deleted = fetch_firestore_deleted_ids()
+            local_deleted = load_local_deleted_ids()
+            all_deleted = set(local_deleted + remote_deleted)
+            if remote_deleted:
+                save_local_deleted_ids(list(all_deleted))
+
+            cursor = conn.cursor()
+            cursor.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);")
+            for did in all_deleted:
+                cursor.execute("INSERT OR IGNORE INTO deleted_notes (note_id) VALUES (?)", (did,))
+            if all_deleted:
+                placeholders = ",".join("?" for _ in all_deleted)
+                cursor.execute(f"DELETE FROM notes WHERE id IN ({placeholders})", tuple(all_deleted))
+            conn.commit()
+
+            # 2. Fetch remote notes from Cloud Firestore
             remote_notes = fetch_firestore_notes()
             if not remote_notes:
-                # Fallback to local registry if Firestore call timed out or empty
                 remote_notes = load_local_notes()
             else:
                 save_local_notes(remote_notes)
 
-            if not remote_notes:
+            # Filter out any notes that have been deleted!
+            active_notes = [n for n in remote_notes if int(n.get("id", 0)) not in all_deleted]
+
+            if not active_notes:
                 return
 
-            cursor = conn.cursor()
-            for n in remote_notes:
+            for n in active_notes:
                 note_id = n.get("id")
                 subject_id = n.get("subject_id")
                 unit_id = n.get("unit_id")
@@ -212,7 +337,6 @@ def ensure_custom_notes_synced(conn):
                 if not cursor.fetchone():
                     continue
 
-                # Check if unit exists, if not set unit_id to None
                 if unit_id:
                     cursor.execute("SELECT id FROM units WHERE id = ?", (unit_id,))
                     if not cursor.fetchone():
@@ -241,5 +365,5 @@ def ensure_custom_notes_synced(conn):
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, (note_id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, download_count))
             conn.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            print("[NotesRegistry] Sync notice:", e)
