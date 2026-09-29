@@ -1753,3 +1753,45 @@ def delete_uploaded_file(file_id):
     conn.commit()
     conn.close()
     return True
+
+def save_uploaded_blob(filename, data_bytes, mime_type="application/pdf"):
+    """Persists uploaded file binary blob into SQLite so any container can serve it immediately."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS uploaded_blobs (
+            filename TEXT PRIMARY KEY,
+            data BLOB,
+            mime_type TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cursor.execute("""
+        INSERT OR REPLACE INTO uploaded_blobs (filename, data, mime_type)
+        VALUES (?, ?, ?)
+        """, (filename, data_bytes, mime_type))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print("[Database] save_uploaded_blob error:", e)
+        return False
+
+def get_uploaded_blob(filename):
+    """Retrieves binary blob from SQLite uploaded_blobs table."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='uploaded_blobs'")
+        if not cursor.fetchone():
+            conn.close()
+            return None, None
+        cursor.execute("SELECT data, mime_type FROM uploaded_blobs WHERE filename = ?", (filename,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return row["data"], row["mime_type"]
+    except Exception:
+        pass
+    return None, None

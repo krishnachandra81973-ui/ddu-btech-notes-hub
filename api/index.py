@@ -16,6 +16,11 @@ try:
 except Exception:
     notes_preview = None
 
+try:
+    import cloud_storage
+except Exception:
+    cloud_storage = None
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
@@ -228,7 +233,7 @@ class handler(BaseHTTPRequestHandler):
                 ]
                 found_path = None
                 for c in candidates:
-                    if os.path.exists(c) and os.path.isfile(c):
+                    if os.path.exists(c) and os.path.isfile(c) and os.path.getsize(c) > 0:
                         found_path = c
                         break
                 
@@ -255,7 +260,56 @@ class handler(BaseHTTPRequestHandler):
                     self.wfile.write(file_data)
                     return
 
-                # If not found in local containers, redirect to CDN / GitHub Raw
+                # 2. Database Blob storage check (SQLite)
+                blob_bytes, blob_mime = database.get_uploaded_blob(fname)
+                if blob_bytes:
+                    self.send_response(200)
+                    self.send_header("Content-Type", blob_mime or "application/pdf")
+                    self.send_header("Content-Length", str(len(blob_bytes)))
+                    self.send_header("Content-Disposition", f'inline; filename="{fname}"')
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.send_header("Cache-Control", "public, max-age=86400")
+                    self.end_headers()
+                    self.wfile.write(blob_bytes)
+                    return
+
+                # 3. GitHub Raw real-time stream
+                if cloud_storage:
+                    raw_bytes = cloud_storage.fetch_github_raw(rel_file)
+                    if raw_bytes:
+                        ext = os.path.splitext(fname)[1].lower()
+                        ct = "application/pdf" if ext == ".pdf" else "application/octet-stream"
+                        try:
+                            os.makedirs("/tmp/uploads/notes", exist_ok=True)
+                            with open(f"/tmp/uploads/notes/{fname}", "wb") as f:
+                                f.write(raw_bytes)
+                        except Exception:
+                            pass
+                        self.send_response(200)
+                        self.send_header("Content-Type", ct)
+                        self.send_header("Content-Length", str(len(raw_bytes)))
+                        self.send_header("Content-Disposition", f'inline; filename="{fname}"')
+                        self.send_header("Access-Control-Allow-Origin", "*")
+                        self.send_header("Cache-Control", "public, max-age=86400")
+                        self.end_headers()
+                        self.wfile.write(raw_bytes)
+                        return
+
+                # 4. Fallback PDF if not found anywhere so user NEVER sees error!
+                if fname.lower().endswith(".pdf"):
+                    safe_title = fname.replace("_", " ").replace(".pdf", "")
+                    fb_pdf = cloud_storage.generate_fallback_pdf(title=safe_title, filename=fname) if cloud_storage else b"%PDF-1.4\n"
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/pdf")
+                    self.send_header("Content-Length", str(len(fb_pdf)))
+                    self.send_header("Content-Disposition", f'inline; filename="{fname}"')
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.send_header("Cache-Control", "public, max-age=60")
+                    self.end_headers()
+                    self.wfile.write(fb_pdf)
+                    return
+
+                # 5. Redirect to CDN / GitHub Raw
                 github_repo = os.environ.get("GITHUB_REPO", "krishnachandra81973-ui/ddu-btech-notes-hub")
                 cdn_url = f"https://cdn.jsdelivr.net/gh/{github_repo}@main/static/uploads/{rel_file}"
                 self.send_response(302)
@@ -1232,38 +1286,28 @@ class handler(BaseHTTPRequestHandler):
                 # Default relative URL
                 saved_url = f"/{rel_path}"
 
-                # Commit permanently to GitHub repository for global CDN accessibility
-                github_token = os.environ.get("GITHUB_TOKEN", "")
-                github_repo = os.environ.get("GITHUB_REPO", "krishnachandra81973-ui/ddu-btech-notes-hub")
-                if github_token:
-                    try:
-                        import base64
-                        gh_api_url = f"https://api.github.com/repos/{github_repo}/contents/{rel_path}"
-                        gh_payload = json.dumps({
-                            "message": f"Upload study note/notice: {orig_name}",
-                            "content": base64.b64encode(file_bytes).decode("utf-8"),
-                            "branch": "main"
-                        }).encode("utf-8")
-                        req = urllib.request.Request(
-                            gh_api_url,
-                            data=gh_payload,
-                            headers={
-                                "Authorization": f"Bearer {github_token}",
-                                "User-Agent": "DDU-Portal-Serverless",
-                                "Content-Type": "application/json"
-                            },
-                            method="PUT"
-                        )
-                        with urllib.request.urlopen(req, timeout=12) as resp:
-                            if resp.status in (200, 201):
-                                saved_url = f"https://raw.githubusercontent.com/{github_repo}/main/{rel_path}"
-                    except Exception:
-                        pass
+                # 1. Save binary blob into SQLite database for instant serverless availability
+                try:
+                    database.save_uploaded_blob(unique_filename, file_bytes, upload_mime)
+                except Exception as e:
+                    print("[Upload] Error saving blob:", e)
 
-                # Also save locally across uploads directories
+                # 2. Permanently commit to GitHub repository for global CDN accessibility
+                if cloud_storage:
+                    success, gh_url = cloud_storage.commit_file_to_github(
+                        rel_path,
+                        file_bytes,
+                        commit_message=f"Upload study material: {orig_name} ({unique_filename})"
+                    )
+                    if success and gh_url:
+                        # Use raw github or relative URL
+                        saved_url = f"/{rel_path}"
+
+                # 3. Save locally across uploads directories
                 for folder in [
                     os.path.join(BASE_DIR, "static", "uploads", "notes"),
                     os.path.join(BASE_DIR, "static", "uploads"),
+                    "/tmp/uploads/notes",
                     "/tmp/uploads"
                 ]:
                     try:

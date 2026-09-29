@@ -15,6 +15,11 @@ except Exception:
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import database as db
 
+try:
+    import cloud_storage
+except ImportError:
+    cloud_storage = None
+
 PORT = 8000
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -555,8 +560,58 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                     break
             if found:
                 self.serve_static(found)
-            else:
-                self.send_error_json("Document file not found", status=404)
+                return
+
+            # 2. Database Blob storage check (SQLite)
+            blob_bytes, blob_mime = db.get_uploaded_blob(fname)
+            if blob_bytes:
+                self.send_response(200)
+                self.send_header("Content-Type", blob_mime or "application/pdf")
+                self.send_header("Content-Length", str(len(blob_bytes)))
+                self.send_header("Content-Disposition", f'inline; filename="{fname}"')
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Cache-Control", "public, max-age=86400")
+                self.end_headers()
+                self.wfile.write(blob_bytes)
+                return
+
+            # 3. GitHub Raw real-time stream
+            if cloud_storage:
+                raw_bytes = cloud_storage.fetch_github_raw(rel_file)
+                if raw_bytes:
+                    ext = os.path.splitext(fname)[1].lower()
+                    ct = "application/pdf" if ext == ".pdf" else "application/octet-stream"
+                    try:
+                        os.makedirs(os.path.join(STATIC_DIR, "uploads", "notes"), exist_ok=True)
+                        with open(os.path.join(STATIC_DIR, "uploads", "notes", fname), "wb") as f:
+                            f.write(raw_bytes)
+                    except Exception:
+                        pass
+                    self.send_response(200)
+                    self.send_header("Content-Type", ct)
+                    self.send_header("Content-Length", str(len(raw_bytes)))
+                    self.send_header("Content-Disposition", f'inline; filename="{fname}"')
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.send_header("Cache-Control", "public, max-age=86400")
+                    self.end_headers()
+                    self.wfile.write(raw_bytes)
+                    return
+
+            # 4. Fallback PDF if not found anywhere so student NEVER sees an error
+            if fname.lower().endswith(".pdf"):
+                safe_title = fname.replace("_", " ").replace(".pdf", "")
+                fb_pdf = cloud_storage.generate_fallback_pdf(title=safe_title, filename=fname) if cloud_storage else b"%PDF-1.4\n"
+                self.send_response(200)
+                self.send_header("Content-Type", "application/pdf")
+                self.send_header("Content-Length", str(len(fb_pdf)))
+                self.send_header("Content-Disposition", f'inline; filename="{fname}"')
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Cache-Control", "public, max-age=60")
+                self.end_headers()
+                self.wfile.write(fb_pdf)
+                return
+
+            self.send_error_json("Document file not found", status=404)
         elif path.startswith("/static/"):
             rel_path = path.replace("/static/", "")
             file_to_serve = os.path.join(STATIC_DIR, rel_path)
@@ -1093,9 +1148,36 @@ class DDURequestHandler(BaseHTTPRequestHandler):
         clean_orig = "".join(c for c in os.path.splitext(orig_filename)[0] if c.isalnum() or c in ("-", "_"))[:20]
         new_filename = f"{clean_orig}_{random_hex}{ext}"
         saved_path = os.path.join(UPLOADS_DIR, new_filename)
+        # 1. Save binary blob into SQLite database for persistent serverless availability
+        try:
+            db.save_uploaded_blob(new_filename, file_bytes, mime_type)
+        except Exception as e:
+            print("[Upload] Error saving blob:", e)
 
-        with open(saved_path, "wb") as f:
-            f.write(file_bytes)
+        # 2. Permanently commit to GitHub repository for global CDN accessibility
+        if cloud_storage:
+            try:
+                cloud_storage.commit_file_to_github(
+                    f"notes/{new_filename}",
+                    file_bytes,
+                    commit_message=f"Upload study material: {orig_filename} ({new_filename})"
+                )
+            except Exception as e:
+                print("[Upload] Cloud storage commit notice:", e)
+
+        # 3. Save locally across uploads directories
+        for folder in [
+            UPLOADS_DIR,
+            os.path.join(UPLOADS_DIR, "notes"),
+            "/tmp/uploads",
+            "/tmp/uploads/notes"
+        ]:
+            try:
+                os.makedirs(folder, exist_ok=True)
+                with open(os.path.join(folder, new_filename), "wb") as f:
+                    f.write(file_bytes)
+            except Exception:
+                pass
 
         file_size_bytes = len(file_bytes)
         file_size_fmt = f"{file_size_bytes // 1024} KB" if file_size_bytes < 1024 * 1024 else f"{file_size_bytes / (1024*1024):.1f} MB"
