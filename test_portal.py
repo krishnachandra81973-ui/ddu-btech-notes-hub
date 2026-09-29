@@ -303,17 +303,17 @@ def run_tests():
 
         # TEST 6.5: Verify Shared Note Route with Chapter Name Slug and OpenGraph metadata
         print("\n[TEST 6.5] Verifying Shared Note Route with Chapter/Topic Slug...")
-        status, note_html, headers = request("/note/210/Unit-1-Introduction-To-Algorithms")
+        status, note_html, headers = request("/note/376/Physics-complete-1st-chapter")
         assert status == 200
         assert "text/html" in headers.get("Content-Type", "")
         assert b"og:title" in note_html
         assert b"og:description" in note_html
-        assert b"/#note/210/Unit-1-Introduction-To-Algorithms" in note_html
+        assert b"/#note/376/Physics-complete-1st-chapter" in note_html
         print("  ✓ Shared note link with chapter slug returns 200 OK with rich OpenGraph tags and in-page web PDF reader!")
 
         # TEST 6.6: Verify 1st Page Preview Image for WhatsApp / Telegram Groups
         print("\n[TEST 6.6] Verifying Dynamic 1st Page Preview Image for WhatsApp Group Cards...")
-        status, img_bytes, img_headers = request("/api/notes/210/preview.png")
+        status, img_bytes, img_headers = request("/api/notes/376/preview.png")
         assert status == 200
         assert "image/png" in img_headers.get("Content-Type", "")
         assert len(img_bytes) > 1000

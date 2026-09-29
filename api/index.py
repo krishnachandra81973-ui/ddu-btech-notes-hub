@@ -53,6 +53,13 @@ try:
     database.ensure_db_schema()
 except Exception:
     pass
+try:
+    import notes_registry
+    _sconn = database.get_connection()
+    notes_registry.ensure_custom_notes_synced(_sconn)
+    _sconn.close()
+except Exception:
+    pass
 
 # Security & Defense Configurations
 _RATE_LIMIT_LOCK = threading.Lock()

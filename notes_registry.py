@@ -242,7 +242,7 @@ def record_deleted_notes(note_ids):
     custom_notes = [n for n in load_local_notes() if int(n.get("id", 0)) not in deleted_ids]
     save_local_notes(custom_notes)
 
-    # Asynchronously delete from Firestore custom notes & save to Firestore deleted notes
+    # Asynchronously delete from Firestore & commit updated registries to GitHub in background
     def _async_firestore_delete():
         for nid in clean_ids:
             try:
@@ -250,12 +250,28 @@ def record_deleted_notes(note_ids):
                 save_firestore_deleted_id(nid)
             except Exception:
                 pass
+        try:
+            import cloud_storage
+            del_bytes = json.dumps(load_local_deleted_ids(), indent=2).encode("utf-8")
+            cloud_storage.commit_file_to_github(
+                "deleted_notes_registry.json",
+                del_bytes,
+                commit_message=f"Permanent sync: {len(clean_ids)} notes deleted"
+            )
+            custom_bytes = json.dumps(load_local_notes(), indent=2).encode("utf-8")
+            cloud_storage.commit_file_to_github(
+                "custom_notes_registry.json",
+                custom_bytes,
+                commit_message="Sync custom notes registry after deletion"
+            )
+        except Exception:
+            pass
 
     threading.Thread(target=_async_firestore_delete, daemon=True).start()
 
 
 def record_custom_note(note_dict):
-    """Records note to local cache and persists to Firestore in a worker thread"""
+    """Records note to local cache and persists to Firestore & GitHub in a worker thread"""
     notes = load_local_notes()
     existing = False
     for i, n in enumerate(notes):
@@ -269,6 +285,16 @@ def record_custom_note(note_dict):
 
     def _sync():
         save_firestore_note(note_dict)
+        try:
+            import cloud_storage
+            custom_bytes = json.dumps(load_local_notes(), indent=2).encode("utf-8")
+            cloud_storage.commit_file_to_github(
+                "custom_notes_registry.json",
+                custom_bytes,
+                commit_message=f"Sync custom notes registry: Note {note_dict.get('id')} updated"
+            )
+        except Exception:
+            pass
 
     threading.Thread(target=_sync, daemon=True).start()
 

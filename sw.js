@@ -1,5 +1,5 @@
 // Service Worker for DDU B.Tech Notes Hub PWA
-const CACHE_NAME = 'ddu-notes-pwa-v5';
+const CACHE_NAME = 'ddu-notes-pwa-v6';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -58,8 +58,8 @@ self.addEventListener('fetch', (e) => {
   // Skip external origins if any
   if (url.origin !== self.location.origin) return;
 
-  // Skip dynamic API requests
-  if (url.pathname.startsWith('/api/')) return;
+  // Skip dynamic API requests and cache-busted URLs
+  if (url.pathname.startsWith('/api/') || url.searchParams.has('_t') || url.searchParams.has('_nocache')) return;
 
   e.respondWith(
     fetch(e.request)
@@ -85,3 +85,18 @@ self.addEventListener('fetch', (e) => {
       })
   );
 });
+
+// Message: Immediate cache purge on demand
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.action === 'skipWaiting') {
+    self.skipWaiting();
+  }
+  if (e.data && e.data.action === 'clearCache') {
+    caches.keys().then((keys) => {
+      return Promise.all(keys.map(k => caches.delete(k)));
+    }).then(() => {
+      if (e.source) e.source.postMessage({ status: 'cacheCleared' });
+    });
+  }
+});
+

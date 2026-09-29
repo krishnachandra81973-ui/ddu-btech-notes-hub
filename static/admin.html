@@ -108,6 +108,7 @@
           // Render full Admin Dashboard
           headerActions.innerHTML = `
             <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">${escapeHtml(Auth.currentUser.full_name)}</div>
+            <button onclick="AdminApp.clearCacheAndReload()" class="btn-secondary btn-sm" title="Clear all local caches & reload clean notes" style="display: inline-flex; align-items: center; gap: 4px;">🧹 Clear Cache</button>
             <a href="/" target="_blank" class="btn-secondary btn-sm">View Live Site ↗</a>
             <button onclick="AdminApp.logout()" class="btn-outline-danger btn-sm">Sign Out</button>
           `;
@@ -189,6 +190,32 @@
         Auth.logout(false);
         this.renderState();
         App.toast("Administrator logged out.", "info");
+      },
+
+      async clearCacheAndReload() {
+        if (!confirm("Browser aur app ki saari temporary cache clear karke fresh data reload karein?")) return;
+        App.toast("Purging all caches...", "info");
+        try {
+          if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+          }
+          if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            for (let reg of regs) {
+              await reg.unregister();
+            }
+          }
+          const token = localStorage.getItem("ddu_token");
+          const user = localStorage.getItem("ddu_user");
+          localStorage.clear();
+          sessionStorage.clear();
+          if (token) localStorage.setItem("ddu_token", token);
+          if (user) localStorage.setItem("ddu_user", user);
+        } catch (e) {
+          console.warn("Cache purge error:", e);
+        }
+        window.location.href = window.location.pathname + '?_nocache=' + Date.now();
       }
     };
 

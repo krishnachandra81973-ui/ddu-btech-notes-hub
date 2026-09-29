@@ -634,5 +634,33 @@
     "duration_days": 0,
     "expires_at": null,
     "created_at": "2026-09-29 12:05:01"
+  },
+  {
+    "id": 67,
+    "title": "Urgent: Library Reading Room Extended Hours for End-Sem Exam Prep",
+    "category": "University Notice",
+    "short_description": "Central Library will remain open 24x7 during examination weeks.",
+    "full_details": "Special quiet study zones and high-speed Wi-Fi access available for all B.Tech students.",
+    "attachment_url": null,
+    "is_important": 1,
+    "is_published": 1,
+    "publish_date": "2026-09-26",
+    "duration_days": 0,
+    "expires_at": null,
+    "created_at": "2026-09-29 12:41:01"
+  },
+  {
+    "id": 68,
+    "title": "Urgent: Library Reading Room Extended Hours for End-Sem Exam Prep",
+    "category": "University Notice",
+    "short_description": "Central Library will remain open 24x7 during examination weeks.",
+    "full_details": "Special quiet study zones and high-speed Wi-Fi access available for all B.Tech students.",
+    "attachment_url": null,
+    "is_important": 1,
+    "is_published": 1,
+    "publish_date": "2026-09-26",
+    "duration_days": 0,
+    "expires_at": null,
+    "created_at": "2026-09-29 12:41:43"
   }
 ]
