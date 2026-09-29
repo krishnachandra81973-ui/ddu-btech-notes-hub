@@ -343,9 +343,24 @@ const Admin = {
 
   // ------------------- 2. Notes CRUD -------------------
   async renderNotesTab(container) {
-    container.innerHTML = `<p style="color: var(--text-muted);">Loading notes...</p>`;
+    if (!container) container = document.getElementById("admin-tab-content");
+    if (!container) return;
+    container.innerHTML = `<p style="color: var(--text-muted); padding: 20px;">Loading study notes...</p>`;
     try {
-      const res = await fetch("/api/admin/notes", { headers: Auth.getAuthHeaders() });
+      const res = await fetch(`/api/admin/notes?_t=${Date.now()}`, {
+        cache: "no-store",
+        headers: {
+          ...Auth.getAuthHeaders(),
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache"
+        }
+      });
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          container.innerHTML = `<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--accent-rose); padding: 20px; border-radius: 8px; margin: 20px 0;">Admin session expired or access unauthorized. Please <a href="/admin" style="font-weight: 700; text-decoration: underline;">Login Again</a>.</div>`;
+          return;
+        }
+      }
       const data = await res.json();
       const notes = data.notes || [];
 
@@ -1201,18 +1216,58 @@ const Admin = {
   },
 
   async deleteNote(noteId) {
-    if (!confirm("Are you sure you want to delete this study note?")) return;
+    if (!noteId) return;
+    if (!confirm("Kya aap sach me is study note ko delete karna chahte hain?")) return;
+    
+    // Optimistic UI feedback
+    const row = document.getElementById(`note-row-${noteId}`);
+    if (row) {
+      row.style.opacity = "0.4";
+      row.style.pointerEvents = "none";
+    }
+
     try {
-      const res = await fetch(`/api/admin/notes/${noteId}`, {
+      // 1. Try DELETE first
+      let res = await fetch(`/api/admin/notes/${noteId}?_t=${Date.now()}`, {
         method: "DELETE",
-        headers: Auth.getAuthHeaders()
+        headers: {
+          ...Auth.getAuthHeaders(),
+          "Cache-Control": "no-cache"
+        }
       });
-      if (res.ok) {
-        App.toast("Note deleted successfully.", "info");
-        this.renderNotesTab(document.getElementById("admin-tab-content"));
+
+      // 2. If DELETE method blocked or failed, fallback to POST /api/admin/notes/delete
+      if (!res.ok) {
+        res = await fetch(`/api/admin/notes/delete?_t=${Date.now()}`, {
+          method: "POST",
+          headers: {
+            ...Auth.getAuthHeaders(),
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache"
+          },
+          body: JSON.stringify({ note_id: noteId })
+        });
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && (data.success || data.deleted_count !== undefined)) {
+        App.toast("Note safaltapoorvak delete ho gaya!", "success");
+        if (row) row.remove();
+        this.onNoteSelectionChanged();
+        await this.renderNotesTab(document.getElementById("admin-tab-content"));
+      } else {
+        if (row) {
+          row.style.opacity = "1";
+          row.style.pointerEvents = "auto";
+        }
+        App.toast(data.error || "Note delete nahi ho saka. Kripya login status verify karein.", "error");
       }
     } catch (e) {
-      App.toast("Delete failed", "error");
+      if (row) {
+        row.style.opacity = "1";
+        row.style.pointerEvents = "auto";
+      }
+      App.toast(`Delete error: ${e.message}`, "error");
     }
   },
 
@@ -1311,41 +1366,98 @@ const Admin = {
       deleteBtn.innerHTML = `⏳ Deleting ${noteIds.length}...`;
     }
 
+    // Optimistically dim the selected rows
+    noteIds.forEach(nid => {
+      const tr = document.getElementById(`note-row-${nid}`);
+      if (tr) {
+        tr.style.opacity = "0.4";
+        tr.style.pointerEvents = "none";
+      }
+    });
+
     try {
-      const res = await fetch("/api/admin/notes/bulk-delete", {
+      let res = await fetch(`/api/admin/notes/bulk-delete?_t=${Date.now()}`, {
         method: "POST",
         headers: {
           ...Auth.getAuthHeaders(),
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache"
         },
         body: JSON.stringify({ note_ids: noteIds })
       });
 
-      const data = await res.json();
-      if (res.ok && data.success) {
-        App.toast(`${data.deleted_count || noteIds.length} notes safaltapoorvak delete ho gaye!`, "success");
+      if (!res.ok) {
+        // Fallback to DELETE /api/admin/notes/bulk
+        res = await fetch(`/api/admin/notes/bulk?_t=${Date.now()}`, {
+          method: "DELETE",
+          headers: {
+            ...Auth.getAuthHeaders(),
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache"
+          },
+          body: JSON.stringify({ note_ids: noteIds })
+        });
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && (data.success || data.deleted_count !== undefined)) {
+        const count = data.deleted_count !== undefined ? data.deleted_count : noteIds.length;
+        App.toast(`${count} notes safaltapoorvak delete ho gaye!`, "success");
+        // Remove rows from DOM
+        noteIds.forEach(nid => {
+          const tr = document.getElementById(`note-row-${nid}`);
+          if (tr) tr.remove();
+        });
+        this.deselectAllNotes();
         await this.renderNotesTab(document.getElementById("admin-tab-content"));
       } else {
         // Fallback: sequential delete
         let deleted = 0;
         for (const nid of noteIds) {
           try {
-            const r = await fetch(`/api/admin/notes/${nid}`, {
+            const r = await fetch(`/api/admin/notes/${nid}?_t=${Date.now()}`, {
               method: "DELETE",
               headers: Auth.getAuthHeaders()
             });
-            if (r.ok) deleted++;
+            if (r.ok) {
+              deleted++;
+              const tr = document.getElementById(`note-row-${nid}`);
+              if (tr) tr.remove();
+            }
           } catch (_) {}
         }
-        App.toast(`${deleted} notes delete ho gaye.`, "info");
-        await this.renderNotesTab(document.getElementById("admin-tab-content"));
+        if (deleted > 0) {
+          App.toast(`${deleted} notes delete ho gaye.`, "info");
+          this.deselectAllNotes();
+          await this.renderNotesTab(document.getElementById("admin-tab-content"));
+        } else {
+          // Restore rows
+          noteIds.forEach(nid => {
+            const tr = document.getElementById(`note-row-${nid}`);
+            if (tr) {
+              tr.style.opacity = "1";
+              tr.style.pointerEvents = "auto";
+            }
+          });
+          App.toast(data.error || "Notes delete nahi ho sake. Kripya login status verify karein.", "error");
+        }
       }
     } catch (e) {
+      // Restore rows on error
+      noteIds.forEach(nid => {
+        const tr = document.getElementById(`note-row-${nid}`);
+        if (tr) {
+          tr.style.opacity = "1";
+          tr.style.pointerEvents = "auto";
+        }
+      });
       App.toast(`Delete error: ${e.message}`, "error");
+    } finally {
       if (deleteBtn) {
         deleteBtn.disabled = false;
         deleteBtn.innerHTML = `🗑️ Delete Selected (<span id="notes-delete-btn-count">${noteIds.length}</span>)`;
       }
+      this.onNoteSelectionChanged();
     }
   },
 

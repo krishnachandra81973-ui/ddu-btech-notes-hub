@@ -249,12 +249,21 @@ def run_tests():
         assert updated_note["title"] == edit_note["title"]
         print("  ✓ Admin updated note verified.")
 
-        # 5. Delete Note
+        # 5. Delete Note (via DELETE)
         status, _, _ = request(f"/api/admin/notes/{new_note_id}", method="DELETE", token=admin_token)
         assert status == 200
         status, content, _ = request(f"/api/notes?subject_id={new_sub_id}")
         assert len(json.loads(content.decode())["notes"]) == 0
-        print("  ✓ Admin deleted note verified.")
+        print("  ✓ Admin deleted note (DELETE) verified.")
+
+        # 5.2 Delete Note (via POST /api/admin/notes/delete fallback)
+        status, content, _ = request("/api/admin/notes", method="POST", body=new_note, token=admin_token)
+        post_del_id = json.loads(content.decode())["note_id"]
+        status, _, _ = request("/api/admin/notes/delete", method="POST", body={"note_id": post_del_id}, token=admin_token)
+        assert status == 200
+        status, content, _ = request(f"/api/notes?subject_id={new_sub_id}")
+        assert len(json.loads(content.decode())["notes"]) == 0
+        print("  ✓ Admin deleted note (POST fallback) verified.")
 
         # 5.5 Bulk Delete Notes Test (Multi-select check boxes)
         status, content, _ = request("/api/admin/notes", method="POST", body=new_note, token=admin_token)

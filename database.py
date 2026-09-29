@@ -49,6 +49,11 @@ def get_connection():
             except Exception:
                 pass
 
+        try:
+            conn.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);")
+        except Exception:
+            pass
+
         return conn
     except sqlite3.OperationalError:
         # Fallback to /tmp/ddu_portal.db if original was on a read-only filesystem
@@ -58,6 +63,10 @@ def get_connection():
             conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
             conn.row_factory = sqlite3.Row
             conn.execute("PRAGMA foreign_keys = ON;")
+            try:
+                conn.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);")
+            except Exception:
+                pass
             try:
                 conn.execute("PRAGMA journal_mode = MEMORY;")
             except Exception:

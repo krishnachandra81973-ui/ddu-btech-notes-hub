@@ -962,7 +962,7 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"success": True, "message": msg, "action": action, "note_id": note_id})
                 return
 
-            if path in ("/api/admin/notes/bulk-delete", "/api/admin/notes/delete-multiple"):
+            if path in ("/api/admin/notes/bulk-delete", "/api/admin/notes/delete-multiple", "/api/admin/notes/bulk"):
                 current_user = self.get_auth_user()
                 if not current_user or current_user.get("role") != "ADMIN":
                     self.send_json({"error": "Admin access required"}, 403)
@@ -974,6 +974,27 @@ class handler(BaseHTTPRequestHandler):
                 valid_ids = [int(nid) for nid in note_ids if str(nid).isdigit()]
                 deleted_count = database.delete_notes_bulk(valid_ids)
                 self.send_json({"success": True, "message": f"{deleted_count} notes deleted successfully.", "deleted_count": deleted_count})
+                return
+
+            # Admin Single Note Delete via POST (robust fallback for environments blocking DELETE)
+            if path in ("/api/admin/notes/delete",) or (path.startswith("/api/admin/notes/") and path.endswith("/delete")):
+                current_user = self.get_auth_user()
+                if not current_user or current_user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+                note_id = payload.get("note_id")
+                if not note_id and path.startswith("/api/admin/notes/"):
+                    try:
+                        raw_id = path.split("/api/admin/notes/")[1].split("/")[0]
+                        if raw_id.isdigit():
+                            note_id = int(raw_id)
+                    except Exception:
+                        pass
+                if not note_id:
+                    self.send_json({"error": "Note ID is required."}, 400)
+                    return
+                database.delete_note(int(note_id))
+                self.send_json({"success": True, "message": "Note deleted successfully.", "note_id": int(note_id)})
                 return
 
             # 5. Admin Reset Student Password
@@ -1391,10 +1412,14 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             if path.startswith("/api/admin/notes/"):
-                note_id = int(path.split("/api/admin/notes/")[1].split("/")[0])
-                database.delete_note(note_id)
-                self.send_json({"success": True, "message": "Note deleted"})
-                return
+                raw_id = path.split("/api/admin/notes/")[1].strip("/").split("/")[0].split("?")[0]
+                if raw_id.isdigit():
+                    database.delete_note(int(raw_id))
+                    self.send_json({"success": True, "message": "Note deleted", "note_id": int(raw_id)})
+                    return
+                else:
+                    self.send_json({"error": "Invalid note ID"}, 400)
+                    return
 
             if path.startswith("/api/admin/subjects/"):
                 sub_id = int(path.split("/api/admin/subjects/")[1].split("/")[0])

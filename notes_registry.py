@@ -219,29 +219,39 @@ def record_deleted_notes(note_ids):
     """
     Permanently records note IDs as deleted across local JSON, Cloud Firestore,
     and purges them from custom notes cache.
+    Local files are updated instantly (<1ms), and Cloud Firestore operations
+    run in a daemon thread to guarantee fast, non-blocking HTTP responses.
     """
     if not note_ids:
         return
+    clean_ids = [int(nid) for nid in note_ids if str(nid).isdigit()]
+    if not clean_ids:
+        return
+
     deleted_ids = load_local_deleted_ids()
     updated = False
-    for nid in note_ids:
-        try:
-            nid_int = int(nid)
-            if nid_int not in deleted_ids:
-                deleted_ids.append(nid_int)
-                updated = True
-            # Synchronously delete from Firestore custom notes & save to Firestore deleted notes
-            delete_firestore_note(nid_int)
-            save_firestore_deleted_id(nid_int)
-        except Exception:
-            pass
+    for nid in clean_ids:
+        if nid not in deleted_ids:
+            deleted_ids.append(nid)
+            updated = True
 
     if updated:
         save_local_deleted_ids(deleted_ids)
 
-    # Clean from local custom notes
+    # Clean from local custom notes immediately
     custom_notes = [n for n in load_local_notes() if int(n.get("id", 0)) not in deleted_ids]
     save_local_notes(custom_notes)
+
+    # Asynchronously delete from Firestore custom notes & save to Firestore deleted notes
+    def _async_firestore_delete():
+        for nid in clean_ids:
+            try:
+                delete_firestore_note(nid)
+                save_firestore_deleted_id(nid)
+            except Exception:
+                pass
+
+    threading.Thread(target=_async_firestore_delete, daemon=True).start()
 
 
 def record_custom_note(note_dict):
