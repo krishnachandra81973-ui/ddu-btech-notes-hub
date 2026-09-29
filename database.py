@@ -358,6 +358,17 @@ def ensure_db_schema():
     except Exception:
         pass
 
+    # Sync admin credentials with user_registry.ADMIN_USER
+    try:
+        cursor.execute("""
+            UPDATE users
+            SET password_hash = ?, salt = ?
+            WHERE email = ? OR role = 'ADMIN'
+        """, (user_registry.ADMIN_USER["password_hash"], user_registry.ADMIN_USER["salt"], user_registry.ADMIN_EMAIL.lower()))
+        conn.commit()
+    except Exception:
+        pass
+
     # Purge plain_password column from existing databases
     try:
         cursor.execute("ALTER TABLE users DROP COLUMN plain_password;")
@@ -490,32 +501,43 @@ def create_user(full_name, email, password, college="Deen Dayal Upadhyaya Gorakh
 def authenticate_user(email, password):
     email_clean = email.lower().strip()
     
-    # 1. Check if ADMIN_PASSWORD environment variable is explicitly set
-    env_admin_pw = os.environ.get("ADMIN_PASSWORD")
-    if env_admin_pw and email_clean == user_registry.ADMIN_EMAIL.lower() and secrets.compare_digest(password, env_admin_pw):
-        return {k: v for k, v in user_registry.ADMIN_USER.items() if k not in ("password_hash", "salt", "plain_password")}
+    # 1. Check Administrator credentials with Registry & Environment overrides
+    if email_clean == user_registry.ADMIN_EMAIL.lower():
+        adm = user_registry.ADMIN_USER
+        env_admin_pw = os.environ.get("ADMIN_PASSWORD")
+        is_valid = False
+        if env_admin_pw and secrets.compare_digest(password, env_admin_pw):
+            is_valid = True
+        elif verify_password(password, adm["password_hash"], adm["salt"]):
+            is_valid = True
 
-    # 2. Check Database with PBKDF2 verification
-    user = None
-    try:
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE email = ?", (email_clean,))
-        user = cursor.fetchone()
-        conn.close()
-    except Exception:
-        user = None
-
-    if user:
-        if not user["is_active"]:
-            return "INACTIVE"
-        if verify_password(password, user["password_hash"], user["salt"]):
-            user_dict = dict(user)
-            user_dict.pop("password_hash", None)
-            user_dict.pop("salt", None)
-            user_dict.pop("plain_password", None)
-            user_registry.save_user_to_registry(user_dict)
-            return user_dict
+        if is_valid:
+            adm_id = adm.get("id", 5)
+            try:
+                conn_adm = get_connection()
+                cur_adm = conn_adm.cursor()
+                cur_adm.execute("SELECT id FROM users WHERE email = ?", (email_clean,))
+                row_adm = cur_adm.fetchone()
+                if row_adm:
+                    adm_id = row_adm["id"]
+                    cur_adm.execute("""
+                        UPDATE users SET password_hash = ?, salt = ?, role = 'ADMIN', is_active = 1
+                        WHERE id = ?
+                    """, (adm["password_hash"], adm["salt"], adm_id))
+                else:
+                    cur_adm.execute("""
+                        INSERT INTO users (id, full_name, email, password_hash, salt, role, is_active)
+                        VALUES (?, ?, ?, ?, ?, 'ADMIN', 1)
+                    """, (adm_id, adm["full_name"], email_clean, adm["password_hash"], adm["salt"]))
+                conn_adm.commit()
+                conn_adm.close()
+            except Exception:
+                pass
+            res_adm = {k: v for k, v in adm.items() if k not in ("password_hash", "salt", "plain_password")}
+            res_adm["id"] = adm_id
+            res_adm["role"] = "ADMIN"
+            return res_adm
+        return None
 
     # 3. Fallback to Registry if container lacks SQLite row (Serverless cold-start sync)
     reg_user = user_registry.find_user_in_registry(email_clean)

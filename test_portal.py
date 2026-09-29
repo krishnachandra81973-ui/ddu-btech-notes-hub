@@ -103,7 +103,7 @@ def run_tests():
 
         # TEST 3: Admin Login & Role Protection (RBAC)
         print("\n[TEST 3] Verifying Admin Authentication & RBAC Protection...")
-        admin_login = {"email": "admin@ddunotes.ac.in", "password": "AdminPassword123!"}
+        admin_login = {"email": "admin@ddunotes.ac.in", "password": "Keshav@N321"}
         status, content, _ = request("/api/auth/login", method="POST", body=admin_login)
         assert status == 200, f"Admin login failed: {content}"
         admin_data = json.loads(content.decode())

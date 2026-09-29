@@ -21,11 +21,11 @@ SECRET_KEY = os.environ.get("DDU_PORTAL_SECRET", "ddu_btech_portal_secure_jwt_20
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@ddunotes.ac.in")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 ADMIN_USER = {
-    "id": 1,
+    "id": 5,
     "full_name": "Keshav Narayan (Admin)",
     "email": ADMIN_EMAIL,
-    "password_hash": "f4faccf873ab758651d151b7a5592c309f730cbca9c1f6c525acf9d3c3fdb8d8",
-    "salt": "1645735c8a5d42f3fdc0d70ee9c06f71",
+    "password_hash": "8f10cc9ec6c3a1b02e9b46885aad4435346b3f6b9804531ccd3385021919c4b4",
+    "salt": "0ea5e59b2dff03cc695ac58826e2d855",
     "college": "Deen Dayal Upadhyaya Gorakhpur University",
     "course": "B.Tech",
     "branch": "CSE",
