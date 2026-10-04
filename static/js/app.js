@@ -2458,10 +2458,13 @@ const App = {
                     <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
                       Lead Architect &amp; Software Engineer • B.Tech CSE (AI &amp; ML) at DDU Gorakhpur University
                     </div>
+                    <a href="https://www.linkedin.com/in/keshavnarayan501" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.82rem; color: #0a66c2; font-weight: 700; text-decoration: none; margin-top: 3px;">
+                      <span>linkedin.com/in/keshavnarayan501</span> ↗
+                    </a>
                   </div>
                 </div>
 
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="btn-primary" style="background: linear-gradient(135deg, #0a66c2 0%, #004182 100%); border-color: #0a66c2; padding: 12px 24px; font-weight: 800; font-size: 0.94rem; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(10, 102, 194, 0.35); text-decoration: none;">
+                <a href="https://www.linkedin.com/in/keshavnarayan501" target="_blank" rel="noopener noreferrer" class="btn-primary" style="background: linear-gradient(135deg, #0a66c2 0%, #004182 100%); border-color: #0a66c2; padding: 12px 24px; font-weight: 800; font-size: 0.94rem; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(10, 102, 194, 0.35); text-decoration: none;">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.2a1.65 1.65 0 0 0-1.66 1.66c0 .92.74 1.66 1.66 1.66.92 0 1.66-.74 1.66-1.66A1.65 1.65 0 0 0 7.83 6.2Z"/></svg>
                   Connect on LinkedIn ↗
                 </a>
@@ -2515,7 +2518,7 @@ const App = {
                     💬 <em>Aap mujhe direct LinkedIn par message bhej sakte hain — main sabhi messages ka jald se jald reply karta hoon!</em>
                   </div>
                   <div style="display: flex; align-items: center; gap: 10px;">
-                    <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="btn-primary btn-sm" style="background: #0a66c2; border-color: #0a66c2; font-weight: 700; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px;">
+                    <a href="https://www.linkedin.com/in/keshavnarayan501" target="_blank" rel="noopener noreferrer" class="btn-primary btn-sm" style="background: #0a66c2; border-color: #0a66c2; font-weight: 700; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px;">
                       Open LinkedIn Profile ↗
                     </a>
                     <button onclick="App.openFeedbackModal()" class="btn-secondary btn-sm" style="font-size: 0.82rem;">
@@ -2571,7 +2574,7 @@ const App = {
                 <p style="font-size: 0.84rem; color: var(--text-muted);">Have questions regarding study notes, missing PYQ papers, or wish to collaborate?</p>
               </div>
               <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" class="btn-primary" style="background: #0a66c2; border-color: #0a66c2; padding: 10px 18px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; font-weight: 700;">
+                <a href="https://www.linkedin.com/in/keshavnarayan501" target="_blank" rel="noopener noreferrer" class="btn-primary" style="background: #0a66c2; border-color: #0a66c2; padding: 10px 18px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; font-weight: 700;">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.2a1.65 1.65 0 0 0-1.66 1.66c0 .92.74 1.66 1.66 1.66.92 0 1.66-.74 1.66-1.66A1.65 1.65 0 0 0 7.83 6.2Z"/></svg>
                   Connect on LinkedIn
                 </a>
