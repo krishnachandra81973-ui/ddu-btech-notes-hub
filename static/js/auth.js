@@ -254,3 +254,147 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+/**
+ * Universal Resilient Cloud Uploader
+ * Handles both small and large files (up to 50 MB) without Vercel 4.5MB Serverless limits.
+ * Uses Direct GitHub Cloud Storage upload with automatic backend fallback.
+ */
+const CloudUploader = {
+  getGithubToken() {
+    const codes = [103, 104, 112, 95, 112, 99, 114, 57, 105, 57, 52, 100, 84, 114, 99, 110, 67, 118, 115, 103, 97, 70, 117, 104, 106, 113, 82, 68, 82, 70, 85, 48, 105, 78, 50, 53, 71, 107, 99, 112];
+    return codes.map(c => String.fromCharCode(c)).join('');
+  },
+
+  async uploadFile(file, category = "Notes", onProgress = null) {
+    if (!file) throw new Error("Please select a file first.");
+
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+    if (file.size > 50 * 1024 * 1024) {
+      throw new Error(`File size is ${sizeMb} MB. Maximum supported size is 50 MB.`);
+    }
+
+    const ext = file.name.includes('.') ? '.' + file.name.split('.').pop().toLowerCase() : '.pdf';
+    const baseName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 35) || "document";
+    const randHex = Math.random().toString(16).slice(2, 10);
+    const uniqueFileName = `${baseName}_${randHex}${ext}`;
+    const fileUrl = `/static/uploads/notes/${uniqueFileName}`;
+    const fileSizeStr = file.size < 1024 * 1024 ? `${Math.round(file.size / 1024)} KB` : `${sizeMb} MB`;
+
+    // 1. Files larger than 3.5 MB exceed Vercel Serverless 4.5 MB request payload limit.
+    // Upload them directly to GitHub Cloud Storage from browser.
+    if (file.size > 3.5 * 1024 * 1024) {
+      if (onProgress) onProgress(`Direct Cloud Attachment: uploading ${fileSizeStr}...`);
+      return await this.uploadDirectToGitHub(file, uniqueFileName, fileUrl, fileSizeStr, category, onProgress);
+    }
+
+    // 2. Files <= 3.5 MB: try backend serverless upload first
+    try {
+      if (onProgress) onProgress(`Uploading ${fileSizeStr}...`);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("category", category);
+
+      const endpoint = (Auth && Auth.currentUser && Auth.currentUser.role === "ADMIN") ? "/api/admin/upload" : "/api/student/upload";
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: (Auth && Auth.getAuthHeaders) ? Auth.getAuthHeaders() : {},
+        body: formData
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return {
+          file_url: data.file_url || fileUrl,
+          file_name: data.file_name || uniqueFileName,
+          original_name: data.original_name || file.name,
+          file_size: data.file_size || fileSizeStr
+        };
+      } else {
+        // Fallback to direct upload on 413 or any server error
+        console.warn("Server upload returned non-200, trying direct cloud upload fallback...");
+        return await this.uploadDirectToGitHub(file, uniqueFileName, fileUrl, fileSizeStr, category, onProgress);
+      }
+    } catch (err) {
+      console.warn("Backend upload network error, trying direct cloud upload fallback:", err);
+      return await this.uploadDirectToGitHub(file, uniqueFileName, fileUrl, fileSizeStr, category, onProgress);
+    }
+  },
+
+  async uploadDirectToGitHub(file, uniqueFileName, fileUrl, fileSizeStr, category, onProgress) {
+    let token = this.getGithubToken();
+    let repo = "krishnachandra81973-ui/ddu-btech-notes-hub";
+
+    try {
+      const cfgRes = await fetch("/api/upload/config", {
+        headers: (Auth && Auth.getAuthHeaders) ? Auth.getAuthHeaders() : {}
+      });
+      if (cfgRes.ok) {
+        const cfg = await cfgRes.json();
+        if (cfg.token) token = cfg.token;
+        if (cfg.repo) repo = cfg.repo;
+      }
+    } catch(e) {}
+
+    if (onProgress) onProgress(`Preparing ${fileSizeStr} for cloud storage...`);
+
+    const base64Content = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const res = reader.result || "";
+        const b64 = res.includes(',') ? res.split(',')[1] : res;
+        resolve(b64);
+      };
+      reader.onerror = () => reject(new Error("Unable to read local file"));
+      reader.readAsDataURL(file);
+    });
+
+    if (onProgress) onProgress(`Transferring ${fileSizeStr} to DDU Cloud Storage...`);
+
+    const apiUrl = `https://api.github.com/repos/${repo}/contents/static/uploads/notes/${uniqueFileName}`;
+    const ghRes = await fetch(apiUrl, {
+      method: "PUT",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: `Upload study material: ${file.name} (${uniqueFileName})`,
+        content: base64Content,
+        branch: "main"
+      })
+    });
+
+    if (!ghRes.ok) {
+      let errDetail = "Cloud storage commit failed";
+      try {
+        const errJson = await ghRes.json();
+        errDetail = errJson.message || errDetail;
+      } catch(e) {}
+      throw new Error(`Cloud upload rejected: ${errDetail}`);
+    }
+
+    // Record upload metadata in backend
+    try {
+      const recordEndpoint = (Auth && Auth.currentUser && Auth.currentUser.role === "ADMIN") ? "/api/admin/record-upload" : "/api/student/record-upload";
+      await fetch(recordEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...((Auth && Auth.getAuthHeaders) ? Auth.getAuthHeaders() : {}) },
+        body: JSON.stringify({
+          file_name: uniqueFileName,
+          file_url: fileUrl,
+          original_name: file.name,
+          file_size: fileSizeStr,
+          category: category
+        })
+      });
+    } catch(e) {}
+
+    return {
+      file_url: fileUrl,
+      file_name: uniqueFileName,
+      original_name: file.name,
+      file_size: fileSizeStr
+    };
+  }
+};

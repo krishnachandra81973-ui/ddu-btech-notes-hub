@@ -1138,7 +1138,7 @@ const Admin = {
               </div>
               <input type="text" name="file_url" id="note-file-url-input" required value="${isEdit ? escapeHtml(note.file_url) : ''}" placeholder="/static/uploads/document.pdf" class="form-control" style="font-size: 0.8rem; background: var(--bg-main);">
               <small style="color: var(--text-muted); font-size: 0.76rem; display: block; margin-top: 4px;">
-                💡 <strong>Tip:</strong> PDF select karte hi automatically upload ho jayega ya direct URL paste karein.
+                💡 <strong>Tip:</strong> PDF select karte hi automatic cloud par attach hokar address fill ho jayega (Supports files up to 50 MB, or paste any Drive/PDF link).
               </small>
             </div>
 
@@ -2420,27 +2420,38 @@ const Admin = {
       return null;
     }
     const file = input.files[0];
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("category", category);
+    const target = document.getElementById(targetUrlInputId);
 
-    App.toast("Uploading file securely...", "info");
+    // Disable input while uploading
+    input.disabled = true;
+    if (target) {
+      target.placeholder = "Uploading to Cloud Storage... Please wait...";
+      target.style.borderColor = "var(--primary)";
+    }
+
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+    App.toast(`Attaching ${file.name} (${sizeMb} MB)...`, "info");
+
     try {
-      const res = await fetch("/api/admin/upload", {
-        method: "POST",
-        headers: Auth.getAuthHeaders(),
-        body: formData
+      const data = await CloudUploader.uploadFile(file, category, (msg) => {
+        App.toast(msg, "info");
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
 
-      const target = document.getElementById(targetUrlInputId);
-      if (target) target.value = data.file_url;
-      App.toast(`File uploaded: ${data.original_name} (${data.file_size})`, "success");
+      if (target) {
+        target.value = data.file_url;
+        target.style.borderColor = "var(--accent-emerald)";
+        target.style.background = "rgba(16, 185, 129, 0.08)";
+      }
+      App.toast(`✓ Attached successfully! (${data.file_size})`, "success");
       return data.file_url;
     } catch (err) {
-      App.toast(err.message || "Upload failed", "error");
+      if (target) {
+        target.style.borderColor = "var(--accent-red)";
+      }
+      App.toast(err.message || "Upload failed. You can also paste a Google Drive link directly.", "error");
       return null;
+    } finally {
+      input.disabled = false;
     }
   },
 
@@ -2454,7 +2465,7 @@ const Admin = {
         <form onsubmit="Admin.handleDirectUpload(event)">
           <div class="modal-body">
             <div class="form-group">
-              <label class="form-label">Select Document / Image (PDF, JPG, PNG, WEBP)</label>
+              <label class="form-label">Select Document / Image (PDF, JPG, PNG, WEBP — up to 50 MB)</label>
               <input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp" class="form-control">
             </div>
             <div class="form-group">
@@ -2483,23 +2494,24 @@ const Admin = {
     const form = e.target;
     const file = form.file.files[0];
     const cat = form.category.value;
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("category", cat);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Uploading...";
+    }
 
     try {
-      const res = await fetch("/api/admin/upload", {
-        method: "POST",
-        headers: Auth.getAuthHeaders(),
-        body: formData
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
+      const data = await CloudUploader.uploadFile(file, cat, (msg) => App.toast(msg, "info"));
       App.closeActiveModal();
-      App.toast(`Uploaded ${data.original_name} successfully!`, "success");
+      App.toast(`Uploaded ${data.original_name} (${data.file_size}) successfully!`, "success");
       this.renderFilesTab(document.getElementById("admin-tab-content"));
     } catch (err) {
       App.toast(err.message, "error");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Upload Now";
+      }
     }
   },
 

@@ -3704,37 +3704,38 @@ const App = {
       this.toast("Only PDF files (.pdf) are allowed.", "error");
       return null;
     }
-    if (file.size > 25 * 1024 * 1024) {
-      this.toast("File size exceeds 25 MB limit.", "error");
-      return null;
-    }
 
     const btn = document.getElementById("student-upload-btn");
+    const target = document.getElementById(targetUrlInputId);
     if (btn) {
       btn.disabled = true;
       btn.textContent = "Uploading...";
     }
-    this.toast("Uploading PDF securely...", "info");
+    if (target) {
+      target.placeholder = "Uploading to Cloud Storage... Please wait...";
+      target.style.borderColor = "var(--primary)";
+    }
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("category", "Student_Contribution");
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+    this.toast(`Attaching ${file.name} (${sizeMb} MB)...`, "info");
 
     try {
-      const res = await fetch("/api/student/upload", {
-        method: "POST",
-        headers: Auth.getAuthHeaders(),
-        body: formData
+      const data = await CloudUploader.uploadFile(file, "Student_Contribution", (msg) => {
+        this.toast(msg, "info");
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
 
-      const target = document.getElementById(targetUrlInputId);
-      if (target) target.value = data.file_url;
-      this.toast(`PDF uploaded successfully: ${data.original_name} (${data.file_size})`, "success");
+      if (target) {
+        target.value = data.file_url;
+        target.style.borderColor = "var(--accent-emerald)";
+        target.style.background = "rgba(16, 185, 129, 0.08)";
+      }
+      this.toast(`✓ PDF attached successfully! (${data.file_size})`, "success");
       return data.file_url;
     } catch (err) {
-      this.toast(err.message || "Upload failed", "error");
+      if (target) {
+        target.style.borderColor = "var(--accent-red)";
+      }
+      this.toast(err.message || "Upload failed. You can also paste a Google Drive link directly.", "error");
       return null;
     } finally {
       if (btn) {

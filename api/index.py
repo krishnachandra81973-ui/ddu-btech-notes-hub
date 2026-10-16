@@ -653,6 +653,23 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"files": files})
                 return
 
+            # 18. Upload Configuration for Direct Cloud Attachment (Large files up to 50MB)
+            if path in ("/api/upload/config", "/api/upload/credentials"):
+                user = self.get_auth_user()
+                if not user:
+                    self.send_json({"error": "Authentication required"}, 401)
+                    return
+                token = cloud_storage.get_github_token() if cloud_storage else ""
+                repo = os.environ.get("GITHUB_REPO", "krishnachandra81973-ui/ddu-btech-notes-hub")
+                self.send_json({
+                    "token": token,
+                    "repo": repo,
+                    "branch": "main",
+                    "path": "static/uploads/notes",
+                    "max_size_mb": 50
+                })
+                return
+
             self.send_json({"status": "ok", "app": "DDU B.Tech Notes Hub"})
         except Exception as e:
             self.send_json({"error": str(e)}, 500)
@@ -1271,23 +1288,20 @@ class handler(BaseHTTPRequestHandler):
                     except Exception:
                         pass
 
-                    # Fallback to cgi.FieldStorage if boundary split didn't find file_bytes
+                    # Fallback to email BytesParser if boundary split didn't find file_bytes
                     if not file_bytes:
                         try:
-                            import cgi
-                            import io
-                            environ = {
-                                'REQUEST_METHOD': 'POST',
-                                'CONTENT_TYPE': content_type,
-                                'CONTENT_LENGTH': str(length)
-                            }
-                            fs = cgi.FieldStorage(fp=io.BytesIO(body), headers=self.headers, environ=environ)
-                            if 'category' in fs:
-                                category = fs['category'].value
-                            if 'file' in fs:
-                                file_item = fs['file']
-                                orig_name = file_item.filename or "uploaded_file.pdf"
-                                file_bytes = file_item.file.read()
+                            from email.parser import BytesParser
+                            from email.policy import default
+                            msg_data = b"Content-Type: " + content_type.encode("latin-1") + b"\r\n\r\n" + body
+                            msg = BytesParser(policy=default).parsebytes(msg_data)
+                            for part in msg.iter_parts():
+                                cd = part.get("Content-Disposition", "")
+                                if 'name="file"' in cd:
+                                    orig_name = part.get_filename() or "uploaded_file.pdf"
+                                    file_bytes = part.get_payload(decode=True)
+                                elif 'name="category"' in cd:
+                                    category = part.get_content().strip()
                         except Exception:
                             pass
 
@@ -1374,6 +1388,34 @@ class handler(BaseHTTPRequestHandler):
                     "success": True,
                     "file_id": file_id,
                     "file_url": saved_url,
+                    "original_name": orig_name,
+                    "file_size": file_size_str
+                })
+                return
+
+            # 13b. Record Direct Cloud Upload Metadata
+            if path in ("/api/admin/record-upload", "/api/student/record-upload"):
+                current_user = self.get_auth_user()
+                if not current_user:
+                    self.send_json({"error": "Authentication required"}, 401)
+                    return
+                if path == "/api/admin/record-upload" and current_user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+
+                fname = (payload.get("file_name") or "document.pdf").strip()
+                orig_name = (payload.get("original_name") or fname).strip()
+                file_url = (payload.get("file_url") or f"/static/uploads/notes/{fname}").strip()
+                file_size_str = (payload.get("file_size") or "PDF Document").strip()
+                category = (payload.get("category") or "Notes").strip()
+                mime = "application/pdf" if fname.lower().endswith(".pdf") else "image/jpeg"
+
+                file_id = database.record_uploaded_file(fname, orig_name, file_url, file_size_str, mime, category=category)
+                self.send_json({
+                    "success": True,
+                    "file_id": file_id,
+                    "file_url": file_url,
+                    "file_name": fname,
                     "original_name": orig_name,
                     "file_size": file_size_str
                 })

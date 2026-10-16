@@ -272,6 +272,16 @@ def record_deleted_notes(note_ids):
 
 def record_custom_note(note_dict):
     """Records note to local cache and persists to Firestore & GitHub in a worker thread"""
+    nid = note_dict.get("id")
+    if nid:
+        try:
+            nid_int = int(nid)
+            deleted_ids = load_local_deleted_ids()
+            if nid_int in deleted_ids:
+                deleted_ids = [d for d in deleted_ids if d != nid_int]
+                save_local_deleted_ids(deleted_ids)
+        except Exception:
+            pass
     notes = load_local_notes()
     existing = False
     for i, n in enumerate(notes):

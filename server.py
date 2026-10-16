@@ -533,6 +533,19 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"files": files})
                 return
 
+            if path in ("/api/upload/config", "/api/upload/credentials"):
+                import cloud_storage
+                token = cloud_storage.get_github_token() if cloud_storage else ""
+                repo = os.environ.get("GITHUB_REPO", "krishnachandra81973-ui/ddu-btech-notes-hub")
+                self.send_json({
+                    "token": token,
+                    "repo": repo,
+                    "branch": "main",
+                    "path": "static/uploads/notes",
+                    "max_size_mb": 50
+                })
+                return
+
         # 6. Dedicated Admin Application Route
         if path in ("/admin", "/admin/", "/admin/login"):
             self.serve_static(os.path.join(STATIC_DIR, "admin.html"))
@@ -856,6 +869,26 @@ class DDURequestHandler(BaseHTTPRequestHandler):
 
             if path == "/api/admin/upload":
                 self.handle_multipart_upload()
+                return
+
+            if path in ("/api/admin/record-upload", "/api/student/record-upload"):
+                body = self.read_json_body()
+                fname = (body.get("file_name") or "document.pdf").strip()
+                orig_name = (body.get("original_name") or fname).strip()
+                file_url = (body.get("file_url") or f"/static/uploads/notes/{fname}").strip()
+                file_size_str = (body.get("file_size") or "PDF Document").strip()
+                category = (body.get("category") or "Notes").strip()
+                mime = "application/pdf" if fname.lower().endswith(".pdf") else "image/jpeg"
+
+                file_id = db.record_uploaded_file(fname, orig_name, file_url, file_size_str, mime, category=category)
+                self.send_json({
+                    "success": True,
+                    "file_id": file_id,
+                    "file_url": file_url,
+                    "file_name": fname,
+                    "original_name": orig_name,
+                    "file_size": file_size_str
+                })
                 return
 
             if path == "/api/admin/users/toggle":
