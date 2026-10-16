@@ -20,6 +20,14 @@ students_registry.json
 .env
 .env.*
 *.env
+*.pem
+*.key
+*.cert
+*.pfx
+credentials*.json
+service-account*.json
+token*.json
+secrets*.json
 
 # Operating system & logs
 *.log

@@ -659,6 +659,9 @@ class handler(BaseHTTPRequestHandler):
                 if not user:
                     self.send_json({"error": "Authentication required"}, 401)
                     return
+                if user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required for direct cloud storage"}, 403)
+                    return
                 token = cloud_storage.get_github_token() if cloud_storage else ""
                 repo = os.environ.get("GITHUB_REPO", "krishnachandra81973-ui/ddu-btech-notes-hub")
                 self.send_json({

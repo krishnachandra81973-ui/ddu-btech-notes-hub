@@ -158,7 +158,8 @@ def seed():
 
     # 2. Users (Admin + Demo Student)
     print("Seeding Users...")
-    admin_hash, admin_salt = db.hash_password("Keshav@N321")
+    admin_pw = os.environ.get("ADMIN_PASSWORD", "Keshav@N321")
+    admin_hash, admin_salt = db.hash_password(admin_pw)
     cursor.execute("""
     INSERT INTO users (full_name, email, password_hash, salt, college, course, branch, semester, role)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)

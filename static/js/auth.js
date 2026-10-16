@@ -261,11 +261,6 @@ function escapeHtml(text) {
  * Uses Direct GitHub Cloud Storage upload with automatic backend fallback.
  */
 const CloudUploader = {
-  getGithubToken() {
-    const codes = [103, 104, 112, 95, 112, 99, 114, 57, 105, 57, 52, 100, 84, 114, 99, 110, 67, 118, 115, 103, 97, 70, 117, 104, 106, 113, 82, 68, 82, 70, 85, 48, 105, 78, 50, 53, 71, 107, 99, 112];
-    return codes.map(c => String.fromCharCode(c)).join('');
-  },
-
   async uploadFile(file, category = "Notes", onProgress = null) {
     if (!file) throw new Error("Please select a file first.");
 
@@ -322,7 +317,7 @@ const CloudUploader = {
   },
 
   async uploadDirectToGitHub(file, uniqueFileName, fileUrl, fileSizeStr, category, onProgress) {
-    let token = this.getGithubToken();
+    let token = "";
     let repo = "krishnachandra81973-ui/ddu-btech-notes-hub";
 
     try {
@@ -335,6 +330,10 @@ const CloudUploader = {
         if (cfg.repo) repo = cfg.repo;
       }
     } catch(e) {}
+
+    if (!token) {
+      throw new Error("Cloud upload authorization required. Please login as Administrator to attach large files.");
+    }
 
     if (onProgress) onProgress(`Preparing ${fileSizeStr} for cloud storage...`);
 

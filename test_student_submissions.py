@@ -40,8 +40,8 @@ def test_workflow():
 
     # 2. Login as Admin
     admin_body = json.dumps({
-        "email": "admin@ddunotes.ac.in",
-        "password": "Keshav@N321"
+        "email": os.environ.get("ADMIN_EMAIL", "admin@ddunotes.ac.in"),
+        "password": os.environ.get("ADMIN_PASSWORD", "Keshav@N321")
     })
     conn.request("POST", "/api/auth/login", admin_body, {"Content-Type": "application/json"})
     res = conn.getresponse()

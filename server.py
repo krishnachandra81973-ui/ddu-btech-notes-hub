@@ -534,6 +534,13 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 return
 
             if path in ("/api/upload/config", "/api/upload/credentials"):
+                user = self.get_auth_user()
+                if not user:
+                    self.send_json({"error": "Authentication required"}, 401)
+                    return
+                if user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
                 import cloud_storage
                 token = cloud_storage.get_github_token() if cloud_storage else ""
                 repo = os.environ.get("GITHUB_REPO", "krishnachandra81973-ui/ddu-btech-notes-hub")
