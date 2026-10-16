@@ -699,7 +699,7 @@ const App = {
           <div class="guest-branches-grid">
             <div class="guest-branch-pill">💻 Computer Science & Engineering (CSE)</div>
             <div class="guest-branch-pill">🤖 CSE (Artificial Intelligence & ML)</div>
-            <div class="guest-branch-pill">📊 CSE (Data Science)</div>
+            <div class="guest-branch-pill">📊 CSE (Artificial Intelligence & Data Science - AI & DS)</div>
             <div class="guest-branch-pill">🌐 Information Technology (IT)</div>
             <div class="guest-branch-pill">⚡ Electronics & Communication (ECE)</div>
             <div class="guest-branch-pill">🔌 Electrical Engineering (EE)</div>
@@ -1948,6 +1948,7 @@ const App = {
           <select id="syl-branch-filter" onchange="App.filterSyllabus()" class="form-control" style="max-width: 240px;">
             <option value="">All Branches</option>
             <option value="CSE">Computer Science & Engg (CSE)</option>
+            <option value="CSE (AI & DS)">CSE (AI & DS)</option>
             <option value="IT">Information Technology (IT)</option>
             <option value="ME">Mechanical Engineering (ME)</option>
             <option value="ECE">Electronics & Communication (ECE)</option>
@@ -2167,6 +2168,7 @@ const App = {
           <select id="pyq-branch-filter" onchange="App.filterPyqs()" class="form-control" style="flex: 1; min-width: 140px;">
             <option value="">All Branches</option>
             <option value="CSE">CSE / IT</option>
+            <option value="CSE (AI & DS)">CSE (AI & DS)</option>
             <option value="ECE">ECE</option>
             <option value="EE">EE</option>
             <option value="ME">ME</option>

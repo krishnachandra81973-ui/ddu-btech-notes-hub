@@ -1597,6 +1597,8 @@ const Admin = {
                 <select name="branch" class="form-control">
                   <option value="All Branches">All Branches</option>
                   <option value="CSE">Computer Science & Engg (CSE)</option>
+                  <option value="CSE (AI/ML)">CSE - Artificial Intelligence & ML</option>
+                  <option value="CSE (AI & DS)">CSE - Artificial Intelligence & Data Science (AI & DS)</option>
                   <option value="IT">Information Technology (IT)</option>
                   <option value="ME">Mechanical Engineering (ME)</option>
                   <option value="ECE">Electronics & Communication (ECE)</option>
@@ -2279,6 +2281,8 @@ const Admin = {
                 <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">Branch</label>
                 <select name="branch" class="form-control" style="width: 100%;">
                   <option value="CSE">CSE</option>
+                  <option value="CSE (AI/ML)">CSE (AI/ML)</option>
+                  <option value="CSE (AI & DS)">CSE (AI & DS)</option>
                   <option value="IT">IT</option>
                   <option value="ECE">ECE</option>
                   <option value="ME">ME</option>
