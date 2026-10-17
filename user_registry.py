@@ -335,16 +335,13 @@ def save_user_to_registry(user_dict, allow_update=True):
 
     save_registry(users, sync_remote=False)
 
-    # Sync to Cloud Firestore immediately for non-admin students
+    # Sync to Cloud Firestore in a non-blocking daemon thread for instant sub-second registration
     if user_dict.get("role") != "ADMIN":
-        try:
-            save_firestore_student(user_dict)
-        except Exception:
-            threading.Thread(target=save_firestore_student, args=(user_dict,), daemon=True).start()
+        threading.Thread(target=save_firestore_student, args=(dict(user_dict),), daemon=True).start()
 
     return user_dict
 
-def find_user_in_registry(email):
+def find_user_in_registry(email, check_remote=False):
     if not email:
         return None
     email_clean = email.lower().strip()
@@ -356,19 +353,23 @@ def find_user_in_registry(email):
         admin_copy.pop("plain_password", None)
         return admin_copy
 
-    # Check local registry first
+    # Check local registry first (instant <0.5ms)
     users = load_registry(fetch_remote=False)
     for u in users:
         if u.get("email", "").lower().strip() == email_clean:
-            u.pop("plain_password", None)
-            return u
+            u_clean = dict(u)
+            u_clean.pop("plain_password", None)
+            return u_clean
 
-    # Check remote Firestore directly if not in local cache
+    if not check_remote:
+        return None
+
+    # Check remote Firestore directly only when explicitly requested
     try:
         doc_id = email_to_doc_id(email_clean)
         url = f"{FIRESTORE_COLLECTION_URL}/{doc_id}"
         req = urllib.request.Request(url, headers={"User-Agent": "DDU-Portal-Serverless"})
-        with urllib.request.urlopen(req, timeout=2.5) as resp:
+        with urllib.request.urlopen(req, timeout=1.5) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             u = firestore_doc_to_user_dict(data)
             if u.get("email"):

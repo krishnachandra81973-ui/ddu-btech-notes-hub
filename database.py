@@ -460,7 +460,7 @@ def get_ist_now_str():
     ist_now = utc_now.astimezone(ist_tz)
     return ist_now.strftime("%Y-%m-%d %I:%M:%S %p (IST)")
 
-def get_user_by_email(email):
+def get_user_by_email(email, check_remote=False):
     if not email:
         return None
     email_clean = email.lower().strip()
@@ -474,7 +474,7 @@ def get_user_by_email(email):
             return dict(row)
     except Exception:
         pass
-    reg_user = user_registry.find_user_in_registry(email_clean)
+    reg_user = user_registry.find_user_in_registry(email_clean, check_remote=check_remote)
     if reg_user:
         return reg_user
     return None
@@ -483,8 +483,8 @@ def create_user(full_name, email, password, college="Deen Dayal Upadhyaya Gorakh
                 course="B.Tech", branch="CSE", semester=1, role="STUDENT"):
     email_clean = email.lower().strip()
 
-    # 1. Reject duplicate email immediately (cannot sign up twice)
-    if user_registry.find_user_in_registry(email_clean) or get_user_by_email(email_clean):
+    # 1. Reject duplicate email immediately using fast in-memory & SQLite check (<1ms)
+    if get_user_by_email(email_clean, check_remote=False):
         return None
 
     conn = get_connection()

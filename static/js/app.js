@@ -3410,31 +3410,45 @@ const App = {
     if (loginForm) {
       loginForm.onsubmit = async (e) => {
         e.preventDefault();
-        const email = loginForm.email.value.trim();
-        const password = loginForm.password.value;
-        const remember = loginForm.remember.checked;
+        const submitBtn = loginForm.querySelector('button[type="submit"]');
+        const origText = submitBtn ? submitBtn.innerHTML : "Sign In";
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = "<span>⏳ Logging in...</span>";
+        }
 
-        const res = await Auth.login(email, password, remember);
-        if (res.success) {
-          Auth.closeModal();
-          App.toast(`Welcome back, ${res.user.full_name}!`, "success");
-          if (res.user.role === "ADMIN") {
-            window.location.hash = "#admin";
-          } else {
-            const currentHash = window.location.hash.slice(1);
-            if (["notes", "pyq", "syllabus"].includes(currentHash) || currentHash.startsWith("semester/") || currentHash.startsWith("note/")) {
-              App.handleRouting();
+        try {
+          const email = loginForm.email.value.trim();
+          const password = loginForm.password.value;
+          const remember = loginForm.remember.checked;
+
+          const res = await Auth.login(email, password, remember);
+          if (res.success) {
+            Auth.closeModal();
+            App.toast(`Welcome back, ${res.user.full_name}!`, "success");
+            if (res.user.role === "ADMIN") {
+              window.location.hash = "#admin";
             } else {
-              window.location.hash = "#dashboard";
+              const currentHash = window.location.hash.slice(1);
+              if (["notes", "pyq", "syllabus"].includes(currentHash) || currentHash.startsWith("semester/") || currentHash.startsWith("note/")) {
+                App.handleRouting();
+              } else {
+                window.location.hash = "#dashboard";
+              }
             }
+          } else {
+            App.toast(res.error, "error");
           }
-        } else {
-          App.toast(res.error, "error");
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origText;
+          }
         }
       };
     }
 
-    // Register form
+    // Register form with Instant UI Feedback
     const regForm = document.getElementById("register-form-element");
     if (regForm) {
       regForm.onsubmit = async (e) => {
@@ -3452,27 +3466,41 @@ const App = {
           return;
         }
 
-        const res = await Auth.register({
-          full_name,
-          email,
-          password,
-          college: college || "Deen Dayal Upadhyaya Gorakhpur University",
-          branch,
-          semester,
-          course: "B.Tech"
-        });
+        const submitBtn = regForm.querySelector('button[type="submit"]');
+        const origText = submitBtn ? submitBtn.innerHTML : "Create Student Account";
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = "<span>⚡ Account ban raha hai...</span>";
+        }
 
-        if (res.success) {
-          Auth.closeModal();
-          App.toast("Aapka account safalta-poorvak ban gaya! Sabhi notes aur study material unlock ho gaye hain.", "success");
-          const currentHash = window.location.hash.slice(1);
-          if (["notes", "pyq", "syllabus"].includes(currentHash) || currentHash.startsWith("semester/") || currentHash.startsWith("note/")) {
-            App.handleRouting();
+        try {
+          const res = await Auth.register({
+            full_name,
+            email,
+            password,
+            college: college || "Deen Dayal Upadhyaya Gorakhpur University",
+            branch,
+            semester,
+            course: "B.Tech"
+          });
+
+          if (res.success) {
+            Auth.closeModal();
+            App.toast("✓ Aapka account safalta-poorvak ban gaya! Sabhi notes aur study material unlock ho gaye hain.", "success");
+            const currentHash = window.location.hash.slice(1);
+            if (["notes", "pyq", "syllabus"].includes(currentHash) || currentHash.startsWith("semester/") || currentHash.startsWith("note/")) {
+              App.handleRouting();
+            } else {
+              window.location.hash = "#dashboard";
+            }
           } else {
-            window.location.hash = "#dashboard";
+            App.toast(res.error, "error");
           }
-        } else {
-          App.toast(res.error, "error");
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origText;
+          }
         }
       };
     }
