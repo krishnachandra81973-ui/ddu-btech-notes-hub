@@ -702,33 +702,45 @@
   </nav>
 
   <!-- PWA Install Guide Modal for iOS Safari / Unsupported Browsers -->
+  <!-- PWA Install Guide Modal for Re-download, iOS Safari & Unsupported Browsers -->
   <div id="pwa-install-modal" class="modal" style="display: none;">
     <div class="modal-backdrop" onclick="document.getElementById('pwa-install-modal').style.display='none'"></div>
-    <div class="modal-card" style="max-width: 440px; text-align: center; padding: 28px 24px;">
-      <div style="font-size: 2.8rem; margin-bottom: 10px;">📲</div>
-      <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 8px;">Install DDU B.Tech Notes App</h3>
-      <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px;">
-        Get 1-tap instant access right from your mobile home screen or laptop desktop, just like a native Android/iOS application!
+    <div class="modal-card" style="max-width: 440px; text-align: center; padding: 26px 22px;">
+      <div style="font-size: 2.8rem; margin-bottom: 8px;">📲</div>
+      <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 6px;">Install DDU B.Tech Notes App</h3>
+      <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+        100% Free • Direct Mobile &amp; Desktop Install • Zero Restrictions
       </p>
-      <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; text-align: left; font-size: 0.86rem; line-height: 1.6; margin-bottom: 22px;">
+
+      <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.82rem; color: var(--text-main); text-align: left; line-height: 1.5;">
+        <strong style="color: #10b981;">🔄 Re-installing or App Deleted?</strong><br>
+        Agar aapne app pehle delete kar di thi, to aap bina kisi restriction ke dobara 1-tap me install kar sakte hain!
+      </div>
+
+      <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; text-align: left; font-size: 0.86rem; line-height: 1.6; margin-bottom: 20px;">
         <div style="margin-bottom: 12px;">
-          <strong style="color: var(--primary);">🍎 iPhone / iPad (Safari):</strong><br>
-          1. Tap the <strong>Share</strong> button ( <span style="font-size: 1.1rem;">📤</span> ) at bottom of screen.<br>
-          2. Scroll down & select <strong>"Add to Home Screen"</strong> ( <span style="font-size: 1.1rem;">➕</span> ).<br>
-          3. Tap <strong>"Add"</strong> in top-right corner.
+          <strong style="color: var(--accent-emerald);">🤖 Android &amp; Chrome / Edge:</strong><br>
+          1. Chrome me upar 3-dots menu ( <strong>⋮</strong> ) tap karein.<br>
+          2. <strong style="color: var(--primary);">"Install app"</strong> ya <strong style="color: var(--primary);">"Add to Home screen"</strong> chunein.<br>
+          3. Tap <strong>"Install"</strong> — App screen par aa jayegi!
         </div>
         <div style="border-top: 1px dashed var(--border); padding-top: 10px;">
-          <strong style="color: var(--accent-emerald);">🤖 Android & Chrome / PC:</strong><br>
-          1. Tap the 3-dots menu ( <strong>⋮</strong> ) in top-right.<br>
-          2. Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.
+          <strong style="color: var(--primary);">🍎 iPhone / iPad (Safari):</strong><br>
+          1. Safari me bottom me <strong>Share</strong> button ( <span style="font-size: 1.1rem;">📤</span> ) dabayein.<br>
+          2. Scroll karke <strong>"Add to Home Screen"</strong> ( <span style="font-size: 1.1rem;">➕</span> ) chunein.<br>
+          3. Top-right me <strong>"Add"</strong> tap karein.
         </div>
       </div>
+
       <div style="display: flex; gap: 8px; flex-direction: column;">
-        <button onclick="App.shareAppToWhatsApp(); document.getElementById('pwa-install-modal').style.display='none';" class="btn-primary" style="width: 100%; padding: 12px; font-weight: 800; background: #25d366; border: none; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);">
-          💬 Share on WhatsApp Group
+        <button onclick="if(window.deferredPrompt){window.deferredPrompt.prompt();}else{App.toast('Agar direct popup na aaye to Chrome ke 3-dots (⋮) par tap karke Install app chunein!', 'info');}" class="btn-primary" style="width: 100%; padding: 12px; font-weight: 800; background: linear-gradient(135deg, #ea580c, #f97316); border: none; box-shadow: 0 4px 12px rgba(234, 88, 12, 0.35);">
+          📲 1-Tap Install / Re-install Prompt
         </button>
         <button onclick="document.getElementById('pwa-install-modal').style.display='none'; window.location.hash='#download-app';" class="btn-secondary" style="width: 100%; padding: 11px; font-weight: 700;">
-          📖 Open Full Download & Guide Page
+          📖 Open Full Download &amp; Guide Page
+        </button>
+        <button onclick="App.shareAppToWhatsApp(); document.getElementById('pwa-install-modal').style.display='none';" class="btn-secondary" style="width: 100%; padding: 11px; font-weight: 700; color: #25d366; border-color: rgba(37, 211, 102, 0.4);">
+          💬 Share App Link on WhatsApp
         </button>
         <button onclick="document.getElementById('pwa-install-modal').style.display='none'" style="background: none; border: none; color: var(--text-muted); padding: 8px; font-size: 0.82rem; cursor: pointer;">
           Dismiss

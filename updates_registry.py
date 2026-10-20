@@ -87,7 +87,7 @@ def fetch_firestore_updates():
     try:
         url = f"{FIRESTORE_COLLECTION_URL}?pageSize=300"
         req = urllib.request.Request(url, headers={"User-Agent": "DDU-Portal-Serverless"})
-        with urllib.request.urlopen(req, timeout=3.5) as resp:
+        with urllib.request.urlopen(req, timeout=2.0) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             docs = data.get("documents", [])
             updates = []
@@ -114,7 +114,7 @@ def save_firestore_update(update_dict):
             headers={"Content-Type": "application/json", "User-Agent": "DDU-Portal-Serverless"},
             method="PATCH"
         )
-        with urllib.request.urlopen(req, timeout=3.5) as resp:
+        with urllib.request.urlopen(req, timeout=2.0) as resp:
             return resp.status in (200, 201)
     except Exception:
         return False
@@ -127,7 +127,7 @@ def delete_firestore_update(up_id):
     url = f"{FIRESTORE_COLLECTION_URL}/{doc_id}"
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "DDU-Portal-Serverless"}, method="DELETE")
-        with urllib.request.urlopen(req, timeout=3.5) as resp:
+        with urllib.request.urlopen(req, timeout=2.0) as resp:
             return resp.status in (200, 204)
     except Exception:
         return False
@@ -160,69 +160,81 @@ def remove_custom_update(up_id):
 
     threading.Thread(target=_sync, daemon=True).start()
 
-def ensure_campus_updates_synced(conn):
+def _sync_updates_to_sqlite(conn, updates_list):
+    """Persists updates list to SQLite daily_updates table"""
+    if not updates_list:
+        return
+    try:
+        cursor = conn.cursor()
+        for u in updates_list:
+            up_id = u.get("id")
+            title = u.get("title", "")
+            category = u.get("category", "University Notice")
+            short_description = u.get("short_description", title)
+            full_details = u.get("full_details", "")
+            attachment_url = u.get("attachment_url")
+            is_important = u.get("is_important", 0)
+            is_published = u.get("is_published", 1)
+            publish_date = u.get("publish_date")
+            duration_days = u.get("duration_days", 0)
+            expires_at = u.get("expires_at")
+            created_at = u.get("created_at")
+
+            cursor.execute("SELECT id FROM daily_updates WHERE id = ?", (up_id,))
+            existing = cursor.fetchone()
+            if existing:
+                cursor.execute("""
+                    UPDATE daily_updates
+                    SET title = ?, category = ?, short_description = ?, full_details = ?,
+                        attachment_url = ?, is_important = ?, is_published = ?,
+                        publish_date = ?, duration_days = ?, expires_at = ?
+                    WHERE id = ?
+                """, (title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date, duration_days, expires_at, up_id))
+            else:
+                if created_at:
+                    cursor.execute("""
+                        INSERT INTO daily_updates (id, title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date, duration_days, expires_at, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (up_id, title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date, duration_days, expires_at, created_at))
+                else:
+                    cursor.execute("""
+                        INSERT INTO daily_updates (id, title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date, duration_days, expires_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (up_id, title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date, duration_days, expires_at))
+        conn.commit()
+    except Exception:
+        pass
+
+def ensure_campus_updates_synced(conn, force_remote=False):
     """
-    Ensures that campus notices added by Admin are mirrored into the SQLite daily_updates
-    table on Vercel serverless cold starts.
+    1. Immediately mirrors local JSON campus updates into SQLite (<1ms).
+    2. Cloud Firestore fetch runs in background daemon thread without stalling user queries.
     """
+    try:
+        local_updates = load_local_updates()
+        _sync_updates_to_sqlite(conn, local_updates)
+    except Exception:
+        pass
+
     global _LAST_SYNC_TIME
     now = time.time()
-    if now - _LAST_SYNC_TIME < _SYNC_INTERVAL:
-        return
-
-    with _SYNC_LOCK:
-        if now - _LAST_SYNC_TIME < _SYNC_INTERVAL:
-            return
+    if (now - _LAST_SYNC_TIME >= _SYNC_INTERVAL) or force_remote:
         _LAST_SYNC_TIME = now
 
-        try:
-            # 1. Fetch remote updates from Cloud Firestore
-            remote_updates = fetch_firestore_updates()
-            if not remote_updates:
-                # Fallback to local registry
-                remote_updates = load_local_updates()
-            else:
-                save_local_updates(remote_updates)
+        def _bg_sync():
+            try:
+                remote_updates = fetch_firestore_updates()
+                if remote_updates:
+                    save_local_updates(remote_updates)
+                    import database
+                    bg_conn = database.get_connection()
+                    _sync_updates_to_sqlite(bg_conn, remote_updates)
+                    bg_conn.close()
+            except Exception:
+                pass
 
-            if not remote_updates:
-                return
+        if force_remote:
+            _bg_sync()
+        else:
+            threading.Thread(target=_bg_sync, daemon=True).start()
 
-            cursor = conn.cursor()
-            for u in remote_updates:
-                up_id = u.get("id")
-                title = u.get("title", "")
-                category = u.get("category", "University Notice")
-                short_description = u.get("short_description", title)
-                full_details = u.get("full_details", "")
-                attachment_url = u.get("attachment_url")
-                is_important = u.get("is_important", 0)
-                is_published = u.get("is_published", 1)
-                publish_date = u.get("publish_date")
-                duration_days = u.get("duration_days", 0)
-                expires_at = u.get("expires_at")
-                created_at = u.get("created_at")
-
-                cursor.execute("SELECT id FROM daily_updates WHERE id = ?", (up_id,))
-                existing = cursor.fetchone()
-                if existing:
-                    cursor.execute("""
-                        UPDATE daily_updates
-                        SET title = ?, category = ?, short_description = ?, full_details = ?,
-                            attachment_url = ?, is_important = ?, is_published = ?,
-                            publish_date = ?, duration_days = ?, expires_at = ?
-                        WHERE id = ?
-                    """, (title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date, duration_days, expires_at, up_id))
-                else:
-                    if created_at:
-                        cursor.execute("""
-                            INSERT INTO daily_updates (id, title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date, duration_days, expires_at, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (up_id, title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date, duration_days, expires_at, created_at))
-                    else:
-                        cursor.execute("""
-                            INSERT INTO daily_updates (id, title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date, duration_days, expires_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (up_id, title, category, short_description, full_details, attachment_url, is_important, is_published, publish_date, duration_days, expires_at))
-            conn.commit()
-        except Exception:
-            pass

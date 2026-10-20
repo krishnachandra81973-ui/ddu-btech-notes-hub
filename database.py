@@ -648,7 +648,7 @@ def create_user_session(user_id, days=30):
     if row:
         user = dict(row)
     else:
-        for u in user_registry.load_registry():
+        for u in user_registry.load_registry(fetch_remote=False):
             if str(u.get("id")) == str(user_id):
                 user = u
                 break

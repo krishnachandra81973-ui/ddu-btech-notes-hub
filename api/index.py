@@ -56,7 +56,7 @@ except Exception:
 try:
     import notes_registry
     _sconn = database.get_connection()
-    notes_registry.ensure_custom_notes_synced(_sconn)
+    notes_registry.ensure_custom_notes_synced(_sconn, force_remote=False)
     _sconn.close()
 except Exception:
     pass
@@ -156,14 +156,17 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
         self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 
-    def send_json(self, data, status=200):
+    def send_json(self, data, status=200, cache_seconds=None):
         payload = json.dumps(data, default=str).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
-        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
-        self.send_header("Pragma", "no-cache")
-        self.send_header("Expires", "0")
+        if cache_seconds and cache_seconds > 0:
+            self.send_header("Cache-Control", f"public, max-age={cache_seconds}, s-maxage={cache_seconds*2}, stale-while-revalidate={max(300, cache_seconds*5)}")
+        else:
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
         self.send_cors()
         self.send_security_headers()
         self.end_headers()
@@ -385,7 +388,7 @@ class handler(BaseHTTPRequestHandler):
             # 1. Semesters
             if path == "/api/semesters":
                 semesters = database.get_semesters()
-                self.send_json({"semesters": semesters})
+                self.send_json({"semesters": semesters}, cache_seconds=60)
                 return
 
             # 2. Subjects
@@ -396,7 +399,7 @@ class handler(BaseHTTPRequestHandler):
                     semester_id=int(sem_id) if sem_id else None,
                     branch=branch
                 )
-                self.send_json({"subjects": subjects})
+                self.send_json({"subjects": subjects}, cache_seconds=60)
                 return
 
             if path.startswith("/api/subjects/"):
@@ -404,7 +407,7 @@ class handler(BaseHTTPRequestHandler):
                 if sub_id_str.isdigit():
                     sub = database.get_subject_detail(int(sub_id_str))
                     if sub:
-                        self.send_json({"subject": sub})
+                        self.send_json({"subject": sub}, cache_seconds=60)
                         return
                     else:
                         self.send_json({"error": "Subject not found"}, 404)
@@ -427,7 +430,7 @@ class handler(BaseHTTPRequestHandler):
                     only_published=True,
                     note_id=int(note_id) if note_id else None
                 )
-                self.send_json({"notes": notes})
+                self.send_json({"notes": notes}, cache_seconds=15)
                 return
 
             # Note 1st Page Preview Image for WhatsApp/Telegram OG Cards
@@ -478,7 +481,7 @@ class handler(BaseHTTPRequestHandler):
                 try:
                     notes = database.get_notes(note_id=int(nid), only_published=True)
                     if notes:
-                        self.send_json({"note": notes[0]})
+                        self.send_json({"note": notes[0]}, cache_seconds=15)
                     else:
                         self.send_json({"error": "Note not found"}, 404)
                 except ValueError:
@@ -496,7 +499,7 @@ class handler(BaseHTTPRequestHandler):
                     branch=branch,
                     only_published=True
                 )
-                self.send_json({"syllabus": syllabus})
+                self.send_json({"syllabus": syllabus}, cache_seconds=60)
                 return
 
             # 5. PYQs
@@ -512,7 +515,7 @@ class handler(BaseHTTPRequestHandler):
                     exam_year=int(exam_year) if exam_year else None,
                     only_published=True
                 )
-                self.send_json({"pyqs": pyqs})
+                self.send_json({"pyqs": pyqs}, cache_seconds=60)
                 return
 
             # 6. Daily Updates
@@ -520,7 +523,7 @@ class handler(BaseHTTPRequestHandler):
                 category = query.get("category", [None])[0]
                 search = query.get("search", [None])[0]
                 updates = database.get_all_updates(category=category, search=search, only_published=True)
-                self.send_json({"updates": updates})
+                self.send_json({"updates": updates}, cache_seconds=30)
                 return
 
             # 7. Global Portal Search
