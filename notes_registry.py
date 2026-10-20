@@ -440,6 +440,11 @@ def ensure_custom_notes_synced(conn):
                             found = cursor.fetchone()
                             if found:
                                 matched_id = found[0]
+                        if not matched_id and ('mecha' in title.lower() or 'mecha' in description.lower()):
+                            cursor.execute("SELECT id FROM subjects WHERE code = 'BME-101' OR name LIKE '%Mechanical%' LIMIT 1")
+                            found = cursor.fetchone()
+                            if found:
+                                matched_id = found[0]
                         subject_id = matched_id
 
                     if not subject_id:
@@ -449,6 +454,11 @@ def ensure_custom_notes_synced(conn):
                         cursor.execute("SELECT id FROM units WHERE id = ?", (unit_id,))
                         if not cursor.fetchone():
                             unit_id = None
+                    if not unit_id and subject_id:
+                        cursor.execute("SELECT id FROM units WHERE subject_id = ? AND unit_number = 1 LIMIT 1", (subject_id,))
+                        u_row = cursor.fetchone()
+                        if u_row:
+                            unit_id = u_row[0]
 
                     if contributed_by_id:
                         cursor.execute("SELECT id FROM users WHERE id = ?", (contributed_by_id,))

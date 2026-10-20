@@ -3,6 +3,35 @@
 
 window.DDU_NOTES_DATA = [
   {
+    "id": 505,
+    "subject_id": 72,
+    "unit_id": 340,
+    "title": "MECHATRONICS  NOTES (A)",
+    "description": "Detailed notes will be shared in PDF format shortly.Comprehensive study material and handwritten notes for ME (Mechatronics) Unit 1:
+• Introduction to Mechatronics: Definition, evolution, multi-disciplinary design process, and basic elements of a mechatronic system.
+• Control Architectures: Open-loop and closed-loop (feedback) control systems with block diagrams and real-world examples.
+• Sensors & Transducers: Static and dynamic characteristics, displacement, position, proximity, velocity, force, and temperature sensors.
+• Signal Conditioning & Actuation: Basics of signal processing, operational amplifiers, and pneumatic, hydraulic, mechanical, and electrical actuation systems.",
+    "file_url": "/static/uploads/notes/MECHATRONIC__A__pdf_-_366fa424.pdf",
+    "file_name": "MECHATRONICS  NOTES (A)",
+    "file_size": "12.7 MB",
+    "is_important": 1,
+    "is_published": 1,
+    "is_verified": 1,
+    "status": "APPROVED",
+    "contributed_by_id": null,
+    "contributed_by_name": null,
+    "contributed_by_email": null,
+    "download_count": 0,
+    "created_at": "2026-10-20 10:52:21",
+    "subject_name": "Fundamentals of Mechanical Engineering (FME / Mechatronics)",
+    "subject_code": "BME-101",
+    "semester_id": 1,
+    "semester_number": 1,
+    "unit_number": 1,
+    "unit_title": "Unit 1: Introduction to Mechatronics & Control Systems"
+  },
+  {
     "id": 385,
     "subject_id": 34,
     "unit_id": 158,
@@ -821,14 +850,14 @@ window.DDU_SUBJECTS_DATA = [
   {
     "id": 72,
     "semester_id": 1,
-    "name": "Fundamentals of Mechanical Engineering",
+    "name": "Fundamentals of Mechanical Engineering (FME / Mechatronics)",
     "code": "BME-101",
     "branch": "ME / All Branches",
-    "description": "Thermodynamics laws, IC Engines, Refrigeration, Power transmission (belts, gears), Engineering materials",
+    "description": "Introduction to Mechatronics, Sensors, Actuators, Thermodynamics laws, IC Engines, Refrigeration, Engineering materials",
     "created_at": "2026-10-20 09:39:28",
     "semester_number": 1,
     "semester_title": "1st Semester",
-    "notes_count": 0,
+    "notes_count": 1,
     "pyq_count": 0
   },
   {
