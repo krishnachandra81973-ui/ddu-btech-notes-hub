@@ -33,10 +33,11 @@ def get_registry_path():
                 pass
     return TMP_REGISTRY if os.path.exists(TMP_REGISTRY) else REPO_REGISTRY
 
-def load_local_notes():
+def load_local_notes(filter_deleted=True):
     """
     Loads custom notes from all local registry locations (static, repo, tmp),
     merging notes by note id so that dynamically uploaded notes are never lost.
+    Filters out any deleted note IDs by default.
     """
     merged = {}
     for p in [STATIC_REGISTRY, REPO_REGISTRY, TMP_REGISTRY]:
@@ -51,6 +52,12 @@ def load_local_notes():
                                 merged[nid] = note
             except Exception:
                 pass
+    if filter_deleted:
+        try:
+            del_ids = set(load_local_deleted_ids())
+            return [n for n in merged.values() if int(n.get("id", 0)) not in del_ids]
+        except Exception:
+            pass
     return list(merged.values())
 
 def save_local_notes(notes):
@@ -170,21 +177,11 @@ def load_local_deleted_ids():
                                 deleted.add(int(x))
             except Exception:
                 pass
-    # Safety guard: active notes present in the local registry MUST NEVER be marked as deleted
-    try:
-        active_ids = {int(n["id"]) for n in load_local_notes() if str(n.get("id")).isdigit()}
-        deleted = deleted - active_ids
-    except Exception:
-        pass
     return sorted(list(deleted))
 
 
 def save_local_deleted_ids(ids):
-    try:
-        active_ids = {int(n["id"]) for n in load_local_notes() if str(n.get("id")).isdigit()}
-    except Exception:
-        active_ids = set()
-    clean_ids = sorted(list(set([int(x) for x in ids if str(x).isdigit() and int(x) not in active_ids])))
+    clean_ids = sorted(list(set([int(x) for x in ids if str(x).isdigit()])))
     for p in [DELETED_TMP_REGISTRY, DELETED_REPO_REGISTRY, DELETED_STATIC_REGISTRY]:
         try:
             os.makedirs(os.path.dirname(p), exist_ok=True)
@@ -257,8 +254,7 @@ def record_deleted_notes(note_ids):
     """
     Permanently records note IDs as deleted across local JSON, Cloud Firestore,
     and purges them from custom notes cache.
-    Local files are updated instantly (<1ms), and Cloud Firestore operations
-    run in a daemon thread to guarantee fast, non-blocking HTTP responses.
+    Syncs to GitHub and Firestore with bounded join timeout to prevent loss during serverless execution.
     """
     if not note_ids:
         return
@@ -277,11 +273,10 @@ def record_deleted_notes(note_ids):
         save_local_deleted_ids(deleted_ids)
 
     # Clean from local custom notes immediately
-    custom_notes = [n for n in load_local_notes() if int(n.get("id", 0)) not in deleted_ids]
+    custom_notes = [n for n in load_local_notes(filter_deleted=False) if int(n.get("id", 0)) not in deleted_ids]
     save_local_notes(custom_notes)
 
-    # Asynchronously delete from Firestore & commit updated registries to GitHub in background
-    def _async_firestore_delete():
+    def _sync_firestore_and_github():
         for nid in clean_ids:
             try:
                 delete_firestore_note(nid)
@@ -301,7 +296,7 @@ def record_deleted_notes(note_ids):
                 del_bytes,
                 commit_message=f"Mirror sync: {len(clean_ids)} notes deleted"
             )
-            custom_bytes = json.dumps(load_local_notes(), indent=2).encode("utf-8")
+            custom_bytes = json.dumps(custom_notes, indent=2).encode("utf-8")
             cloud_storage.commit_file_to_github(
                 "custom_notes_registry.json",
                 custom_bytes,
@@ -312,10 +307,12 @@ def record_deleted_notes(note_ids):
                 custom_bytes,
                 commit_message="Mirror sync custom notes registry after deletion"
             )
-        except Exception:
-            pass
+        except Exception as ge:
+            print("[notes_registry] GitHub commit on delete notice:", ge)
 
-    threading.Thread(target=_async_firestore_delete, daemon=True).start()
+    t = threading.Thread(target=_sync_firestore_and_github, daemon=True)
+    t.start()
+    t.join(timeout=3.5)
 
 
 def record_custom_note(note_dict):
@@ -382,10 +379,6 @@ def _sync_notes_to_sqlite(conn, active_notes, all_deleted):
         for did in all_deleted:
             cursor.execute("INSERT OR IGNORE INTO deleted_notes (note_id) VALUES (?)", (did,))
         
-        active_ids = {int(n["id"]) for n in active_notes if str(n.get("id")).isdigit()}
-        if active_ids:
-            act_placeholders = ",".join("?" for _ in active_ids)
-            cursor.execute(f"DELETE FROM deleted_notes WHERE note_id IN ({act_placeholders})", tuple(active_ids))
         if all_deleted:
             placeholders = ",".join("?" for _ in all_deleted)
             cursor.execute(f"DELETE FROM notes WHERE id IN ({placeholders})", tuple(all_deleted))
@@ -397,6 +390,8 @@ def _sync_notes_to_sqlite(conn, active_notes, all_deleted):
         for n in active_notes:
             try:
                 note_id = n.get("id")
+                if note_id in all_deleted:
+                    continue
                 subject_id = n.get("subject_id")
                 unit_id = n.get("unit_id")
                 title = n.get("title", "")
@@ -493,12 +488,9 @@ def ensure_custom_notes_synced(conn, force_remote=False):
     """
     try:
         # Step 1: Instant local sync (<1ms)
-        local_notes = load_local_notes()
-        local_deleted = load_local_deleted_ids()
-        active_ids = {int(n["id"]) for n in local_notes if str(n.get("id")).isdigit()}
-        all_deleted = set(local_deleted) - active_ids
-        active_notes = [n for n in local_notes if int(n.get("id", 0)) not in all_deleted]
-        _sync_notes_to_sqlite(conn, active_notes, all_deleted)
+        local_deleted = set(load_local_deleted_ids())
+        local_notes = [n for n in load_local_notes(filter_deleted=True) if int(n.get("id", 0)) not in local_deleted]
+        _sync_notes_to_sqlite(conn, local_notes, local_deleted)
     except Exception:
         pass
 
@@ -515,33 +507,24 @@ def ensure_custom_notes_synced(conn, force_remote=False):
                 if not remote_notes and not remote_deleted:
                     return
 
-                cur_local = load_local_notes()
+                cur_deleted = set(load_local_deleted_ids()) | set(remote_deleted)
+                if remote_deleted:
+                    save_local_deleted_ids(list(cur_deleted))
+
+                cur_local = [n for n in load_local_notes(filter_deleted=False) if int(n.get("id", 0)) not in cur_deleted]
                 merged_dict = {n.get("id"): n for n in cur_local if n.get("id")}
                 if remote_notes:
                     for rn in remote_notes:
-                        if rn.get("id"):
-                            merged_dict[rn.get("id")] = rn
+                        rn_id = rn.get("id")
+                        if rn_id and int(rn_id) not in cur_deleted:
+                            merged_dict[rn_id] = rn
                 all_active = list(merged_dict.values())
                 save_local_notes(all_active)
 
-                cur_deleted = load_local_deleted_ids()
-                act_ids = {int(n["id"]) for n in all_active if str(n.get("id")).isdigit()}
-                merged_deleted = set(cur_deleted + remote_deleted) - act_ids
-                if remote_deleted:
-                    save_local_deleted_ids(list(merged_deleted))
-
-                # Clean remote deleted collection for active IDs
-                for aid in act_ids:
-                    if aid in remote_deleted:
-                        try:
-                            delete_firestore_deleted_id(aid)
-                        except Exception:
-                            pass
-
                 import database
                 bg_conn = database.get_connection()
-                clean_active = [n for n in all_active if int(n.get("id", 0)) not in merged_deleted]
-                _sync_notes_to_sqlite(bg_conn, clean_active, merged_deleted)
+                clean_active = [n for n in all_active if int(n.get("id", 0)) not in cur_deleted]
+                _sync_notes_to_sqlite(bg_conn, clean_active, cur_deleted)
                 bg_conn.close()
             except Exception as e:
                 pass

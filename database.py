@@ -25,21 +25,32 @@ def _get_default_db_path():
                 pass
         # Ensure deleted notes are purged immediately upon container creation
         try:
-            del_path = os.path.join(base_dir, "deleted_notes_registry.json")
-            if os.path.exists(del_path) and os.path.exists(tmp):
-                import json
-                with open(del_path, "r", encoding="utf-8") as f:
-                    del_ids = [int(x) for x in json.load(f) if str(x).isdigit()]
-                if del_ids:
-                    tconn = sqlite3.connect(tmp, timeout=5.0)
-                    tcur = tconn.cursor()
-                    tcur.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);")
-                    for did in del_ids:
-                        tcur.execute("INSERT OR IGNORE INTO deleted_notes (note_id) VALUES (?)", (did,))
-                    placeholders = ",".join("?" for _ in del_ids)
-                    tcur.execute(f"DELETE FROM notes WHERE id IN ({placeholders})", tuple(del_ids))
-                    tconn.commit()
-                    tconn.close()
+            del_paths = [
+                os.path.join(base_dir, "deleted_notes_registry.json"),
+                os.path.join(base_dir, "static", "uploads", "notes", "deleted_notes_registry.json"),
+                "/tmp/deleted_notes_registry.json"
+            ]
+            del_ids = set()
+            import json
+            for dp in del_paths:
+                if os.path.exists(dp):
+                    try:
+                        with open(dp, "r", encoding="utf-8") as f:
+                            for x in json.load(f):
+                                if str(x).isdigit():
+                                    del_ids.add(int(x))
+                    except Exception:
+                        pass
+            if del_ids and os.path.exists(tmp):
+                tconn = sqlite3.connect(tmp, timeout=5.0)
+                tcur = tconn.cursor()
+                tcur.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);")
+                for did in del_ids:
+                    tcur.execute("INSERT OR IGNORE INTO deleted_notes (note_id) VALUES (?)", (did,))
+                placeholders = ",".join("?" for _ in del_ids)
+                tcur.execute(f"DELETE FROM notes WHERE id IN ({placeholders})", tuple(del_ids))
+                tconn.commit()
+                tconn.close()
         except Exception:
             pass
         return tmp
