@@ -1083,6 +1083,18 @@ def get_notes(semester_id=None, subject_id=None, unit_number=None, branch=None, 
 def create_note(subject_id, unit_id, title, description, file_url, file_name, file_size, is_important=0, is_published=1):
     conn = get_connection()
     cursor = conn.cursor()
+
+    # 1. Validate subject exists; if not, fallback to existing or default subject
+    cursor.execute("SELECT id FROM subjects WHERE id = ?", (subject_id,))
+    if not cursor.fetchone():
+        cursor.execute("SELECT id FROM subjects ORDER BY id ASC LIMIT 1")
+        fallback_sub = cursor.fetchone()
+        if fallback_sub:
+            subject_id = fallback_sub[0]
+        else:
+            conn.close()
+            return None
+
     actual_unit_id = None
     if unit_id:
         cursor.execute("SELECT id FROM units WHERE id = ? AND subject_id = ?", (unit_id, subject_id))
@@ -1123,6 +1135,18 @@ def create_note(subject_id, unit_id, title, description, file_url, file_name, fi
 def update_note(note_id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published):
     conn = get_connection()
     cursor = conn.cursor()
+
+    # 1. Validate subject exists
+    cursor.execute("SELECT id FROM subjects WHERE id = ?", (subject_id,))
+    if not cursor.fetchone():
+        cursor.execute("SELECT id FROM subjects ORDER BY id ASC LIMIT 1")
+        fallback_sub = cursor.fetchone()
+        if fallback_sub:
+            subject_id = fallback_sub[0]
+        else:
+            conn.close()
+            return False
+
     actual_unit_id = None
     if unit_id:
         cursor.execute("SELECT id FROM units WHERE id = ? AND subject_id = ?", (unit_id, subject_id))
@@ -1231,7 +1255,7 @@ def delete_notes_bulk(note_ids):
         print("[Database] Error in delete_notes_bulk:", e)
         return 0
 
-def create_student_note_submission(student_id, student_name, student_email, subject_id, unit_id, title, description, file_url, file_name, file_size):
+def create_student_note_submission(student_id, student_name, student_email, subject_id, unit_id, title, description, file_url, file_name, file_size, is_approved=False):
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -1271,13 +1295,17 @@ def create_student_note_submission(student_id, student_name, student_email, subj
         if cursor.fetchone():
             valid_student_id = student_id
 
+    pub_val = 1 if is_approved else 0
+    ver_val = 1 if is_approved else 0
+    status_val = 'APPROVED' if is_approved else 'PENDING'
+
     cursor.execute("""
     INSERT INTO notes (
         subject_id, unit_id, title, description, file_url, file_name, file_size,
         is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 'PENDING', ?, ?, ?)
-    """, (subject_id, actual_unit_id, title, description, file_url, file_name, file_size, valid_student_id, student_name, student_email))
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
+    """, (subject_id, actual_unit_id, title, description, file_url, file_name, file_size, pub_val, ver_val, status_val, valid_student_id, student_name, student_email))
     note_id = cursor.lastrowid
     cursor.execute("DELETE FROM deleted_notes WHERE note_id = ?", (note_id,))
     try:

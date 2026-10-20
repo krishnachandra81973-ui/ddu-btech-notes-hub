@@ -4193,10 +4193,16 @@ const App = {
       if (!res.ok) throw new Error(data.error || "Failed to submit note");
 
       this.closeActiveModal();
-      this.toast("🎉 Note submitted successfully! Admin verify karne ke baad ye public portal par live ho jayega.", "success");
+      if (typeof Auth !== "undefined" && Auth.currentUser && Auth.currentUser.role === "ADMIN") {
+        this.toast("🎉 Note uploaded and published live on portal successfully!", "success");
+      } else {
+        this.toast("🎉 Note submitted successfully! Admin verify karne ke baad ye public portal par live ho jayega.", "success");
+      }
       
       if (window.location.hash === "#dashboard" && typeof Dashboard !== "undefined" && Dashboard.render) {
         Dashboard.render(document.getElementById("main-content"));
+      } else if (window.location.hash.startsWith("#notes") && typeof this.renderNotes === "function") {
+        this.renderNotes(document.getElementById("main-content"));
       }
     } catch (err) {
       this.toast(err.message, "error");

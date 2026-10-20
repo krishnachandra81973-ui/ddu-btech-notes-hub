@@ -541,10 +541,7 @@ class DDURequestHandler(BaseHTTPRequestHandler):
             if path in ("/api/upload/config", "/api/upload/credentials"):
                 user = self.get_auth_user()
                 if not user:
-                    self.send_json({"error": "Authentication required"}, 401)
-                    return
-                if user.get("role") != "ADMIN":
-                    self.send_json({"error": "Admin access required"}, 403)
+                    self.send_json({"error": "Authentication required. Please login to upload notes."}, 401)
                     return
                 import cloud_storage
                 token = cloud_storage.get_github_token() if cloud_storage else ""
@@ -795,6 +792,22 @@ class DDURequestHandler(BaseHTTPRequestHandler):
             if not title or len(title) < 3:
                 self.send_error_json("Note title must be at least 3 characters long.", status=400)
                 return
+            if str(subject_id) in ("__custom__", "custom", "None", "") or not subject_id or not str(subject_id).isdigit():
+                custom_name = (body.get("custom_subject_name") or body.get("subject_name") or "").strip()
+                if custom_name:
+                    custom_code = (body.get("custom_subject_code") or body.get("subject_code") or "ME").strip().upper()
+                    custom_sem = int(body.get("custom_semester_id") or body.get("semester_id") or 1)
+                    custom_branch = (body.get("custom_branch") or body.get("branch") or "ME").strip()
+                    subject_id = db.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
+            elif str(subject_id).isdigit():
+                if not db.get_subject_detail(int(subject_id)):
+                    custom_name = (body.get("custom_subject_name") or body.get("subject_name") or "").strip()
+                    if custom_name:
+                        custom_code = (body.get("custom_subject_code") or body.get("subject_code") or "ME").strip().upper()
+                        custom_sem = int(body.get("custom_semester_id") or body.get("semester_id") or 1)
+                        custom_branch = (body.get("custom_branch") or body.get("branch") or "ME").strip()
+                        subject_id = db.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
+
             if not subject_id:
                 self.send_error_json("Please select a valid subject.", status=400)
                 return
@@ -802,9 +815,10 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 self.send_error_json("PDF file or document link is required.", status=400)
                 return
 
+            is_admin = (user.get("role") == "ADMIN")
             note_id = db.create_student_note_submission(
                 student_id=user["id"],
-                student_name=user.get("full_name") or "Student Contributor",
+                student_name=user.get("full_name") or ("Admin" if is_admin else "Student Contributor"),
                 student_email=user.get("email") or "",
                 subject_id=int(subject_id),
                 unit_id=int(unit_id) if unit_id else None,
@@ -812,11 +826,13 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 description=description,
                 file_url=file_url,
                 file_name=file_name,
-                file_size=file_size
+                file_size=file_size,
+                is_approved=is_admin
             )
+            success_msg = "Note uploaded and published live successfully!" if is_admin else "Note submitted successfully! It will be verified by the Admin before appearing publicly."
             self.send_json({
                 "success": True,
-                "message": "Note submitted successfully! It will be verified by the Admin before appearing publicly.",
+                "message": success_msg,
                 "note_id": note_id
             })
             return
@@ -923,17 +939,22 @@ class DDURequestHandler(BaseHTTPRequestHandler):
 
             if path == "/api/admin/subjects":
                 body = self.read_json_body()
+                code = body["code"].strip().upper()
                 sub_id = db.create_subject(
                     semester_id=int(body["semester_id"]),
                     name=body["name"].strip(),
-                    code=body["code"].strip().upper(),
+                    code=code,
                     branch=body.get("branch", "All Branches"),
                     description=body.get("description", "")
                 )
                 if not sub_id:
+                    existing = db.get_subject_by_code(code)
+                    if existing:
+                        self.send_json({"success": True, "subject_id": existing["id"], "id": existing["id"]})
+                        return
                     self.send_error_json("Subject with this code already exists.")
                     return
-                self.send_json({"success": True, "subject_id": sub_id})
+                self.send_json({"success": True, "subject_id": sub_id, "id": sub_id})
                 return
 
             if path == "/api/admin/notes":
@@ -947,6 +968,14 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                         custom_sem = int(body.get("custom_semester_id") or body.get("semester_id") or 1)
                         custom_branch = (body.get("custom_branch") or body.get("branch") or "ME").strip()
                         subject_id = db.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
+                elif str(subject_id).isdigit():
+                    if not db.get_subject_detail(int(subject_id)):
+                        custom_name = (body.get("custom_subject_name") or body.get("subject_name") or "").strip()
+                        if custom_name:
+                            custom_code = (body.get("custom_subject_code") or body.get("subject_code") or "ME").strip().upper()
+                            custom_sem = int(body.get("custom_semester_id") or body.get("semester_id") or 1)
+                            custom_branch = (body.get("custom_branch") or body.get("branch") or "ME").strip()
+                            subject_id = db.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
 
                 if not subject_id:
                     self.send_error_json("Valid Subject ID or custom subject name is required.", status=400)

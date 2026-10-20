@@ -662,10 +662,7 @@ class handler(BaseHTTPRequestHandler):
             if path in ("/api/upload/config", "/api/upload/credentials"):
                 user = self.get_auth_user()
                 if not user:
-                    self.send_json({"error": "Authentication required"}, 401)
-                    return
-                if user.get("role") != "ADMIN":
-                    self.send_json({"error": "Admin access required for direct cloud storage"}, 403)
+                    self.send_json({"error": "Authentication required. Please login to upload notes."}, 401)
                     return
                 token = cloud_storage.get_github_token() if cloud_storage else ""
                 repo = os.environ.get("GITHUB_REPO", "krishnachandra81973-ui/ddu-btech-notes-hub")
@@ -938,6 +935,14 @@ class handler(BaseHTTPRequestHandler):
                         custom_sem = int(payload.get("custom_semester_id") or payload.get("semester_id") or 1)
                         custom_branch = (payload.get("custom_branch") or payload.get("branch") or "ME").strip()
                         subject_id = database.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
+                elif str(subject_id).isdigit():
+                    if not database.get_subject_detail(int(subject_id)):
+                        custom_name = (payload.get("custom_subject_name") or payload.get("subject_name") or "").strip()
+                        if custom_name:
+                            custom_code = (payload.get("custom_subject_code") or payload.get("subject_code") or "ME").strip().upper()
+                            custom_sem = int(payload.get("custom_semester_id") or payload.get("semester_id") or 1)
+                            custom_branch = (payload.get("custom_branch") or payload.get("branch") or "ME").strip()
+                            subject_id = database.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
                 if not subject_id:
                     self.send_json({"error": "Please select a valid subject or enter subject name."}, 400)
                     return
@@ -956,9 +961,10 @@ class handler(BaseHTTPRequestHandler):
                 except Exception:
                     unit_id_int = 1
 
+                is_admin = (user.get("role") == "ADMIN")
                 note_id = database.create_student_note_submission(
                     student_id=user["id"],
-                    student_name=user.get("full_name") or "Student Contributor",
+                    student_name=user.get("full_name") or ("Admin" if is_admin else "Student Contributor"),
                     student_email=user.get("email") or "",
                     subject_id=sub_id_int,
                     unit_id=unit_id_int,
@@ -966,11 +972,13 @@ class handler(BaseHTTPRequestHandler):
                     description=description,
                     file_url=file_url,
                     file_name=file_name,
-                    file_size=file_size
+                    file_size=file_size,
+                    is_approved=is_admin
                 )
+                success_msg = "Note uploaded and published live successfully!" if is_admin else "Note submitted successfully! It will be verified by the Admin before appearing publicly."
                 self.send_json({
                     "success": True,
-                    "message": "Note submitted successfully! It will be verified by the Admin before appearing publicly.",
+                    "message": success_msg,
                     "note_id": note_id
                 })
                 return
@@ -1119,6 +1127,14 @@ class handler(BaseHTTPRequestHandler):
                         custom_sem = int(payload.get("custom_semester_id") or payload.get("semester_id") or 1)
                         custom_branch = (payload.get("custom_branch") or payload.get("branch") or "ME").strip()
                         subject_id = database.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
+                elif str(subject_id).isdigit():
+                    if not database.get_subject_detail(int(subject_id)):
+                        custom_name = (payload.get("custom_subject_name") or payload.get("subject_name") or "").strip()
+                        if custom_name:
+                            custom_code = (payload.get("custom_subject_code") or payload.get("subject_code") or "ME").strip().upper()
+                            custom_sem = int(payload.get("custom_semester_id") or payload.get("semester_id") or 1)
+                            custom_branch = (payload.get("custom_branch") or payload.get("branch") or "ME").strip()
+                            subject_id = database.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
 
                 unit_id = payload.get("unit_id")
                 title = payload.get("title", "").strip()
@@ -1170,9 +1186,13 @@ class handler(BaseHTTPRequestHandler):
                 else:
                     new_id = database.create_subject(int(semester_id), name, code, branch, description)
                     if not new_id:
+                        existing = database.get_subject_by_code(code)
+                        if existing:
+                            self.send_json({"success": True, "message": "Subject already exists", "subject_id": existing["id"], "id": existing["id"]})
+                            return
                         self.send_json({"error": "Subject with this code already exists."}, 400)
                         return
-                    self.send_json({"success": True, "message": "Subject created", "subject_id": new_id})
+                    self.send_json({"success": True, "message": "Subject created", "subject_id": new_id, "id": new_id})
                 return
 
             # 10. Admin Add Syllabus

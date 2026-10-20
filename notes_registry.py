@@ -327,8 +327,13 @@ def record_custom_note(note_dict):
         notes.append(note_dict)
     save_local_notes(notes)
 
-    def _sync():
+    # 1. Save synchronously to Cloud Firestore to guarantee persistence before Vercel serverless freeze
+    try:
         save_firestore_note(note_dict)
+    except Exception as e:
+        print("[notes_registry] Sync firestore save notice:", e)
+
+    def _sync():
         try:
             import cloud_storage
             custom_bytes = json.dumps(load_local_notes(), indent=2).encode("utf-8")
