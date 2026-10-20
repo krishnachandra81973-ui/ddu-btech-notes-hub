@@ -40,7 +40,7 @@ def get_font(size, bold=False):
 def generate_note_og_image(note, base_dir="."):
     """
     Renders a crisp 1200x630 OpenGraph card representing Page 1 of the study note.
-    Optimized for WhatsApp, Telegram, and social media group sharing.
+    Optimized for WhatsApp, Telegram, LinkedIn, and social media group sharing.
     """
     if not HAS_PIL:
         return None
