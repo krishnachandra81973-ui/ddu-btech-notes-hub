@@ -1121,11 +1121,12 @@ class handler(BaseHTTPRequestHandler):
                     return
 
                 target_user_id = payload.get("user_id")
-                if not target_user_id:
-                    self.send_json({"error": "User ID required."}, 400)
+                target_email = payload.get("email")
+                if not target_user_id and not target_email:
+                    self.send_json({"error": "User ID or Email is required."}, 400)
                     return
 
-                database.delete_user(int(target_user_id))
+                database.delete_user(target_user_id, email=target_email)
                 self.send_json({"success": True, "message": "User deleted successfully."})
                 return
 
@@ -1522,9 +1523,11 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             if path.startswith("/api/admin/users/"):
-                user_id = int(path.split("/api/admin/users/")[1].split("/")[0])
-                database.delete_user(user_id)
-                self.send_json({"success": True, "message": "User deleted"})
+                raw_id = path.split("/api/admin/users/")[1].strip("/").split("/")[0].split("?")[0]
+                query_params = urllib.parse.parse_qs(parsed.query)
+                email = query_params.get("email", [None])[0]
+                database.delete_user(raw_id, email=email)
+                self.send_json({"success": True, "message": "User deleted successfully."})
                 return
 
             if path in ("/api/admin/notes/bulk", "/api/admin/notes/bulk-delete"):

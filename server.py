@@ -956,6 +956,17 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"success": True, "is_active": new_status})
                 return
 
+            if path == "/api/admin/users/delete":
+                body = self.read_json_body() or {}
+                uid = body.get("user_id")
+                email = body.get("email")
+                if not uid and not email:
+                    self.send_error_json("User ID or email required.", status=400)
+                    return
+                db.delete_user(uid, email=email)
+                self.send_json({"success": True, "message": "User deleted successfully."})
+                return
+
             if path == "/api/admin/subjects":
                 body = self.read_json_body()
                 code = body["code"].strip().upper()
@@ -1163,9 +1174,11 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 return
 
             if path.startswith("/api/admin/users/"):
-                uid = int(path.split("/api/admin/users/")[1])
-                db.delete_user(uid)
-                self.send_json({"success": True})
+                raw_id = path.split("/api/admin/users/")[1].strip("/").split("/")[0].split("?")[0]
+                query_params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                email = query_params.get("email", [None])[0]
+                db.delete_user(raw_id, email=email)
+                self.send_json({"success": True, "message": "User deleted successfully."})
                 return
 
             if path.startswith("/api/admin/subjects/"):

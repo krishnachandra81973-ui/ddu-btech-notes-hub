@@ -48,23 +48,20 @@
     "is_published": 1
   },
   {
-    "id": 393,
-    "subject_id": 34,
-    "unit_id": 158,
-    "title": "ECE 1st  Unit Notes (A)",
-    "description": "Complete Unit 1 lecture notes covering core fundamentals, key circuit analysis concepts, standard derivations, and important numerical practice questions for semester exam preparation.",
-    "file_url": "/static/uploads/notes/ECE_1st_Unit__A_3a80ab9f.pdf",
-    "file_name": "ECE 1st  Unit Notes (A)",
-    "file_size": "PDF Document",
-    "is_important": 1,
     "is_published": 1,
+    "is_important": 1,
+    "id": 393,
+    "title": "ECE 1st  Unit Notes (A)",
     "is_verified": 1,
     "status": "APPROVED",
-    "contributed_by_id": null,
-    "contributed_by_name": null,
-    "contributed_by_email": null,
+    "unit_id": 158,
+    "description": "Complete Unit 1 lecture notes covering core fundamentals, key circuit analysis concepts, standard derivations, and important numerical practice questions for semester exam preparation.",
+    "created_at": "2026-10-20 07:48:18",
     "download_count": 0,
-    "created_at": "2026-10-20 07:48:18"
+    "subject_id": 34,
+    "file_size": "PDF Document",
+    "file_url": "/static/uploads/notes/ECE_1st_Unit__A_3a80ab9f.pdf",
+    "file_name": "ECE 1st  Unit Notes (A)"
   },
   {
     "file_name": "ECE 1st Unit Notes (B)",
@@ -115,22 +112,19 @@
     "subject_id": 34
   },
   {
-    "id": 537,
-    "subject_id": 72,
-    "unit_id": 343,
-    "title": "MECHATRONICS NOTES",
-    "description": "Comprehensive lecture notes on Mechatronics Systems (Unit 4). Covers:\n\u2022 Introduction to Mechatronics, key components & architecture\n\u2022 Sensors and Actuators: Types, working principles & applications\n\u2022 Microprocessors & Microcontrollers in mechanical automation\n\u2022 Hydraulic, Pneumatic & Electrical drive systems\n\u2022 Standard university derivations, block diagrams & high-yield exam questions",
-    "file_url": "/static/uploads/notes/MECHATRONIC__A__pdf_-_7003f510.pdf",
-    "file_name": "MECHATRONICS NOTES",
-    "file_size": "PDF Document",
-    "is_important": 1,
     "is_published": 1,
-    "is_verified": 1,
+    "file_size": "PDF Document",
+    "description": "Comprehensive lecture notes on Mechatronics Systems (Unit 4). Covers:\n\u2022 Introduction to Mechatronics, key components & architecture\n\u2022 Sensors and Actuators: Types, working principles & applications\n\u2022 Microprocessors & Microcontrollers in mechanical automation\n\u2022 Hydraulic, Pneumatic & Electrical drive systems\n\u2022 Standard university derivations, block diagrams & high-yield exam questions",
+    "file_name": "MECHATRONICS NOTES",
+    "id": 537,
     "status": "APPROVED",
-    "contributed_by_id": null,
-    "contributed_by_name": null,
-    "contributed_by_email": null,
+    "is_important": 1,
     "download_count": 0,
-    "created_at": "2026-10-20 18:37:53"
+    "unit_id": 453,
+    "title": "MECHATRONICS NOTES",
+    "file_url": "/static/uploads/notes/MECHATRONIC__A__pdf_-_7003f510.pdf",
+    "subject_id": 94,
+    "created_at": "2026-10-20 18:37:53",
+    "is_verified": 1
   }
 ]

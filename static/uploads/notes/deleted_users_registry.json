@@ -1,0 +1,157 @@
+[
+  {
+    "id": "130",
+    "email": "test_del_student_999@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:18:42"
+  },
+  {
+    "id": "131",
+    "email": "test_del_1792534722@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:18:43"
+  },
+  {
+    "id": "132",
+    "email": "test_del_auth_1792534766@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:19:26"
+  },
+  {
+    "id": "123",
+    "email": "test_student_1792524339@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:00"
+  },
+  {
+    "id": "122",
+    "email": "test_student_1792523249@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:00"
+  },
+  {
+    "id": "119",
+    "email": "test_student_1792521166@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:00"
+  },
+  {
+    "id": "133",
+    "email": "test_student_1792534771@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:00"
+  },
+  {
+    "id": "128",
+    "email": "test_student_1792530990@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:00"
+  },
+  {
+    "id": "127",
+    "email": "test_student_1792530847@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "126",
+    "email": "test_student_1792530771@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "125",
+    "email": "test_student_1792529482@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "124",
+    "email": "test_student_1792529373@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "118",
+    "email": "test_student_1792520430@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "115",
+    "email": "test_student_1792519655@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "113",
+    "email": "test_student_1792519500@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "111",
+    "email": "test_student_1792519225@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "110",
+    "email": "test_student_1792518330@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "109",
+    "email": "student_relogin_test@ddunotes.ac.in",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "108",
+    "email": "test_student_1792517872@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "107",
+    "email": "verification_test_student@gmail.com",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "92",
+    "email": "speed_test_1792207463@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "96",
+    "email": "test_student_1792186559@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "95",
+    "email": "test_student_1792186420@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:20:01"
+  },
+  {
+    "id": "121",
+    "email": "contributor_1792523190@gmail.com",
+    "deleted_at": "2026-10-20 22:21:21"
+  },
+  {
+    "id": "120",
+    "email": "contributor_1792521171@gmail.com",
+    "deleted_at": "2026-10-20 22:21:21"
+  },
+  {
+    "id": "117",
+    "email": "sec_test_1792519668@gmail.com",
+    "deleted_at": "2026-10-20 22:21:21"
+  },
+  {
+    "id": "116",
+    "email": "contributor_1792519662@gmail.com",
+    "deleted_at": "2026-10-20 22:21:21"
+  },
+  {
+    "id": "114",
+    "email": "contributor_1792519510@gmail.com",
+    "deleted_at": "2026-10-20 22:21:21"
+  },
+  {
+    "id": "112",
+    "email": "contributor_1792519231@gmail.com",
+    "deleted_at": "2026-10-20 22:21:21"
+  },
+  {
+    "id": "134",
+    "email": "test_student_1792534838@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:21:21"
+  },
+  {
+    "id": "135",
+    "email": "test_student_1792534905@ddu.ac.in",
+    "deleted_at": "2026-10-20 22:21:46"
+  }
+]

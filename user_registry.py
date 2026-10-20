@@ -20,6 +20,13 @@ STATIC_NOTES_REGISTRY = os.path.join(BASE_DIR, "static", "uploads", "notes", "st
 API_REGISTRY = os.path.join(BASE_DIR, "api", "students_registry.json")
 TMP_REGISTRY = "/tmp/students_registry.json"
 
+DELETED_USERS_REPO = os.path.join(BASE_DIR, "deleted_users_registry.json")
+DELETED_USERS_STATIC = os.path.join(BASE_DIR, "static", "deleted_users_registry.json")
+DELETED_USERS_STATIC_NOTES = os.path.join(BASE_DIR, "static", "uploads", "notes", "deleted_users_registry.json")
+DELETED_USERS_STATIC_UPLOADS = os.path.join(BASE_DIR, "static", "uploads", "deleted_users_registry.json")
+DELETED_USERS_API = os.path.join(BASE_DIR, "api", "deleted_users_registry.json")
+DELETED_USERS_TMP = "/tmp/deleted_users_registry.json"
+
 SECRET_KEY = os.environ.get("DDU_PORTAL_SECRET", "ddu_btech_portal_secure_jwt_2026_xyz98124_prod")
 
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@ddunotes.ac.in")
@@ -227,7 +234,197 @@ def get_registry_path():
             return p
     return TMP_REGISTRY
 
+# ----------------- Deleted Students Anti-Resurrection Registry -----------------
+
+def load_local_deleted_users():
+    """Loads all tombstone deleted student records across available paths"""
+    candidates = [
+        DELETED_USERS_TMP,
+        DELETED_USERS_REPO,
+        DELETED_USERS_STATIC_NOTES,
+        DELETED_USERS_STATIC_UPLOADS,
+        DELETED_USERS_STATIC,
+        DELETED_USERS_API
+    ]
+    seen = {}
+    for p in candidates:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        for item in data:
+                            if isinstance(item, dict):
+                                em = (item.get("email") or "").lower().strip()
+                                uid = str(item.get("id") or "").strip()
+                                key = em or uid
+                                if key and key != "none" and key not in seen:
+                                    seen[key] = {
+                                        "id": uid if uid and uid != "None" else None,
+                                        "email": em if em and "@" in em else None,
+                                        "deleted_at": item.get("deleted_at") or time.strftime("%Y-%m-%d %H:%M:%S")
+                                    }
+                            elif isinstance(item, (int, str)):
+                                key = str(item).lower().strip()
+                                if key and key not in seen:
+                                    seen[key] = {
+                                        "id": key if key.isdigit() else None,
+                                        "email": key if "@" in key else None,
+                                        "deleted_at": time.strftime("%Y-%m-%d %H:%M:%S")
+                                    }
+            except Exception:
+                pass
+    return list(seen.values())
+
+def get_deleted_user_identifiers():
+    """Returns sets of (deleted_ids, deleted_emails) for fast in-memory filtering"""
+    records = load_local_deleted_users()
+    deleted_ids = set()
+    deleted_emails = set()
+    for r in records:
+        uid = str(r.get("id") or "").strip()
+        em = (r.get("email") or "").lower().strip()
+        if uid and uid != "None":
+            deleted_ids.add(uid)
+        if em and "@" in em:
+            deleted_emails.add(em)
+    return deleted_ids, deleted_emails
+
+def save_local_deleted_users(deleted_list):
+    """Saves deleted student tombstones to all writable paths"""
+    targets = [
+        DELETED_USERS_TMP,
+        DELETED_USERS_REPO,
+        DELETED_USERS_STATIC_NOTES,
+        DELETED_USERS_STATIC_UPLOADS,
+        DELETED_USERS_STATIC,
+        DELETED_USERS_API
+    ]
+    for target in targets:
+        try:
+            target_dir = os.path.dirname(target)
+            if target_dir:
+                os.makedirs(target_dir, exist_ok=True)
+            with open(target, "w", encoding="utf-8") as f:
+                json.dump(deleted_list, f, indent=2)
+        except Exception:
+            pass
+
+def unmark_deleted_user(user_id_or_email):
+    """Allows a deleted student email or ID to re-register cleanly if desired"""
+    if not user_id_or_email:
+        return
+    val = str(user_id_or_email).lower().strip()
+    records = load_local_deleted_users()
+    filtered = []
+    for r in records:
+        r_id = str(r.get("id") or "").strip()
+        r_em = str(r.get("email") or "").lower().strip()
+        if r_id == val or r_em == val:
+            continue
+        filtered.append(r)
+    save_local_deleted_users(filtered)
+
+def record_deleted_user(user_id=None, email=None):
+    """
+    Permanently records student as deleted across local JSON tombstones,
+    purges student from active memory and JSON files, deletes from Firestore,
+    and commits deleted_users_registry.json & students_registry.json to GitHub.
+    """
+    if not user_id and not email:
+        return
+
+    clean_id = str(user_id).strip() if user_id is not None and str(user_id).strip() not in ("None", "") else None
+    clean_email = email.lower().strip() if email and "@" in email else None
+
+    # Resolve missing ID or email from current registry
+    if not clean_id or not clean_email:
+        try:
+            for u in load_registry(fetch_remote=False):
+                u_id = str(u.get("id") or "").strip()
+                u_em = (u.get("email") or "").lower().strip()
+                if (clean_id and u_id == clean_id) or (clean_email and u_em == clean_email):
+                    if not clean_email and u_em:
+                        clean_email = u_em
+                    if not clean_id and u_id:
+                        clean_id = u_id
+                    break
+        except Exception:
+            pass
+
+    records = load_local_deleted_users()
+    already_recorded = False
+    for r in records:
+        r_id = str(r.get("id") or "").strip()
+        r_em = str(r.get("email") or "").lower().strip()
+        if (clean_id and r_id == clean_id) or (clean_email and r_em == clean_email):
+            already_recorded = True
+            if clean_id and not r_id:
+                r["id"] = clean_id
+            if clean_email and not r_em:
+                r["email"] = clean_email
+            break
+
+    if not already_recorded:
+        records.append({
+            "id": clean_id,
+            "email": clean_email,
+            "deleted_at": time.strftime("%Y-%m-%d %H:%M:%S")
+        })
+
+    save_local_deleted_users(records)
+
+    # Immediately delete from local students_registry.json
+    all_users = load_registry(fetch_remote=False)
+    filtered = []
+    for u in all_users:
+        u_id = str(u.get("id") or "").strip()
+        u_em = (u.get("email") or "").lower().strip()
+        if (clean_id and u_id == clean_id) or (clean_email and u_em == clean_email):
+            continue
+        filtered.append(u)
+    save_registry(filtered, sync_remote=False)
+
+    # Delete from Firestore if email known
+    if clean_email:
+        try:
+            delete_firestore_student(clean_email)
+        except Exception:
+            pass
+
+    # Background sync to GitHub so Vercel gets persistent commit
+    def _sync_bg():
+        try:
+            import cloud_storage
+            del_bytes = json.dumps(records, indent=2).encode("utf-8")
+            cloud_storage.commit_file_to_github(
+                "deleted_users_registry.json",
+                del_bytes,
+                commit_message=f"Sync deleted users: user_id={clean_id} email={clean_email}"
+            )
+            cloud_storage.commit_file_to_github(
+                "static/uploads/notes/deleted_users_registry.json",
+                del_bytes,
+                commit_message=f"Mirror sync deleted users: user_id={clean_id} email={clean_email}"
+            )
+            reg_bytes = json.dumps(filtered, indent=2).encode("utf-8")
+            cloud_storage.commit_file_to_github(
+                "students_registry.json",
+                reg_bytes,
+                commit_message=f"Update students registry after deletion of user_id={clean_id}"
+            )
+            cloud_storage.commit_file_to_github(
+                "static/uploads/notes/students_registry.json",
+                reg_bytes,
+                commit_message=f"Mirror update students registry after deletion of user_id={clean_id}"
+            )
+        except Exception as ge:
+            print("[UserRegistry] GitHub commit notice:", ge)
+
+    threading.Thread(target=_sync_bg, daemon=True).start()
+
 def load_registry(fetch_remote=False):
+    deleted_ids, deleted_emails = get_deleted_user_identifiers()
     candidates = [
         TMP_REGISTRY,
         STATIC_NOTES_REGISTRY,
@@ -245,7 +442,10 @@ def load_registry(fetch_remote=False):
                     data = json.load(f)
                     if isinstance(data, list):
                         for u in data:
+                            uid = str(u.get("id") or "").strip()
                             em = u.get("email", "").lower().strip()
+                            if (uid and uid in deleted_ids) or (em and em in deleted_emails):
+                                continue
                             if em and em not in FAKE_EMAILS:
                                 u_clean = dict(u)
                                 u_clean.pop("plain_password", None)
@@ -262,9 +462,20 @@ def load_registry(fetch_remote=False):
             import database
             conn = database.get_connection()
             cur = conn.cursor()
-            cur.execute("SELECT id, full_name, email, college, course, branch, semester, role, is_active, created_at FROM users")
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS deleted_users (user_id INTEGER, email TEXT, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+            """)
+            cur.execute("""
+            SELECT id, full_name, email, college, course, branch, semester, role, is_active, created_at 
+            FROM users
+            WHERE (id NOT IN (SELECT user_id FROM deleted_users WHERE user_id IS NOT NULL))
+              AND (LOWER(email) NOT IN (SELECT LOWER(email) FROM deleted_users WHERE email IS NOT NULL))
+            """)
             for r in cur.fetchall():
                 em = r["email"].lower().strip()
+                uid = str(r["id"])
+                if (uid and uid in deleted_ids) or (em and em in deleted_emails):
+                    continue
                 if em and em not in FAKE_EMAILS and em not in user_map:
                     user_map[em] = dict(r)
             conn.close()
@@ -277,7 +488,10 @@ def load_registry(fetch_remote=False):
             remote_students = fetch_firestore_students()
             if remote_students and isinstance(remote_students, list) and len(remote_students) > 0:
                 for rs in remote_students:
+                    uid = str(rs.get("id") or "").strip()
                     em = rs.get("email", "").lower().strip()
+                    if (uid and uid in deleted_ids) or (em and em in deleted_emails):
+                        continue
                     if em and em not in FAKE_EMAILS:
                         if em in user_map:
                             user_map[em].update(rs)
@@ -286,8 +500,8 @@ def load_registry(fetch_remote=False):
         except Exception:
             pass
 
-    # Clean fake student accounts permanently
-    users = [u for u in user_map.values() if u.get("email", "").lower().strip() not in FAKE_EMAILS]
+    # Clean fake student accounts permanently and filter out any deleted
+    users = [u for u in user_map.values() if u.get("email", "").lower().strip() not in FAKE_EMAILS and str(u.get("id") or "") not in deleted_ids and u.get("email", "").lower().strip() not in deleted_emails]
 
     # Ensure admin is always present
     has_admin = any(u.get("email", "").lower() == ADMIN_EMAIL.lower() for u in users)
@@ -295,7 +509,7 @@ def load_registry(fetch_remote=False):
         users.insert(0, ADMIN_USER)
 
     # Warm-save to TMP_REGISTRY so subsequent calls in this container are instantaneous
-    if len(users) > 1 and not os.path.exists(TMP_REGISTRY):
+    if len(users) > 0:
         try:
             with open(TMP_REGISTRY, "w", encoding="utf-8") as f:
                 json.dump(users, f, indent=2)
@@ -361,6 +575,10 @@ def save_user_to_registry(user_dict, allow_update=True, sync_remote=True):
     email_clean = user_dict.get("email", "").lower().strip()
     if email_clean in FAKE_EMAILS:
         return None
+
+    unmark_deleted_user(email_clean)
+    if user_dict.get("id"):
+        unmark_deleted_user(user_dict.get("id"))
 
     # Never store plain_password in memory or registry
     user_dict.pop("plain_password", None)
@@ -474,20 +692,10 @@ def toggle_active_in_registry(user_id):
     return 1
 
 def delete_user_from_registry(user_id_or_email):
-    users = load_registry(fetch_remote=False)
-    target_email = None
-    filtered = []
-    for u in users:
-        if str(u.get("id")) == str(user_id_or_email) or u.get("email", "").lower().strip() == str(user_id_or_email).lower().strip():
-            target_email = u.get("email")
-        else:
-            filtered.append(u)
-    save_registry(filtered, sync_remote=False)
-    if target_email:
-        try:
-            delete_firestore_student(target_email)
-        except Exception:
-            pass
+    raw = str(user_id_or_email or "").strip()
+    clean_id = raw if raw.isdigit() else None
+    clean_email = raw if "@" in raw else None
+    record_deleted_user(user_id=clean_id, email=clean_email)
     return True
 
 # ----------------- Cryptographic Auth Token Helpers -----------------

@@ -975,7 +975,14 @@ const Admin = {
   // ------------------- 7. Students Tab -------------------
   async renderStudentsTab(container) {
     try {
-      const res = await fetch("/api/admin/users", { headers: Auth.getAuthHeaders() });
+      const res = await fetch(`/api/admin/users?_t=${Date.now()}`, {
+        cache: "no-store",
+        headers: {
+          ...Auth.getAuthHeaders(),
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache"
+        }
+      });
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
           container.innerHTML = `
@@ -997,7 +1004,7 @@ const Admin = {
         <div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
             <div>
-              <h2 style="font-size: 1.6rem; font-weight: 800;">Registered Student Accounts (${studentCount})</h2>
+              <h2 style="font-size: 1.6rem; font-weight: 800;">Registered Student Accounts (<span id="students-badge-count">${studentCount}</span>)</h2>
               <p style="color: var(--text-muted); font-size: 0.88rem;">Live student credentials, registration timestamps, and administrative controls.</p>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -1041,7 +1048,7 @@ const Admin = {
                       </td>
                     </tr>
                   ` : users.map(u => `
-                    <tr>
+                    <tr id="student-row-${u.id}">
                       <td>
                         <div style="font-weight: 700; font-size: 0.95rem;">${escapeHtml(u.full_name)} ${u.role === 'ADMIN' ? '<span style="font-size: 0.68rem; background: var(--primary); color: white; padding: 1px 6px; border-radius: 4px; vertical-align: middle;">ADMIN</span>' : ''}</div>
                         <div style="font-size: 0.78rem; color: var(--text-muted);">${escapeHtml(u.email)}</div>
@@ -1072,9 +1079,11 @@ const Admin = {
                           <button onclick="Admin.toggleUserActive(${u.id})" class="btn-secondary btn-sm" style="padding: 4px 8px; font-size: 0.75rem;">
                             ${u.is_active ? 'Disable' : 'Enable'}
                           </button>
-                          <button onclick="Admin.deleteStudent(${u.id})" class="btn-outline-danger btn-sm" style="padding: 4px 8px; font-size: 0.75rem;">
-                            Delete
-                          </button>
+                          ${u.role !== 'ADMIN' ? `
+                            <button onclick="Admin.deleteStudent(${u.id}, '${escapeHtml(u.email || '')}')" class="btn-outline-danger btn-sm" style="padding: 4px 8px; font-size: 0.75rem;">
+                              Delete
+                            </button>
+                          ` : ''}
                         </div>
                       </td>
                     </tr>
@@ -2439,19 +2448,66 @@ const Admin = {
     }
   },
 
-  async deleteStudent(userId) {
+  async deleteStudent(userId, userEmail = '') {
+    if (!userId && !userEmail) return;
     if (!confirm("Are you sure you want to permanently delete this student account?")) return;
+    
+    // Optimistic UI feedback: Dim row immediately
+    const row = document.getElementById(`student-row-${userId}`);
+    if (row) {
+      row.style.opacity = "0.35";
+      row.style.pointerEvents = "none";
+    }
+
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
+      // 1. Try DELETE first with query params
+      const qEmail = userEmail ? `&email=${encodeURIComponent(userEmail)}` : '';
+      let res = await fetch(`/api/admin/users/${userId}?_t=${Date.now()}${qEmail}`, {
         method: "DELETE",
-        headers: Auth.getAuthHeaders()
+        headers: {
+          ...Auth.getAuthHeaders(),
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache"
+        }
       });
+
+      // 2. If DELETE failed or blocked by proxy/middleware, fallback to POST /api/admin/users/delete
+      if (!res.ok) {
+        res = await fetch(`/api/admin/users/delete?_t=${Date.now()}`, {
+          method: "POST",
+          headers: {
+            ...Auth.getAuthHeaders(),
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache"
+          },
+          body: JSON.stringify({ user_id: userId, email: userEmail })
+        });
+      }
+
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        App.toast("Student account deleted.", "info");
-        this.renderStudentsTab(document.getElementById("admin-tab-content"));
+        App.toast("Student account permanently delete ho gaya.", "info");
+        if (row) row.remove();
+        // Update count badge
+        const badge = document.getElementById("students-badge-count");
+        if (badge && parseInt(badge.textContent) > 0) {
+          badge.textContent = Math.max(0, parseInt(badge.textContent) - 1);
+        }
+        await this.renderStudentsTab(document.getElementById("admin-tab-content"));
+      } else {
+        if (row) {
+          row.style.opacity = "1";
+          row.style.pointerEvents = "auto";
+        }
+        App.toast(data.error || "Student delete nahi ho saka. Kripya login check karein.", "error");
       }
     } catch (e) {
-      App.toast("Delete failed", "error");
+      if (row) {
+        row.style.opacity = "1";
+        row.style.pointerEvents = "auto";
+      }
+      App.toast(`Delete error: ${e.message}`, "error");
     }
   },
 

@@ -499,6 +499,17 @@ def create_user(full_name, email, password, college="Deen Dayal Upadhyaya Gorakh
     if get_user_by_email(email_clean, check_remote=True):
         return None
 
+    try:
+        user_registry.unmark_deleted_user(email_clean)
+        conn_del = get_connection()
+        cur_del = conn_del.cursor()
+        cur_del.execute("CREATE TABLE IF NOT EXISTS deleted_users (user_id INTEGER, email TEXT, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP)")
+        cur_del.execute("DELETE FROM deleted_users WHERE LOWER(email) = ?", (email_clean,))
+        conn_del.commit()
+        conn_del.close()
+    except Exception:
+        pass
+
     conn = get_connection()
     cursor = conn.cursor()
     hash_val, salt = hash_password(password)
@@ -724,21 +735,30 @@ def delete_user_session(token):
         pass
 
 def get_all_users(search=""):
+    deleted_ids, deleted_emails = user_registry.get_deleted_user_identifiers()
+
     # 1. Fetch from Database
     db_users = {}
     try:
         conn = get_connection()
         cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS deleted_users (user_id INTEGER, email TEXT, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP)")
         cursor.execute("""
         SELECT id, full_name, email, college, course, branch, semester, role, is_active, created_at
         FROM users
+        WHERE (id NOT IN (SELECT user_id FROM deleted_users WHERE user_id IS NOT NULL))
+          AND (LOWER(email) NOT IN (SELECT LOWER(email) FROM deleted_users WHERE email IS NOT NULL))
         """)
         for r in cursor.fetchall():
             row_dict = dict(r)
             row_dict.pop("password_hash", None)
             row_dict.pop("salt", None)
             row_dict.pop("plain_password", None)
-            db_users[r["email"].lower().strip()] = row_dict
+            em = (r["email"] or "").lower().strip()
+            uid = str(r["id"])
+            if (uid and uid in deleted_ids) or (em and em in deleted_emails):
+                continue
+            db_users[em] = row_dict
         conn.close()
     except Exception:
         pass
@@ -748,6 +768,9 @@ def get_all_users(search=""):
     combined = {}
     for ru in reg_users:
         em = ru.get("email", "").lower().strip()
+        uid = str(ru.get("id") or "").strip()
+        if (uid and uid in deleted_ids) or (em and em in deleted_emails):
+            continue
         if em:
             clean_ru = dict(ru)
             clean_ru.pop("password_hash", None)
@@ -756,7 +779,7 @@ def get_all_users(search=""):
             combined[em] = clean_ru
 
     # Filter out any legacy fake accounts from database
-    db_users = {em: du for em, du in db_users.items() if em not in user_registry.FAKE_EMAILS}
+    db_users = {em: du for em, du in db_users.items() if em not in user_registry.FAKE_EMAILS and str(du.get("id")) not in deleted_ids and em not in deleted_emails}
 
     # Merge database users into combined
     for em, du in db_users.items():
@@ -789,9 +812,11 @@ def get_all_users(search=""):
             or s in u.get("branch", "").lower()
         ]
 
-    # Sort: Students first or newest first
-    all_list.sort(key=lambda u: (u.get("role") != "ADMIN", str(u.get("created_at", ""))), reverse=True)
-    return all_list
+    # Admin first, then descending by created_at for students
+    admin_users = [u for u in all_list if u.get("role") == "ADMIN"]
+    student_users = [u for u in all_list if u.get("role") != "ADMIN"]
+    student_users.sort(key=lambda u: str(u.get("created_at", "")), reverse=True)
+    return admin_users + student_users
 
 def toggle_user_active(user_id):
     new_state = user_registry.toggle_active_in_registry(user_id)
@@ -805,24 +830,59 @@ def toggle_user_active(user_id):
         pass
     return new_state
 
-def delete_user(user_id):
-    user_email = None
-    for u in user_registry.load_registry(fetch_remote=False):
-        if str(u.get("id")) == str(user_id) or str(u.get("email")).lower() == str(user_id).lower():
-            user_email = u.get("email", "").lower().strip()
-            break
-    user_registry.delete_user_from_registry(user_id)
+def delete_user(user_id, email=None):
+    target_id = str(user_id).strip() if user_id is not None and str(user_id).strip() not in ("None", "") else None
+    target_email = email.lower().strip() if email and "@" in email else None
+
+    # Resolve email or id from existing registry if one is missing
+    if not target_email or not target_id:
+        try:
+            for u in user_registry.load_registry(fetch_remote=False):
+                u_id = str(u.get("id") or "").strip()
+                u_em = (u.get("email") or "").lower().strip()
+                if (target_id and u_id == target_id) or (target_email and u_em == target_email):
+                    if not target_email and u_em:
+                        target_email = u_em
+                    if not target_id and u_id:
+                        target_id = u_id
+                    break
+        except Exception:
+            pass
+
+    # 1. Record in persistent deleted registry & sync
     try:
-        conn = get_connection()
-        cursor = conn.cursor()
-        if user_email:
-            cursor.execute("DELETE FROM users WHERE id = ? OR LOWER(email) = ?", (user_id, user_email))
-        else:
-            cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
-        conn.commit()
-        conn.close()
-    except Exception:
-        pass
+        user_registry.record_deleted_user(user_id=target_id, email=target_email)
+    except Exception as e:
+        print("[Database] record_deleted_user notice:", e)
+
+    # 2. Delete from SQLite & record in deleted_users table
+    num_id = int(target_id) if target_id and target_id.isdigit() else None
+    for db_path in [None, "ddu_seed.db"]:
+        try:
+            if db_path is None:
+                conn = get_connection()
+            else:
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                p = os.path.join(base_dir, db_path)
+                if not os.path.exists(p):
+                    continue
+                conn = sqlite3.connect(p)
+            cursor = conn.cursor()
+            cursor.execute("CREATE TABLE IF NOT EXISTS deleted_users (user_id INTEGER, email TEXT, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP)")
+            cursor.execute("INSERT OR IGNORE INTO deleted_users (user_id, email) VALUES (?, ?)", (num_id, target_email))
+            if target_email and num_id:
+                cursor.execute("DELETE FROM users WHERE id = ? OR LOWER(email) = ?", (num_id, target_email))
+                cursor.execute("DELETE FROM sessions WHERE user_id = ?", (num_id,))
+            elif num_id:
+                cursor.execute("DELETE FROM users WHERE id = ?", (num_id,))
+                cursor.execute("DELETE FROM sessions WHERE user_id = ?", (num_id,))
+            elif target_email:
+                cursor.execute("DELETE FROM users WHERE LOWER(email) = ?", (target_email,))
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
     return True
 
 def update_user_password(user_id, new_password):

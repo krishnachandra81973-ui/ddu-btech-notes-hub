@@ -304,6 +304,16 @@ def run_tests():
         assert status == 200
         print("  ✓ Admin toggled student account status.")
 
+        # 9. Delete Student Account (Tombstone verification)
+        status, content, _ = request(f"/api/admin/users/{student_id}?email={reg_payload['email']}", method="DELETE", token=admin_token)
+        assert status == 200
+        print("  ✓ Admin deleted student account (DELETE) verified.")
+
+        # Deleted student login must now be blocked
+        status, content, _ = request("/api/auth/login", method="POST", body=login_payload)
+        assert status == 401
+        print("  ✓ Deleted student login blocked (HTTP 401).")
+
         # TEST 6.5: Verify Shared Note Route with Chapter Name Slug and OpenGraph metadata
         print("\n[TEST 6.5] Verifying Shared Note Route with Chapter/Topic Slug...")
         first_note = db.get_notes(only_published=True)[0]
