@@ -1,10 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "api/index.py": {
-      "excludeFiles": "{test_*.py,security_audit_test.py,run.sh,README.md,static/uploads/sample_exam_notes_*.pdf}"
-    }
-  },
   "builds": [
     {
       "src": "api/index.py",
