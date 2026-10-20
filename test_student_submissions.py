@@ -97,7 +97,9 @@ def test_workflow():
     # 6. Admin checks pending notes list
     conn.request("GET", "/api/admin/notes/pending", headers={"Authorization": f"Bearer {admin_token}"})
     res = conn.getresponse()
-    pending_notes = json.loads(res.read().decode())["notes"]
+    pending_data = json.loads(res.read().decode())
+    pending_notes = pending_data.get("pending_notes") or pending_data.get("notes") or []
+    assert "pending_notes" in pending_data, "Response missing pending_notes key!"
     admin_note = [p for p in pending_notes if p["id"] == note_id]
     assert len(admin_note) == 1, "Admin failed to see pending note!"
     assert admin_note[0]["contributed_by_name"] == "Aman Verma"

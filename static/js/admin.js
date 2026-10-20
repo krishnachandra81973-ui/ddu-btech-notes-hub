@@ -473,7 +473,7 @@ const Admin = {
     try {
       const res = await fetch("/api/admin/notes/pending", { headers: Auth.getAuthHeaders() });
       const data = await res.json();
-      const submissions = data.pending_notes || [];
+      const submissions = data.pending_notes || data.notes || data.submissions || [];
 
       // Update sidebar badge
       const pendingBadge = document.getElementById("admin-pending-badge");

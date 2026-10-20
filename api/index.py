@@ -567,7 +567,12 @@ class handler(BaseHTTPRequestHandler):
                     self.send_json({"error": "Admin access required"}, 403)
                     return
                 pending = database.get_pending_notes()
-                self.send_json({"notes": pending})
+                self.send_json({
+                    "notes": pending,
+                    "pending_notes": pending,
+                    "submissions": pending,
+                    "count": len(pending)
+                })
                 return
 
             # 10. Admin Stats Overview

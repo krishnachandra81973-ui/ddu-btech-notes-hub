@@ -239,6 +239,20 @@ def save_firestore_deleted_id(note_id):
         return False
 
 
+def delete_firestore_deleted_id(note_id):
+    """Removes a note ID from Cloud Firestore deleted notes collection"""
+    if not note_id:
+        return False
+    doc_id = f"deleted_{note_id}"
+    url = f"{FIRESTORE_DELETED_URL}/{doc_id}"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "DDU-Portal-Serverless"}, method="DELETE")
+        with urllib.request.urlopen(req, timeout=3.5) as resp:
+            return resp.status in (200, 204)
+    except Exception:
+        return False
+
+
 def record_deleted_notes(note_ids):
     """
     Permanently records note IDs as deleted across local JSON, Cloud Firestore,
@@ -314,6 +328,7 @@ def record_custom_note(note_dict):
             if nid_int in deleted_ids:
                 deleted_ids = [d for d in deleted_ids if d != nid_int]
                 save_local_deleted_ids(deleted_ids)
+            delete_firestore_deleted_id(nid_int)
         except Exception:
             pass
     notes = load_local_notes()
@@ -375,23 +390,7 @@ def ensure_custom_notes_synced(conn):
         _LAST_SYNC_TIME = now
 
         try:
-            # 1. Fetch remote and local deleted IDs
-            remote_deleted = fetch_firestore_deleted_ids()
-            local_deleted = load_local_deleted_ids()
-            all_deleted = set(local_deleted + remote_deleted)
-            if remote_deleted:
-                save_local_deleted_ids(list(all_deleted))
-
-            cursor = conn.cursor()
-            cursor.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);")
-            for did in all_deleted:
-                cursor.execute("INSERT OR IGNORE INTO deleted_notes (note_id) VALUES (?)", (did,))
-            if all_deleted:
-                placeholders = ",".join("?" for _ in all_deleted)
-                cursor.execute(f"DELETE FROM notes WHERE id IN ({placeholders})", tuple(all_deleted))
-            conn.commit()
-
-            # 2. Fetch remote notes from Cloud Firestore and merge with local notes
+            # 1. Fetch remote and local notes (Active Registry)
             remote_notes = fetch_firestore_notes()
             local_notes = load_local_notes()
             merged_dict = {n.get("id"): n for n in local_notes if n.get("id")}
@@ -402,7 +401,40 @@ def ensure_custom_notes_synced(conn):
             all_active = list(merged_dict.values())
             save_local_notes(all_active)
 
-            # Filter out any notes that have been deleted!
+            # Active note IDs that MUST NEVER BE DELETED
+            active_ids = {int(n["id"]) for n in all_active if str(n.get("id")).isdigit()}
+
+            # 2. Fetch deleted IDs
+            remote_deleted = fetch_firestore_deleted_ids()
+            local_deleted = load_local_deleted_ids()
+            raw_deleted = set(local_deleted + remote_deleted)
+            # CRITICAL: Exclude any active note IDs from deleted sets
+            all_deleted = raw_deleted - active_ids
+
+            if remote_deleted:
+                save_local_deleted_ids(list(all_deleted))
+
+            cursor = conn.cursor()
+            cursor.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);")
+            for did in all_deleted:
+                cursor.execute("INSERT OR IGNORE INTO deleted_notes (note_id) VALUES (?)", (did,))
+            # Ensure active IDs are NOT in deleted_notes table in SQLite!
+            if active_ids:
+                act_placeholders = ",".join("?" for _ in active_ids)
+                cursor.execute(f"DELETE FROM deleted_notes WHERE note_id IN ({act_placeholders})", tuple(active_ids))
+            if all_deleted:
+                placeholders = ",".join("?" for _ in all_deleted)
+                cursor.execute(f"DELETE FROM notes WHERE id IN ({placeholders})", tuple(all_deleted))
+            conn.commit()
+
+            # Clean remote deleted Firestore collection for active IDs in background
+            for aid in active_ids:
+                if aid in remote_deleted:
+                    try:
+                        threading.Thread(target=delete_firestore_deleted_id, args=(aid,), daemon=True).start()
+                    except Exception:
+                        pass
+
             active_notes = [n for n in all_active if int(n.get("id", 0)) not in all_deleted]
 
             if not active_notes:

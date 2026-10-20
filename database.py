@@ -1112,6 +1112,14 @@ def create_note(subject_id, unit_id, title, description, file_url, file_name, fi
                 if row3:
                     actual_unit_id = row3[0]
 
+    try:
+        cursor.execute("SELECT MAX(MAX(IFNULL((SELECT MAX(id) FROM notes), 0), IFNULL((SELECT MAX(note_id) FROM deleted_notes), 0)), 600)")
+        max_row = cursor.fetchone()
+        max_id = max_row[0] if max_row and max_row[0] else 600
+        cursor.execute("UPDATE sqlite_sequence SET seq = MAX(IFNULL(seq, 0), ?) WHERE name = 'notes'", (max_id,))
+    except Exception:
+        pass
+
     cursor.execute("""
     INSERT INTO notes (subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1119,7 +1127,7 @@ def create_note(subject_id, unit_id, title, description, file_url, file_name, fi
     note_id = cursor.lastrowid
     cursor.execute("DELETE FROM deleted_notes WHERE note_id = ?", (note_id,))
     try:
-        cursor.execute("UPDATE sqlite_sequence SET seq = MAX(seq, 500) WHERE name = 'notes'")
+        cursor.execute("UPDATE sqlite_sequence SET seq = MAX(seq, ?) WHERE name = 'notes'", (note_id,))
     except Exception:
         pass
     conn.commit()
@@ -1299,6 +1307,14 @@ def create_student_note_submission(student_id, student_name, student_email, subj
     ver_val = 1 if is_approved else 0
     status_val = 'APPROVED' if is_approved else 'PENDING'
 
+    try:
+        cursor.execute("SELECT MAX(MAX(IFNULL((SELECT MAX(id) FROM notes), 0), IFNULL((SELECT MAX(note_id) FROM deleted_notes), 0)), 600)")
+        max_row = cursor.fetchone()
+        max_id = max_row[0] if max_row and max_row[0] else 600
+        cursor.execute("UPDATE sqlite_sequence SET seq = MAX(IFNULL(seq, 0), ?) WHERE name = 'notes'", (max_id,))
+    except Exception:
+        pass
+
     cursor.execute("""
     INSERT INTO notes (
         subject_id, unit_id, title, description, file_url, file_name, file_size,
@@ -1309,7 +1325,7 @@ def create_student_note_submission(student_id, student_name, student_email, subj
     note_id = cursor.lastrowid
     cursor.execute("DELETE FROM deleted_notes WHERE note_id = ?", (note_id,))
     try:
-        cursor.execute("UPDATE sqlite_sequence SET seq = MAX(seq, 500) WHERE name = 'notes'")
+        cursor.execute("UPDATE sqlite_sequence SET seq = MAX(seq, ?) WHERE name = 'notes'", (note_id,))
     except Exception:
         pass
     conn.commit()
@@ -1341,8 +1357,8 @@ def get_pending_notes():
     SELECT n.*, sub.name as subject_name, sub.code as subject_code, sub.semester_id,
            sem.number as semester_number, u.unit_number, u.title as unit_title
     FROM notes n
-    JOIN subjects sub ON n.subject_id = sub.id
-    JOIN semesters sem ON sub.semester_id = sem.id
+    LEFT JOIN subjects sub ON n.subject_id = sub.id
+    LEFT JOIN semesters sem ON sub.semester_id = sem.id
     LEFT JOIN units u ON n.unit_id = u.id
     WHERE n.status = 'PENDING' OR (n.is_verified = 0 AND (n.status IS NULL OR n.status != 'REJECTED'))
     ORDER BY n.id DESC
@@ -1362,8 +1378,8 @@ def get_student_submissions(student_id):
     SELECT n.*, sub.name as subject_name, sub.code as subject_code, sub.semester_id,
            sem.number as semester_number, u.unit_number, u.title as unit_title
     FROM notes n
-    JOIN subjects sub ON n.subject_id = sub.id
-    JOIN semesters sem ON sub.semester_id = sem.id
+    LEFT JOIN subjects sub ON n.subject_id = sub.id
+    LEFT JOIN semesters sem ON sub.semester_id = sem.id
     LEFT JOIN units u ON n.unit_id = u.id
     WHERE n.contributed_by_id = ?
     ORDER BY n.id DESC

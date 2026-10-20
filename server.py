@@ -502,7 +502,12 @@ class DDURequestHandler(BaseHTTPRequestHandler):
 
             if path == "/api/admin/notes/pending":
                 pending = db.get_pending_notes()
-                self.send_json({"notes": pending})
+                self.send_json({
+                    "notes": pending,
+                    "pending_notes": pending,
+                    "submissions": pending,
+                    "count": len(pending)
+                })
                 return
 
             if path == "/api/admin/stats":
