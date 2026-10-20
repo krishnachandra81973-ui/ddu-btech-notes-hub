@@ -762,8 +762,8 @@ class handler(BaseHTTPRequestHandler):
                     self.send_json({"error": "Invalid registration email address."}, 400)
                     return
 
-                # Check if student is already registered locally (<1ms)
-                if database.get_user_by_email(email_clean, check_remote=False):
+                # Check if student is already registered
+                if database.get_user_by_email(email_clean, check_remote=True):
                     self.send_json({
                         "error": "This email address is already registered! Please log in to your account.",
                         "already_registered": True

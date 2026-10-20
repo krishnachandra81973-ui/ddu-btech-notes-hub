@@ -253,14 +253,11 @@ def load_registry(fetch_remote=True):
     if fetch_remote:
         try:
             remote_students = fetch_firestore_students()
-            if isinstance(remote_students, list):
-                # Authoritative remote map of active students
-                remote_map = {rs.get("email", "").lower().strip(): rs for rs in remote_students if rs.get("email")}
-                # Retain admin, and retain students that exist in remote Firestore
-                new_users = [u for u in users if u.get("role") == "ADMIN" or u.get("email", "").lower().strip() in remote_map]
-                user_map = {u.get("email", "").lower().strip(): u for u in new_users}
-                for em, rs in remote_map.items():
-                    if em not in FAKE_EMAILS:
+            if remote_students and isinstance(remote_students, list) and len(remote_students) > 0:
+                user_map = {u.get("email", "").lower().strip(): u for u in users if u.get("email")}
+                for rs in remote_students:
+                    em = rs.get("email", "").lower().strip()
+                    if em and em not in FAKE_EMAILS:
                         if em in user_map:
                             user_map[em].update(rs)
                         else:
@@ -305,7 +302,7 @@ def save_registry(users, sync_remote=False):
             if u.get("role") != "ADMIN":
                 threading.Thread(target=save_firestore_student, args=(u,), daemon=True).start()
 
-def save_user_to_registry(user_dict, allow_update=True):
+def save_user_to_registry(user_dict, allow_update=True, sync_remote=True):
     email_clean = user_dict.get("email", "").lower().strip()
     if email_clean in FAKE_EMAILS:
         return None
@@ -335,13 +332,16 @@ def save_user_to_registry(user_dict, allow_update=True):
 
     save_registry(users, sync_remote=False)
 
-    # Sync to Cloud Firestore in a non-blocking daemon thread for instant sub-second registration
-    if user_dict.get("role") != "ADMIN":
-        threading.Thread(target=save_firestore_student, args=(dict(user_dict),), daemon=True).start()
+    # Sync to Cloud Firestore synchronously to prevent serverless container termination loss
+    if sync_remote and user_dict.get("role") != "ADMIN":
+        try:
+            save_firestore_student(dict(user_dict))
+        except Exception as e:
+            print("[UserRegistry] Firestore sync error:", e)
 
     return user_dict
 
-def find_user_in_registry(email, check_remote=False):
+def find_user_in_registry(email, check_remote=True):
     if not email:
         return None
     email_clean = email.lower().strip()
@@ -364,16 +364,16 @@ def find_user_in_registry(email, check_remote=False):
     if not check_remote:
         return None
 
-    # Check remote Firestore directly only when explicitly requested
+    # Check remote Firestore directly when student is not in local memory/file
     try:
         doc_id = email_to_doc_id(email_clean)
         url = f"{FIRESTORE_COLLECTION_URL}/{doc_id}"
         req = urllib.request.Request(url, headers={"User-Agent": "DDU-Portal-Serverless"})
-        with urllib.request.urlopen(req, timeout=1.5) as resp:
+        with urllib.request.urlopen(req, timeout=3.0) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             u = firestore_doc_to_user_dict(data)
             if u.get("email"):
-                save_user_to_registry(u, allow_update=True)
+                save_user_to_registry(u, allow_update=True, sync_remote=False)
                 return u
     except Exception:
         pass

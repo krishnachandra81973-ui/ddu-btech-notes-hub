@@ -484,8 +484,8 @@ def create_user(full_name, email, password, college="Deen Dayal Upadhyaya Gorakh
                 course="B.Tech", branch="CSE", semester=1, role="STUDENT"):
     email_clean = email.lower().strip()
 
-    # 1. Reject duplicate email immediately using fast in-memory & SQLite check (<1ms)
-    if get_user_by_email(email_clean, check_remote=False):
+    # 1. Reject duplicate email immediately using fast in-memory, SQLite & Firestore check
+    if get_user_by_email(email_clean, check_remote=True):
         return None
 
     conn = get_connection()
@@ -568,23 +568,52 @@ def authenticate_user(email, password):
             return res_adm
         return None
 
-    # 3. Fallback to Registry if container lacks SQLite row (Serverless cold-start sync)
-    reg_user = user_registry.find_user_in_registry(email_clean)
+    # 2. Check local SQLite database directly (<1ms)
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE LOWER(email) = ?", (email_clean,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            db_u = dict(row)
+            if not db_u.get("is_active", 1):
+                return "INACTIVE"
+            db_hash = db_u.get("password_hash")
+            db_salt = db_u.get("salt")
+            if db_hash and db_salt and verify_password(password, db_hash, db_salt):
+                clean_user = {k: v for k, v in db_u.items() if k not in ("password_hash", "salt", "plain_password")}
+                return clean_user
+    except Exception:
+        pass
+
+    # 3. Check Persistent Registry & Remote Cloud Firestore (Serverless cross-instance sync)
+    reg_user = user_registry.find_user_in_registry(email_clean, check_remote=True)
     if reg_user:
         if not reg_user.get("is_active", 1):
             return "INACTIVE"
         reg_hash = reg_user.get("password_hash")
         reg_salt = reg_user.get("salt")
         if reg_hash and reg_salt and verify_password(password, reg_hash, reg_salt):
-            # Sync user into this container's SQLite
+            # Sync user into this container's SQLite immediately
             try:
                 conn_sync = get_connection()
                 cur_sync = conn_sync.cursor()
                 cur_sync.execute("""
-                INSERT OR REPLACE INTO users (id, full_name, email, password_hash, salt, college, course, branch, semester, role, is_active)
+                INSERT INTO users (full_name, email, password_hash, salt, college, course, branch, semester, role, is_active, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(email) DO UPDATE SET
+                    full_name=excluded.full_name,
+                    password_hash=excluded.password_hash,
+                    salt=excluded.salt,
+                    college=excluded.college,
+                    course=excluded.course,
+                    branch=excluded.branch,
+                    semester=excluded.semester,
+                    role=excluded.role,
+                    is_active=excluded.is_active,
+                    created_at=excluded.created_at
                 """, (
-                    reg_user.get("id"),
                     reg_user.get("full_name"),
                     email_clean,
                     reg_hash,
@@ -594,7 +623,8 @@ def authenticate_user(email, password):
                     reg_user.get("branch", "CSE"),
                     reg_user.get("semester", 1),
                     reg_user.get("role", "STUDENT"),
-                    reg_user.get("is_active", 1)
+                    reg_user.get("is_active", 1),
+                    reg_user.get("created_at")
                 ))
                 conn_sync.commit()
                 conn_sync.close()
