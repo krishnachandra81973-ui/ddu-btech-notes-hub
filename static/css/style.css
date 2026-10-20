@@ -1637,6 +1637,22 @@ button {
    PWA Installation & Multi-Device Mobile/Tablet/Laptop Enhancements
    ========================================================================== */
 
+/* Clean Interface when App is Installed (Hides all download prompts automatically) */
+body.app-installed .pwa-install-card,
+body.app-installed #pwa-install-card,
+body.app-installed #btn-nav-install,
+body.app-installed #nav-install-link,
+body.app-installed #sub-nav-install-link,
+body.app-installed #drawer-install-link,
+body.app-installed #footer-install-link,
+body.app-installed #btn-bottom-install {
+  display: none !important;
+}
+
+body.app-installed #btn-bottom-updates {
+  display: flex !important;
+}
+
 /* PWA Install Promotional Card on Home */
 .pwa-install-card {
   display: flex;
@@ -2317,20 +2333,21 @@ button {
     left: 0 !important;
     right: 0 !important;
     width: 100% !important;
-    height: 60px !important;
-    background: rgba(255, 255, 255, 0.94) !important;
+    height: auto !important;
+    min-height: 58px !important;
+    background: rgba(255, 255, 255, 0.96) !important;
     backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
     border-top: 1px solid var(--border) !important;
     z-index: 1000 !important;
     justify-content: space-around !important;
     align-items: center !important;
-    padding: 0 4px !important;
-    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    padding: 6px 4px !important;
+    padding-bottom: max(6px, env(safe-area-inset-bottom, 6px)) !important;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06) !important;
   }
   [data-theme="dark"] .mobile-bottom-nav {
-    background: rgba(15, 23, 42, 0.95) !important;
+    background: rgba(15, 23, 42, 0.96) !important;
     border-top-color: rgba(255, 255, 255, 0.08) !important;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.45) !important;
   }
@@ -2339,9 +2356,9 @@ button {
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 2px !important;
+    gap: 3px !important;
     color: var(--text-muted) !important;
-    font-size: 0.68rem !important;
+    font-size: 0.72rem !important;
     font-weight: 600 !important;
     padding: 4px 6px !important;
     flex: 1 !important;
@@ -2350,14 +2367,19 @@ button {
     background: none !important;
     border: none !important;
     cursor: pointer !important;
+    border-radius: 8px !important;
+    min-height: 44px !important;
     transition: var(--transition) !important;
+    -webkit-tap-highlight-color: transparent !important;
   }
   .bottom-nav-item:hover, .bottom-nav-item.active {
     color: var(--primary) !important;
+    font-weight: 700 !important;
   }
   .bottom-nav-item.active svg {
-    transform: scale(1.12) !important;
-    stroke-width: 2.4 !important;
+    transform: scale(1.15) !important;
+    stroke-width: 2.5 !important;
+    stroke: var(--primary) !important;
   }
 
   /* PWA promotional card */

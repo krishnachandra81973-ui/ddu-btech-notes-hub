@@ -9,6 +9,9 @@ const App = {
 
   async init() {
     this.initTheme();
+    // Immediately remove any legacy cached LinkedIn elements
+    document.querySelectorAll('a[href*="linkedin"], [class*="linkedin"], [id*="linkedin"]').forEach(el => el.remove());
+
     await Auth.init();
 
     // Setup global listeners
@@ -45,31 +48,45 @@ const App = {
   isAppInstalled() {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
       || window.navigator.standalone === true 
-      || document.referrer.includes('android-app://');
+      || document.referrer.includes('android-app://')
+      || localStorage.getItem('ddu_pwa_installed') === 'true';
     return Boolean(isStandalone);
   },
 
   updateInstallUi() {
     const installed = this.isAppInstalled();
-
-    const pwaCard = document.getElementById("pwa-install-card");
-    if (pwaCard) {
-      if (installed) {
-        pwaCard.style.display = "none";
-      } else {
-        pwaCard.style.display = "flex";
-      }
+    if (installed) {
+      document.body.classList.add('app-installed');
+    } else {
+      document.body.classList.remove('app-installed');
     }
 
+    // Hide or show all install cards and promotional banners
+    document.querySelectorAll(".pwa-install-card, #pwa-install-card").forEach(el => {
+      el.style.display = installed ? "none" : "flex";
+    });
+
+    // Top navbar button
     const navBtn = document.getElementById("btn-nav-install");
-    if (navBtn) {
-      if (installed) {
-        navBtn.style.display = "none";
-      } else {
-        navBtn.style.display = "inline-flex";
-      }
-    }
+    if (navBtn) navBtn.style.display = installed ? "none" : "inline-flex";
 
+    // Desktop navbar link
+    const navLink = document.getElementById("nav-install-link");
+    if (navLink) navLink.style.display = installed ? "none" : "";
+
+    // Mobile sticky subnav pill
+    const subNavInstall = document.getElementById("sub-nav-install-link");
+    if (subNavInstall) subNavInstall.style.display = installed ? "none" : "inline-flex";
+
+    // Mobile drawer banner
+    const drawerInstall = document.getElementById("drawer-install-link");
+    if (drawerInstall) drawerInstall.style.display = installed ? "none" : "flex";
+
+    // Footer link
+    const footerInstall = document.getElementById("footer-install-link");
+    if (footerInstall) footerInstall.style.display = installed ? "none" : "";
+
+    // Mobile bottom navigation: Switch between App Install and Updates tab
     const bottomInstall = document.getElementById("btn-bottom-install");
     const bottomUpdates = document.getElementById("btn-bottom-updates");
     if (bottomInstall && bottomUpdates) {
@@ -85,9 +102,10 @@ const App = {
 
   setupPwa() {
     // 1. Immediately detect if running inside installed standalone app
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true || document.referrer.includes('android-app://')) {
+    if (this.isAppInstalled()) {
       localStorage.setItem('ddu_pwa_installed', 'true');
-      console.log('📲 Running in installed standalone PWA mode');
+      document.body.classList.add('app-installed');
+      console.log('📲 Running in installed app mode');
     }
 
     // 2. Check modern getInstalledRelatedApps API
@@ -606,6 +624,7 @@ const App = {
             </div>
           </div>
 
+          ${this.isAppInstalled() ? '' : `
           <!-- PWA Install Promotional Card -->
           <div id="pwa-install-card" class="pwa-install-card" style="display: flex; margin-bottom: 35px;">
             <div class="pwa-install-info">
@@ -628,6 +647,7 @@ const App = {
               </a>
             </div>
           </div>
+          `}
 
           <!-- Statistics Counters -->
           <div class="stats-grid" id="home-stats-container" style="margin-bottom: 45px;">
@@ -1203,6 +1223,7 @@ const App = {
             </div>
           </div>
 
+          ${this.isAppInstalled() ? '' : `
           <!-- PWA Install Promotional Card -->
           <div id="pwa-install-card" class="pwa-install-card" style="display: flex;">
             <div class="pwa-install-info">
@@ -1225,6 +1246,7 @@ const App = {
               </a>
             </div>
           </div>
+          `}
 
           <!-- Statistics Counters -->
           <div class="stats-grid" id="home-stats-container">

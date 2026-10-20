@@ -53,7 +53,7 @@
   </script>
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/static/css/style.css?v=4">
+  <link rel="stylesheet" href="/static/css/style.css?v=14">
 
   <!-- PWA Web App Manifest & Mobile OS Integration -->
   <link rel="manifest" href="/manifest.json?v=3">
@@ -61,6 +61,17 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="DDU Notes">
+  <script>
+    // Immediate Auto-Purge: Forcefully remove any legacy cached LinkedIn elements
+    (function() {
+      function purgeLegacy() {
+        var links = document.querySelectorAll('a[href*="linkedin"], [class*="linkedin"], [id*="linkedin"]');
+        for (var i = 0; i < links.length; i++) { links[i].remove(); }
+      }
+      purgeLegacy();
+      if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', purgeLegacy); }
+    })();
+  </script>
 </head>
 <body>
 
@@ -89,7 +100,7 @@
           <li class="nav-item"><a href="#notes" title="Unit-Wise Lecture Notes">Notes</a></li>
           <li class="nav-item"><a href="#pyq" title="Previous Year Question Papers (2021-2025)">PYQ Papers</a></li>
           <li class="nav-item"><a href="#updates" title="Academic Notices & Updates">Updates</a></li>
-          <li class="nav-item"><a href="#download-app" title="Download Official DDU Notes Mobile App" style="color: #ea580c; font-weight: 800;">📲 Download App</a></li>
+          <li class="nav-item" id="nav-install-link"><a href="#download-app" title="Download Official DDU Notes Mobile App" style="color: #ea580c; font-weight: 800;">📲 Download App</a></li>
           <li class="nav-item"><a href="#about" title="About DDU & Developer Profile">About</a></li>
         </ul>
 
@@ -161,7 +172,7 @@
 
     <!-- Mobile Drawer Links -->
     <div class="mobile-drawer-links">
-      <a href="#download-app" class="mobile-drawer-link" onclick="App.toggleMobileMenu()" style="background: linear-gradient(135deg, rgba(234, 88, 12, 0.18), rgba(249, 115, 22, 0.08)); color: #ea580c; border: 1.5px solid rgba(234, 88, 12, 0.4); border-radius: 10px; font-weight: 800; padding: 12px 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+      <a href="#download-app" class="mobile-drawer-link" id="drawer-install-link" onclick="App.toggleMobileMenu()" style="background: linear-gradient(135deg, rgba(234, 88, 12, 0.18), rgba(249, 115, 22, 0.08)); color: #ea580c; border: 1.5px solid rgba(234, 88, 12, 0.4); border-radius: 10px; font-weight: 800; padding: 12px 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
         <span style="font-size: 1.3rem;">📲</span>
         <div style="flex: 1;">
           <div style="font-size: 0.95rem; font-weight: 800; color: #ea580c;">Download Mobile App</div>
@@ -225,7 +236,7 @@
           <h4 class="footer-col-title">Portal Navigation</h4>
           <ul class="footer-links">
             <li><a href="#home">Home</a></li>
-            <li><a href="#download-app" style="color: #ea580c; font-weight: 800;">📲 Download Mobile App</a></li>
+            <li><a href="#download-app" id="footer-install-link" style="color: #ea580c; font-weight: 800;">📲 Download Mobile App</a></li>
             <li><a href="#semesters">B.Tech Semesters (1st - 8th)</a></li>
             <li><a href="#notes">Browse All Notes</a></li>
             <li><a href="#syllabus">Official Syllabus</a></li>
@@ -716,9 +727,13 @@
   </div>
 
   <!-- JavaScript Modules -->
-  <script src="/static/js/ddu_data.js?v=13"></script>
-  <script src="/static/js/auth.js?v=13"></script>
-  <script src="/static/js/dashboard.js?v=13"></script>
-  <script src="/static/js/app.js?v=13"></script>
+  <script src="/static/js/ddu_data.js?v=14"></script>
+  <script src="/static/js/auth.js?v=14"></script>
+  <script src="/static/js/dashboard.js?v=14"></script>
+  <script src="/static/js/app.js?v=14"></script>
+  <script>
+    // Double safeguard: Remove any legacy cached LinkedIn nodes immediately
+    document.querySelectorAll('a[href*="linkedin"], [class*="linkedin"]').forEach(function(el){ el.remove(); });
+  </script>
 </body>
 </html>
