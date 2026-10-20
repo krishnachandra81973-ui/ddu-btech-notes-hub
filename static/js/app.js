@@ -232,7 +232,7 @@ const App = {
       `• All Branches: CSE, IT, ME, ECE, AI/ML\n` +
       `• Offline PDF reading support\n\n` +
       `📲 *Yahan se 1-Tap me Download & Install karein:*\n` +
-      `https://ddu-btech-kn-notes.vercel.app/#download-app\n\n` +
+      `https://ddu-btech-kn-notes.vercel.app/\n\n` +
       `Apne sabhi B.Tech batchmates aur class groups me share karein! 🚀`;
     const url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(msg);
     window.open(url, "_blank");
@@ -3342,11 +3342,13 @@ const App = {
     }
 
     // Requirement: "jab share karu pdf to 1st page bhi thoda show"
-    // If PDF file URL is available, load 1st page preview in embedded frame
-    if (fileUrl && fileUrl.toLowerCase().includes(".pdf") && frameWrapper && frameEl) {
+    // Load high-resolution, instant 1st page document preview image (No iframe, No Vercel error)
+    const activeNoteId = (this.currentShareData && this.currentShareData.noteId) || (noteMeta && noteMeta.id);
+    if (frameWrapper && frameEl) {
       frameWrapper.style.display = "block";
-      const cleanUrl = fileUrl.startsWith("http") ? fileUrl : (window.location.origin + (fileUrl.startsWith("/") ? "" : "/") + fileUrl);
-      frameEl.src = `${cleanUrl}#page=1&view=FitH&toolbar=0&navpanes=0&scrollbar=0`;
+      const previewImgUrl = activeNoteId ? `/api/notes/${activeNoteId}/preview.png` : `/og-preview.png`;
+      frameEl.src = previewImgUrl;
+      frameEl.onerror = () => { frameEl.src = "/og-preview.png"; };
     } else if (frameWrapper) {
       frameWrapper.style.display = "none";
     }

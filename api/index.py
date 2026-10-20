@@ -157,15 +157,17 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 
     def send_json(self, data, status=200):
+        payload = json.dumps(data, default=str).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
         self.send_header("Pragma", "no-cache")
         self.send_header("Expires", "0")
         self.send_cors()
         self.send_security_headers()
         self.end_headers()
-        self.wfile.write(json.dumps(data, default=str).encode("utf-8"))
+        self.wfile.write(payload)
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -358,11 +360,13 @@ class handler(BaseHTTPRequestHandler):
                         title = html.escape(str(note.get("title") or "B.Tech Lecture Note"))
                         page_html = f"<!DOCTYPE html><html><head><title>{title}</title><meta http-equiv='refresh' content='0; url=/#note/{note_id}/{slug}'></head><body><p>Opening note...</p></body></html>"
                     
+                    page_bytes = page_html.encode("utf-8")
                     self.send_response(200)
                     self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(page_bytes)))
                     self.send_header("Cache-Control", "public, max-age=3600")
                     self.end_headers()
-                    self.wfile.write(page_html.encode("utf-8"))
+                    self.wfile.write(page_bytes)
                     return
                 else:
                     self.send_response(302)
@@ -434,20 +438,24 @@ class handler(BaseHTTPRequestHandler):
                 if img_data:
                     self.send_response(200)
                     self.send_header("Content-Type", "image/png")
+                    self.send_header("Content-Length", str(len(img_data)))
                     self.send_header("Cache-Control", "public, max-age=86400")
                     self.send_header("Access-Control-Allow-Origin", "*")
                     self.end_headers()
                     self.wfile.write(img_data)
                     return
                 else:
-                    fb_path = os.path.join(BASE_DIR, "icon-192.png")
+                    fb_path = os.path.join(BASE_DIR, "og-preview.png")
                     if not os.path.exists(fb_path):
-                        fb_path = os.path.join(BASE_DIR, "logo.png")
+                        fb_path = os.path.join(BASE_DIR, "static", "og-preview.png")
+                    if not os.path.exists(fb_path):
+                        fb_path = os.path.join(BASE_DIR, "icon-192.png")
                     if os.path.exists(fb_path):
                         with open(fb_path, "rb") as f:
                             fb_data = f.read()
                         self.send_response(200)
                         self.send_header("Content-Type", "image/png")
+                        self.send_header("Content-Length", str(len(fb_data)))
                         self.send_header("Cache-Control", "public, max-age=86400")
                         self.send_header("Access-Control-Allow-Origin", "*")
                         self.end_headers()

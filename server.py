@@ -273,11 +273,13 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                     title = html.escape(str(note.get("title") or "B.Tech Lecture Note"))
                     page_html = f"<!DOCTYPE html><html><head><title>{title}</title><meta http-equiv='refresh' content='0; url=/#note/{note_id}/{slug}'></head><body><p>Opening note...</p></body></html>"
                 
+                page_bytes = page_html.encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(page_bytes)))
                 self.send_header("Cache-Control", "public, max-age=3600")
                 self.end_headers()
-                self.wfile.write(page_html.encode("utf-8"))
+                self.wfile.write(page_bytes)
                 return
             else:
                 self.send_response(302)
@@ -345,20 +347,24 @@ class DDURequestHandler(BaseHTTPRequestHandler):
             if img_data:
                 self.send_response(200)
                 self.send_header("Content-Type", "image/png")
+                self.send_header("Content-Length", str(len(img_data)))
                 self.send_header("Cache-Control", "public, max-age=86400")
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 self.wfile.write(img_data)
                 return
             else:
-                fb_path = os.path.join(BASE_DIR, "icon-192.png")
+                fb_path = os.path.join(BASE_DIR, "og-preview.png")
                 if not os.path.exists(fb_path):
-                    fb_path = os.path.join(BASE_DIR, "logo.png")
+                    fb_path = os.path.join(BASE_DIR, "static", "og-preview.png")
+                if not os.path.exists(fb_path):
+                    fb_path = os.path.join(BASE_DIR, "icon-192.png")
                 if os.path.exists(fb_path):
                     with open(fb_path, "rb") as f:
                         fb_data = f.read()
                     self.send_response(200)
                     self.send_header("Content-Type", "image/png")
+                    self.send_header("Content-Length", str(len(fb_data)))
                     self.send_header("Cache-Control", "public, max-age=86400")
                     self.send_header("Access-Control-Allow-Origin", "*")
                     self.end_headers()

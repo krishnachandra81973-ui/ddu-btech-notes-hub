@@ -185,6 +185,7 @@ def render_note_landing_html(note, note_id, slug, base_url="https://ddu-btech-kn
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="1st Page Document Preview of {title}">
+  <meta property="og:image" content="{base_url.rstrip('/')}/og-preview.png">
   <meta property="og:site_name" content="DDU B.Tech Notes Hub">
 
   <!-- Twitter Card -->
@@ -192,6 +193,7 @@ def render_note_landing_html(note, note_id, slug, base_url="https://ddu-btech-kn
   <meta name="twitter:title" content="📄 {title}">
   <meta name="twitter:description" content="{desc}">
   <meta name="twitter:image" content="{og_image_url}">
+  <meta name="twitter:image:alt" content="{title}">
 
   <!-- Favicon & Styles -->
   <link rel="icon" type="image/png" href="/favicon.png">
