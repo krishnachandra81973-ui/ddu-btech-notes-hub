@@ -1923,9 +1923,11 @@ const App = {
                           <span style="font-size: 1.1rem;">📄</span>
                           <div>
                             <div class="note-title">${escapeHtml(n.title)}</div>
-                            <div style="font-size: 0.76rem; color: var(--primary); font-weight: 500; margin-top: 2px;">
-                              Detailed notes will be shared in PDF format shortly.
-                            </div>
+                            ${formatNoteDescription(n.description) ? `
+                              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; line-height: 1.45; white-space: pre-line;">
+                                ${escapeHtml(formatNoteDescription(n.description))}
+                              </div>
+                            ` : ''}
                             <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
                               ${n.file_size || 'PDF'}
                             </div>
@@ -2241,10 +2243,12 @@ const App = {
             <span class="subject-code-tag">${escapeHtml(n.subject_code)}</span>
             <div>
               <div class="note-title">${escapeHtml(n.title)}</div>
-              <div style="font-size: 0.78rem; color: var(--primary); font-weight: 500; margin-top: 2px;">
-                Detailed notes will be shared in PDF format shortly.
-              </div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+              ${formatNoteDescription(n.description) ? `
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; line-height: 1.45; white-space: pre-line;">
+                  ${escapeHtml(formatNoteDescription(n.description))}
+                </div>
+              ` : ''}
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 3px;">
                 ${escapeHtml(n.subject_name)} • Sem ${n.semester_number} • ${n.unit_number ? `Unit ${n.unit_number}` : 'General'} • ${n.file_size || 'PDF'}
               </div>
               ${n.contributed_by_name ? `
@@ -3037,7 +3041,11 @@ const App = {
                 <div class="note-row" style="margin-bottom: 6px;">
                   <div>
                     <div style="font-weight: 600; font-size: 0.88rem;">${escapeHtml(n.title)}</div>
-                    <div style="font-size: 0.72rem; color: var(--primary); font-weight: 500;">Detailed notes will be shared in PDF format shortly.</div>
+                    ${formatNoteDescription(n.description) ? `
+                      <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 2px; line-height: 1.35; max-height: 2.7em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                        ${escapeHtml(formatNoteDescription(n.description))}
+                      </div>
+                    ` : ''}
                     <div style="font-size: 0.72rem; color: var(--text-muted);">${escapeHtml(n.subject_name)} • Sem ${n.semester_number}</div>
                   </div>
                   <button onclick="App.openPdfViewer('${n.file_url}', '${escapeHtml(n.title)}', ${n.id})" class="btn-secondary btn-sm">View</button>
@@ -4190,7 +4198,7 @@ const App = {
           title,
           subject_id: isCustom ? "__custom__" : parseInt(rawSubject),
           unit_id,
-          description: description || "Detailed notes will be shared in PDF format shortly.",
+          description: (description || "").trim(),
           file_url,
           file_name: title,
           custom_subject_name: customSubjectName,

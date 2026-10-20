@@ -803,7 +803,7 @@ class DDURequestHandler(BaseHTTPRequestHandler):
             title = (body.get("title") or "").strip()
             subject_id = body.get("subject_id")
             unit_id = body.get("unit_id") or body.get("unit_number") or 1
-            description = (body.get("description") or "").strip() or "Detailed notes will be shared in PDF format shortly."
+            description = (body.get("description") or "").strip()
             file_url = (body.get("file_url") or "").strip()
             file_name = (body.get("file_name") or title).strip()
             file_size = (body.get("file_size") or "PDF Document").strip()

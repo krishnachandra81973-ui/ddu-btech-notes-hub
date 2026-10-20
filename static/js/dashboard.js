@@ -151,9 +151,11 @@ const Dashboard = {
                         <span class="subject-code-tag">${escapeHtml(b.subject_code)}</span>
                         <div>
                           <div class="note-title">${escapeHtml(b.title)}</div>
-                          <div style="font-size: 0.76rem; color: var(--primary); font-weight: 500; margin-top: 2px;">
-                            Detailed notes will be shared in PDF format shortly.
-                          </div>
+                          ${formatNoteDescription(b.description) ? `
+                            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; line-height: 1.45; white-space: pre-line;">
+                              ${escapeHtml(formatNoteDescription(b.description))}
+                            </div>
+                          ` : ''}
                           <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
                             ${escapeHtml(b.subject_name)} • Sem ${b.semester_number} • ${b.file_size || 'PDF'}
                           </div>
@@ -218,6 +220,11 @@ const Dashboard = {
                           <span class="subject-code-tag">${escapeHtml(s.subject_code || 'NOTE')}</span>
                           <div>
                             <div style="font-weight: 700; font-size: 0.92rem;">${escapeHtml(s.title)}</div>
+                            ${formatNoteDescription(s.description) ? `
+                              <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 3px; line-height: 1.4; white-space: pre-line;">
+                                ${escapeHtml(formatNoteDescription(s.description))}
+                              </div>
+                            ` : ''}
                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
                               ${escapeHtml(s.subject_name || '')} • ${s.unit_number ? `Unit ${s.unit_number}` : 'General'} • ${s.created_at || ''}
                             </div>
@@ -258,9 +265,11 @@ const Dashboard = {
                         <span style="font-weight: 700; font-size: 0.82rem; color: var(--primary);">${escapeHtml(r.subject_code)}</span>
                         <div>
                           <div style="font-weight: 600; font-size: 0.88rem;">${escapeHtml(r.title)}</div>
-                          <div style="font-size: 0.75rem; color: var(--primary); font-weight: 500; margin-top: 2px;">
-                            Detailed notes will be shared in PDF format shortly.
-                          </div>
+                          ${formatNoteDescription(r.description) ? `
+                            <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px; line-height: 1.4; max-height: 2.8em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                              ${escapeHtml(formatNoteDescription(r.description))}
+                            </div>
+                          ` : ''}
                           <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
                             ${escapeHtml(r.subject_name)}
                           </div>

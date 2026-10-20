@@ -1260,7 +1260,7 @@ const Admin = {
 
             <div class="form-group">
               <label class="form-label">Brief Description / Topics Covered</label>
-              <textarea name="description" rows="2" class="form-control" placeholder="Detailed notes will be shared in PDF format shortly.">${isEdit ? escapeHtml(note.description || '') : 'Detailed notes will be shared in PDF format shortly.'}</textarea>
+              <textarea name="description" rows="2" class="form-control" placeholder="Brief overview or key topics covered in these notes...">${isEdit ? escapeHtml(note.description || '') : ''}</textarea>
             </div>
 
             <div class="form-group">

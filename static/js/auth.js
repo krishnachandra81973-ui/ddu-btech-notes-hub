@@ -255,6 +255,14 @@ function escapeHtml(text) {
     .replace(/'/g, "&#039;");
 }
 
+function formatNoteDescription(desc) {
+  if (!desc) return "";
+  const cleaned = String(desc)
+    .replace(/^Detailed notes will be shared in PDF format shortly\.?\s*/i, "")
+    .trim();
+  return cleaned;
+}
+
 /**
  * Universal Resilient Cloud Uploader
  * Handles both small and large files (up to 50 MB) without Vercel 4.5MB Serverless limits.
