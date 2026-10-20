@@ -89,6 +89,7 @@
           <li class="nav-item"><a href="#notes" title="Unit-Wise Lecture Notes">Notes</a></li>
           <li class="nav-item"><a href="#pyq" title="Previous Year Question Papers (2021-2025)">PYQ Papers</a></li>
           <li class="nav-item"><a href="#updates" title="Academic Notices & Updates">Updates</a></li>
+          <li class="nav-item"><a href="#download-app" title="Download Official DDU Notes Mobile App" style="color: #ea580c; font-weight: 800;">📲 Download App</a></li>
           <li class="nav-item"><a href="#about" title="About DDU & Developer Profile">About</a></li>
         </ul>
 
@@ -106,9 +107,9 @@
           </button>
 
           <!-- Install App Button (PWA) -->
-          <button onclick="window.installPwa()" id="btn-nav-install" class="btn-nav-install" style="display: none;" title="Install DDU Notes App on Phone or PC">
+          <button onclick="window.location.hash='#download-app'" id="btn-nav-install" class="btn-nav-install" title="Download & Install DDU Notes App on Phone or PC">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            <span class="nav-install-text">Install App</span>
+            <span class="nav-install-text">📲 Download App</span>
           </button>
 
           <!-- Dynamic Auth Container -->
@@ -127,6 +128,7 @@
 
     <!-- Mobile/Tablet Horizontal Scrollable Sub-Navigation Bar (Sticky below header) -->
     <nav class="mobile-sub-nav scrollable-mobile-nav" id="mobile-sub-navigation">
+      <a href="#download-app" class="sub-nav-link install-subnav-pill" id="sub-nav-install-link" data-subnav="download-app" style="color: #ea580c; font-weight: 800; background: rgba(234, 88, 12, 0.15); border-radius: 9999px; border: 1.5px solid rgba(234, 88, 12, 0.38); display: inline-flex; align-items: center; gap: 5px;">📲 Download App</a>
       <a href="#home" class="sub-nav-link active" data-subnav="home">🏠 Home</a>
       <a href="#semesters" class="sub-nav-link" data-subnav="semesters">🎓 Semesters</a>
       <a href="#syllabus" class="sub-nav-link" data-subnav="syllabus">📖 Syllabus</a>
@@ -159,6 +161,14 @@
 
     <!-- Mobile Drawer Links -->
     <div class="mobile-drawer-links">
+      <a href="#download-app" class="mobile-drawer-link" onclick="App.toggleMobileMenu()" style="background: linear-gradient(135deg, rgba(234, 88, 12, 0.18), rgba(249, 115, 22, 0.08)); color: #ea580c; border: 1.5px solid rgba(234, 88, 12, 0.4); border-radius: 10px; font-weight: 800; padding: 12px 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 1.3rem;">📲</span>
+        <div style="flex: 1;">
+          <div style="font-size: 0.95rem; font-weight: 800; color: #ea580c;">Download Mobile App</div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">Free Android / iOS 1-Tap Web App (~2MB)</div>
+        </div>
+        <span style="background: #ea580c; color: #fff; font-size: 0.68rem; font-weight: 800; padding: 3px 8px; border-radius: 9999px;">FREE</span>
+      </a>
       <a href="#home" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>🏠</span> Home Dashboard</a>
       <a href="#semesters" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>🎓</span> B.Tech Semesters (1st to 8th)</a>
       <a href="#syllabus" class="mobile-drawer-link" onclick="App.toggleMobileMenu()"><span>📖</span> Official CBCS Syllabus</a>
@@ -215,6 +225,7 @@
           <h4 class="footer-col-title">Portal Navigation</h4>
           <ul class="footer-links">
             <li><a href="#home">Home</a></li>
+            <li><a href="#download-app" style="color: #ea580c; font-weight: 800;">📲 Download Mobile App</a></li>
             <li><a href="#semesters">B.Tech Semesters (1st - 8th)</a></li>
             <li><a href="#notes">Browse All Notes</a></li>
             <li><a href="#syllabus">Official Syllabus</a></li>
@@ -659,10 +670,10 @@
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       <span>PYQs</span>
     </a>
-    <button class="bottom-nav-item" onclick="window.installPwa()" id="btn-bottom-install" title="Install App">
+    <a href="#download-app" class="bottom-nav-item" data-nav="download-app" id="btn-bottom-install" title="Download & Install App">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      <span>Install</span>
-    </button>
+      <span>App</span>
+    </a>
     <a href="#updates" class="bottom-nav-item" data-nav="updates" id="btn-bottom-updates" style="display: none;">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       <span>Updates</span>
@@ -691,16 +702,24 @@
           2. Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.
         </div>
       </div>
-      <button onclick="document.getElementById('pwa-install-modal').style.display='none'" class="btn-primary" style="width: 100%; padding: 12px; font-weight: 700;">
-        Got it, Thanks!
-      </button>
+      <div style="display: flex; gap: 8px; flex-direction: column;">
+        <button onclick="App.shareAppToWhatsApp(); document.getElementById('pwa-install-modal').style.display='none';" class="btn-primary" style="width: 100%; padding: 12px; font-weight: 800; background: #25d366; border: none; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);">
+          💬 Share on WhatsApp Group
+        </button>
+        <button onclick="document.getElementById('pwa-install-modal').style.display='none'; window.location.hash='#download-app';" class="btn-secondary" style="width: 100%; padding: 11px; font-weight: 700;">
+          📖 Open Full Download & Guide Page
+        </button>
+        <button onclick="document.getElementById('pwa-install-modal').style.display='none'" style="background: none; border: none; color: var(--text-muted); padding: 8px; font-size: 0.82rem; cursor: pointer;">
+          Dismiss
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- JavaScript Modules -->
-  <script src="/static/js/ddu_data.js?v=11"></script>
-  <script src="/static/js/auth.js?v=11"></script>
-  <script src="/static/js/dashboard.js?v=11"></script>
-  <script src="/static/js/app.js?v=11"></script>
+  <script src="/static/js/ddu_data.js?v=12"></script>
+  <script src="/static/js/auth.js?v=12"></script>
+  <script src="/static/js/dashboard.js?v=12"></script>
+  <script src="/static/js/app.js?v=12"></script>
 </body>
 </html>

@@ -104,6 +104,18 @@
       "dest": "api/index.py"
     },
     {
+      "src": "/download-app",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/app",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/install",
+      "dest": "/index.html"
+    },
+    {
       "src": "/admin",
       "dest": "/admin.html"
     },

@@ -244,6 +244,11 @@ class DDURequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(sitemap_bytes)
             return
 
+        # App Download Landing Page Routes
+        if path in ("/download-app", "/app", "/install"):
+            self.serve_static(os.path.join(STATIC_DIR, "index.html"))
+            return
+
         # Shared Note URL with Chapter Slug & Direct In-Page Web PDF Viewer
         if path.startswith("/note/"):
             parts = [p for p in path.split("/") if p]

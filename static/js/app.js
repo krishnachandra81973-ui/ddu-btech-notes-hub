@@ -24,6 +24,13 @@ const App = {
       }
     });
 
+    // Check if directly visited via path /download-app or /app or /install
+    if (window.location.pathname === '/download-app' || window.location.pathname === '/app' || window.location.pathname === '/install') {
+      if (window.location.hash !== '#download-app') {
+        window.location.hash = '#download-app';
+      }
+    }
+
     // Handle form submissions for Auth Modal
     this.setupAuthForms();
 
@@ -38,8 +45,7 @@ const App = {
   isAppInstalled() {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
       || window.navigator.standalone === true 
-      || document.referrer.includes('android-app://')
-      || localStorage.getItem('ddu_pwa_installed') === 'true';
+      || document.referrer.includes('android-app://');
     return Boolean(isStandalone);
   },
 
@@ -51,15 +57,17 @@ const App = {
       if (installed) {
         pwaCard.style.display = "none";
       } else {
-        // Show promotional card below hero if not installed (like keshavaieducation.vercel.app)
         pwaCard.style.display = "flex";
       }
     }
 
     const navBtn = document.getElementById("btn-nav-install");
     if (navBtn) {
-      // Keep navbar clean and spacious
-      navBtn.style.display = "none";
+      if (installed) {
+        navBtn.style.display = "none";
+      } else {
+        navBtn.style.display = "inline-flex";
+      }
     }
 
     const bottomInstall = document.getElementById("btn-bottom-install");
@@ -166,6 +174,50 @@ const App = {
         }
       }
     };
+  },
+
+  copyAppDownloadLink() {
+    const link = "https://ddu-btech-kn-notes.vercel.app/#download-app";
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(() => {
+        App.toast("📋 App Download Link copied! Ab ise WhatsApp group me bhejiye.", "success");
+      }).catch(() => {
+        this.fallbackCopyText(link);
+      });
+    } else {
+      this.fallbackCopyText(link);
+    }
+  },
+
+  fallbackCopyText(text) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      App.toast("📋 App Download Link copied! Ab ise WhatsApp group me bhejiye.", "success");
+    } catch (e) {
+      prompt("Copy App Download Link:", text);
+    }
+    document.body.removeChild(ta);
+  },
+
+  shareAppToWhatsApp() {
+    const msg = `🎓 *DDU B.Tech Notes Hub Official App Download Karein!*\n\n` +
+      `Deen Dayal Upadhyaya Gorakhpur University ke B.Tech 1st se 8th Semester ke sabhi Subjects ke Unit-wise Notes, Official Syllabus aur 5 Saal ke Solved PYQs (2021-2025) ek hi App me bilkul FREE!\n\n` +
+      `⚡ *Special Features:*\n` +
+      `• Mobile me 1-Tap me open hota hai\n` +
+      `• Bina Play Store ke 5 second me install (~2 MB)\n` +
+      `• All Branches: CSE, IT, ME, ECE, AI/ML\n` +
+      `• Offline PDF reading support\n\n` +
+      `📲 *Yahan se 1-Tap me Download & Install karein:*\n` +
+      `https://ddu-btech-kn-notes.vercel.app/#download-app\n\n` +
+      `Apne sabhi B.Tech batchmates aur class groups me share karein! 🚀`;
+    const url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(msg);
+    window.open(url, "_blank");
   },
 
   // ------------------- Theme Management -------------------
@@ -427,6 +479,8 @@ const App = {
 
     if (hash === "home") {
       this.renderHome(container);
+    } else if (hash === "download-app" || hash === "app" || hash === "install") {
+      this.renderAppDownload(container);
     } else if (hash.startsWith("note/")) {
       const noteId = hash.split("/")[1];
       this.renderSharedNote(container, parseInt(noteId));
@@ -549,6 +603,29 @@ const App = {
               <button onclick="Auth.openModal('login')" class="btn-secondary" style="font-weight: 700; padding: 10px 18px; font-size: 0.9rem;">
                 🔑 Log In
               </button>
+            </div>
+          </div>
+
+          <!-- PWA Install Promotional Card -->
+          <div id="pwa-install-card" class="pwa-install-card" style="display: flex; margin-bottom: 35px;">
+            <div class="pwa-install-info">
+              <div class="pwa-install-icon-wrapper">
+                <img src="/static/icon-192.png" alt="DDU Notes App" class="pwa-install-logo">
+              </div>
+              <div class="pwa-install-text">
+                <div class="pwa-install-badge">⚡ Official Web App (PWA) • 100% Free</div>
+                <h3 class="pwa-install-title">Download DDU B.Tech Notes App</h3>
+                <p class="pwa-install-desc">Install directly on your Mobile (Android/iOS) or Laptop for 1-tap instant offline access to all 8 semester notes, PYQs, and syllabi without Play Store.</p>
+              </div>
+            </div>
+            <div class="pwa-install-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button class="btn-pwa-install" onclick="window.installPwa()" style="background: linear-gradient(135deg, #ea580c, #f97316); box-shadow: 0 4px 14px rgba(234, 88, 12, 0.4);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                📲 Install App (~2MB)
+              </button>
+              <a href="#download-app" class="btn-secondary" style="font-weight: 700; padding: 12px 18px; border-radius: var(--radius-sm); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                ℹ️ Install Guide & Links
+              </a>
             </div>
           </div>
 
@@ -1127,22 +1204,25 @@ const App = {
           </div>
 
           <!-- PWA Install Promotional Card -->
-          <div id="pwa-install-card" class="pwa-install-card" style="display: none;">
+          <div id="pwa-install-card" class="pwa-install-card" style="display: flex;">
             <div class="pwa-install-info">
               <div class="pwa-install-icon-wrapper">
                 <img src="/static/icon-192.png" alt="DDU Notes App" class="pwa-install-logo">
               </div>
               <div class="pwa-install-text">
-                <div class="pwa-install-badge">⚡ Official Web App (PWA)</div>
-                <h3 class="pwa-install-title">Install DDU B.Tech Notes App</h3>
-                <p class="pwa-install-desc">Install directly on your Mobile (Android/iOS), Tablet, or Laptop for 1-tap instant offline access to all 8 semester notes, PYQs, and syllabi.</p>
+                <div class="pwa-install-badge">⚡ Official Web App (PWA) • 100% Free</div>
+                <h3 class="pwa-install-title">Download DDU B.Tech Notes App</h3>
+                <p class="pwa-install-desc">Install directly on your Mobile (Android/iOS), Tablet, or Laptop for 1-tap instant offline access to all 8 semester notes, PYQs, and syllabi without Play Store.</p>
               </div>
             </div>
-            <div class="pwa-install-actions">
-              <button class="btn-pwa-install" onclick="window.installPwa()">
+            <div class="pwa-install-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button class="btn-pwa-install" onclick="window.installPwa()" style="background: linear-gradient(135deg, #ea580c, #f97316); box-shadow: 0 4px 14px rgba(234, 88, 12, 0.4);">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                ⚡ Install App
+                📲 Install App (~2MB)
               </button>
+              <a href="#download-app" class="btn-secondary" style="font-weight: 700; padding: 12px 18px; border-radius: var(--radius-sm); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                ℹ️ Guide & Links
+              </a>
             </div>
           </div>
 
@@ -2362,6 +2442,167 @@ const App = {
     } catch (e) {
       listEl.innerHTML = `<p style="color: var(--accent-rose);">Error: ${e.message}</p>`;
     }
+  },
+
+  // ------------------- 7.5 App Download & Installation Landing View -------------------
+  renderAppDownload(container) {
+    container.innerHTML = `
+      <div class="container" style="padding: 40px 16px 80px; max-width: 920px;">
+        
+        <!-- Header / Banner -->
+        <div style="text-align: center; margin-bottom: 35px;">
+          <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(234, 88, 12, 0.12); color: #ea580c; border: 1px solid rgba(234, 88, 12, 0.3); padding: 6px 16px; border-radius: 9999px; font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px;">
+            <span>⚡</span> Official Mobile Web Application (PWA)
+          </div>
+          <h1 style="font-size: 2.2rem; font-weight: 900; margin-bottom: 12px; line-height: 1.25; font-family: 'Outfit', sans-serif;">
+            Download <span style="background: linear-gradient(135deg, #ea580c, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">DDU B.Tech Notes App</span>
+          </h1>
+          <p style="font-size: 0.95rem; color: var(--text-muted); max-width: 680px; margin: 0 auto 20px; line-height: 1.6;">
+            Deen Dayal Upadhyaya Gorakhpur University B.Tech 1st to 8th Semester ke sabhi Subjects ke Unit-wise Notes, Official Syllabus aur 5 Saal ke Solved PYQs apne phone me 1-Tap me install karein!
+          </p>
+        </div>
+
+        <!-- Main App Download Card -->
+        <div style="background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--radius-lg); padding: 28px 24px; box-shadow: var(--shadow-md); margin-bottom: 35px; position: relative; overflow: hidden;">
+          <div style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #ea580c, #f59e0b, #1e40af);"></div>
+          
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <img src="/static/icon-192.png" alt="DDU App Icon" style="width: 72px; height: 72px; border-radius: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 2px solid rgba(234, 88, 12, 0.4); object-fit: cover;" onerror="this.src='/static/ddu_official_logo.png'">
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <h2 style="font-size: 1.35rem; font-weight: 900; margin: 0; color: var(--text-main);">DDU B.Tech Notes Hub</h2>
+                  <span style="color: #10b981; font-size: 1.1rem;" title="Official Verified App">✓</span>
+                </div>
+                <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">Deen Dayal Upadhyaya Gorakhpur University</div>
+                <div style="display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
+                  <span style="background: rgba(16, 185, 129, 0.12); color: #10b981; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;">100% Free</span>
+                  <span style="background: rgba(59, 130, 246, 0.12); color: #3b82f6; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;">Size: ~2.1 MB</span>
+                  <span style="background: rgba(245, 158, 11, 0.12); color: #d97706; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;">No Play Store Needed</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons Bar -->
+          <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px;">
+            <button onclick="window.installPwa()" class="btn-primary" style="flex: 1; min-width: 220px; justify-content: center; padding: 14px 24px; font-size: 1.05rem; font-weight: 800; background: linear-gradient(135deg, #ea580c, #f97316); border: none; box-shadow: 0 4px 15px rgba(234, 88, 12, 0.4); border-radius: 10px;">
+              📲 Install App Now (~2MB)
+            </button>
+            <button onclick="App.shareAppToWhatsApp()" class="btn-primary" style="flex: 1; min-width: 220px; justify-content: center; padding: 14px 24px; font-size: 1rem; font-weight: 800; background: #25d366; border: none; box-shadow: 0 4px 15px rgba(37, 211, 102, 0.35); border-radius: 10px;">
+              💬 Share on WhatsApp Group
+            </button>
+          </div>
+
+          <!-- Share Link Box -->
+          <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;">
+              🔗 Direct Shareable App Download Link (Apne Class / Batch WhatsApp Group me forward karein):
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <input type="text" id="share-link-input" readonly value="https://ddu-btech-kn-notes.vercel.app/#download-app" style="flex: 1; min-width: 240px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 0.88rem; font-family: monospace; color: var(--text-main);" onclick="this.select()">
+              <button onclick="App.copyAppDownloadLink()" class="btn-secondary" style="font-weight: 800; padding: 10px 20px; white-space: nowrap; border-radius: 8px;">
+                📋 Copy Link
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- How to Install Guide Section -->
+        <div style="margin-bottom: 35px;">
+          <h2 style="font-size: 1.35rem; font-weight: 800; margin-bottom: 18px; display: flex; align-items: center; gap: 8px;">
+            <span>📖</span> Mobile Me Install Kaise Karein? (Step-by-Step Guide)
+          </h2>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+            <!-- Android Guide -->
+            <div style="background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 22px;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+                <span style="font-size: 1.6rem;">🤖</span>
+                <div>
+                  <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: #10b981;">Android (Chrome / Edge / Brave)</h3>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Takes only 5 seconds</div>
+                </div>
+              </div>
+              <ol style="font-size: 0.88rem; line-height: 1.75; color: var(--text-muted); padding-left: 20px; margin: 0;">
+                <li>Upar diye gaye <strong style="color: var(--text-main);">"📲 Install App Now"</strong> button par tap karein.</li>
+                <li>Agar direct popup na dikhe, to Chrome me upar 3-dots ( <strong style="color: var(--text-main);">⋮</strong> ) par tap karein.</li>
+                <li><strong style="color: var(--text-main);">"Install app"</strong> ya <strong style="color: var(--text-main);">"Add to Home screen"</strong> option chunein.</li>
+                <li>Popup me <strong style="color: var(--text-main);">"Install"</strong> dabayein. App aapke phone me install ho jayegi!</li>
+              </ol>
+            </div>
+
+            <!-- iPhone / iPad Guide -->
+            <div style="background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 22px;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+                <span style="font-size: 1.6rem;">🍎</span>
+                <div>
+                  <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: #3b82f6;">iPhone / iPad (Apple Safari)</h3>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">No App Store ID needed</div>
+                </div>
+              </div>
+              <ol style="font-size: 0.88rem; line-height: 1.75; color: var(--text-muted); padding-left: 20px; margin: 0;">
+                <li>Website ko <strong style="color: var(--text-main);">Safari Browser</strong> me open karein.</li>
+                <li>Safari me sabse neeche bane <strong style="color: var(--text-main);">Share button ( 📤 )</strong> par tap karein.</li>
+                <li>Neeche scroll karke <strong style="color: var(--text-main);">"Add to Home Screen" ( ➕ )</strong> chunein.</li>
+                <li>Upar-right corner me <strong style="color: var(--text-main);">"Add"</strong> tap karein. App aapki screen par aa jayegi!</li>
+              </ol>
+            </div>
+
+            <!-- Laptop / PC Guide -->
+            <div style="background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 22px;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+                <span style="font-size: 1.6rem;">💻</span>
+                <div>
+                  <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: #f59e0b;">Laptop / Desktop (Windows / Mac)</h3>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Standalone desktop app</div>
+                </div>
+              </div>
+              <ol style="font-size: 0.88rem; line-height: 1.75; color: var(--text-muted); padding-left: 20px; margin: 0;">
+                <li>Chrome ya Edge browser me website open karein.</li>
+                <li>Address bar (URL bar) ke right side me bane <strong style="color: var(--text-main);">Install icon ( ⊕ )</strong> par click karein.</li>
+                <li><strong style="color: var(--text-main);">"Install"</strong> click karein. Desktop shortcut ready ho jayega!</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <!-- Key App Features -->
+        <div style="background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 24px; margin-bottom: 30px;">
+          <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 16px; color: var(--text-main);">
+            ✨ Why Install DDU B.Tech Notes App?
+          </h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
+            <div style="padding: 14px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
+              <div style="font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; color: #ea580c;">⚡ 1-Tap Home Screen Launch</div>
+              <div style="font-size: 0.82rem; color: var(--text-muted);">Baar-baar browser me link dhoondhne ya login karne ki jhanjhat khatam.</div>
+            </div>
+            <div style="padding: 14px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
+              <div style="font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; color: #10b981;">📚 All 8 Semesters & Branches</div>
+              <div style="font-size: 0.82rem; color: var(--text-muted);">CSE, IT, ME, ECE ke unit-wise verified notes aur important topics ek jagah.</div>
+            </div>
+            <div style="padding: 14px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
+              <div style="font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; color: #3b82f6;">📑 5-Year Solved PYQs (2021-2025)</div>
+              <div style="font-size: 0.82rem; color: var(--text-muted);">End-semester exam ke solved aur original question papers direct offline download.</div>
+            </div>
+            <div style="padding: 14px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
+              <div style="font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; color: #d97706;">🚀 Ultra-Lightweight (~2.1 MB)</div>
+              <div style="font-size: 0.82rem; color: var(--text-muted);">Phone ki RAM aur storage free rehti hai, slow internet par bhi superfast chalti hai.</div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 24px;">
+            <button onclick="window.installPwa()" class="btn-primary" style="padding: 12px 28px; font-weight: 800; font-size: 1rem; border-radius: 9999px; background: linear-gradient(135deg, #ea580c, #f97316);">
+              📲 Install App Now
+            </button>
+            <a href="#notes" class="btn-secondary" style="padding: 12px 24px; font-weight: 700; font-size: 1rem; border-radius: 9999px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+              📝 Explore Notes Online
+            </a>
+          </div>
+        </div>
+
+      </div>
+    `;
   },
 
   // ------------------- 8. About Section & Developer Dossier -------------------
