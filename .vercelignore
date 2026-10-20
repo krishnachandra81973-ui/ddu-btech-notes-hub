@@ -1,0 +1,8 @@
+# Ignore test scripts and audit tools from Vercel deployment
+test_*.py
+security_audit_test.py
+run.sh
+__pycache__/
+*.pyc
+.git*
+README.md
