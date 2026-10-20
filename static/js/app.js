@@ -45,17 +45,35 @@ const App = {
   },
 
   // ------------------- PWA & Offline Support -------------------
+  isAppOpen() {
+    try {
+      const isStandalone = (window.matchMedia && (
+          window.matchMedia('(display-mode: standalone)').matches 
+          || window.matchMedia('(display-mode: fullscreen)').matches 
+          || window.matchMedia('(display-mode: minimal-ui)').matches 
+          || window.matchMedia('(display-mode: window-controls-overlay)').matches
+        ))
+        || window.navigator.standalone === true 
+        || (document.referrer && document.referrer.includes('android-app://'))
+        || window.location.search.includes('source=pwa')
+        || window.location.search.includes('mode=standalone')
+        || window.location.search.includes('mode=app');
+      return Boolean(isStandalone);
+    } catch (e) {
+      return false;
+    }
+  },
+
   isAppInstalled() {
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
-      || window.navigator.standalone === true 
-      || document.referrer.includes('android-app://')
-      || localStorage.getItem('ddu_pwa_installed') === 'true';
-    return Boolean(isStandalone);
+    // User Requirement: "download ke lie home page per hamesha option aaye bus jab app open ho tab na aaye"
+    // In web browsers, ALWAYS return false so download cards & buttons are permanently available.
+    // Return true ONLY when the user is actively running inside the opened standalone app.
+    return this.isAppOpen();
   },
 
   updateInstallUi() {
-    const installed = this.isAppInstalled();
-    if (installed) {
+    const isAppRunning = this.isAppOpen();
+    if (isAppRunning) {
       document.body.classList.add('app-installed');
     } else {
       document.body.classList.remove('app-installed');
@@ -63,34 +81,34 @@ const App = {
 
     // Hide or show all install cards and promotional banners
     document.querySelectorAll(".pwa-install-card, #pwa-install-card").forEach(el => {
-      el.style.display = installed ? "none" : "flex";
+      el.style.display = isAppRunning ? "none" : "flex";
     });
 
     // Top navbar button
     const navBtn = document.getElementById("btn-nav-install");
-    if (navBtn) navBtn.style.display = installed ? "none" : "inline-flex";
+    if (navBtn) navBtn.style.display = isAppRunning ? "none" : "inline-flex";
 
     // Desktop navbar link
     const navLink = document.getElementById("nav-install-link");
-    if (navLink) navLink.style.display = installed ? "none" : "";
+    if (navLink) navLink.style.display = isAppRunning ? "none" : "";
 
     // Mobile sticky subnav pill
     const subNavInstall = document.getElementById("sub-nav-install-link");
-    if (subNavInstall) subNavInstall.style.display = installed ? "none" : "inline-flex";
+    if (subNavInstall) subNavInstall.style.display = isAppRunning ? "none" : "inline-flex";
 
     // Mobile drawer banner
     const drawerInstall = document.getElementById("drawer-install-link");
-    if (drawerInstall) drawerInstall.style.display = installed ? "none" : "flex";
+    if (drawerInstall) drawerInstall.style.display = isAppRunning ? "none" : "flex";
 
     // Footer link
     const footerInstall = document.getElementById("footer-install-link");
-    if (footerInstall) footerInstall.style.display = installed ? "none" : "";
+    if (footerInstall) footerInstall.style.display = isAppRunning ? "none" : "";
 
     // Mobile bottom navigation: Switch between App Install and Updates tab
     const bottomInstall = document.getElementById("btn-bottom-install");
     const bottomUpdates = document.getElementById("btn-bottom-updates");
     if (bottomInstall && bottomUpdates) {
-      if (installed) {
+      if (isAppRunning) {
         bottomInstall.style.display = "none";
         bottomUpdates.style.display = "flex";
       } else {
@@ -101,31 +119,25 @@ const App = {
   },
 
   setupPwa() {
+    // 0. Clean any previously cached installation flag so web browser always shows download options
+    try {
+      localStorage.removeItem('ddu_pwa_installed');
+    } catch (e) {}
+
     // 1. Immediately detect if running inside installed standalone app
-    if (this.isAppInstalled()) {
-      localStorage.setItem('ddu_pwa_installed', 'true');
+    if (this.isAppOpen()) {
       document.body.classList.add('app-installed');
       console.log('📲 Running in installed app mode');
+    } else {
+      document.body.classList.remove('app-installed');
     }
 
-    // 2. Check modern getInstalledRelatedApps API
-    if ('getInstalledRelatedApps' in navigator) {
-      navigator.getInstalledRelatedApps().then(apps => {
-        if (apps && apps.length > 0) {
-          localStorage.setItem('ddu_pwa_installed', 'true');
-          this.updateInstallUi();
-        }
-      }).catch(() => {});
-    }
-
-    // 3. Listen for display mode changes (e.g. user opens as standalone app)
+    // 2. Listen for display mode changes (e.g. user opens as standalone app)
     try {
-      window.matchMedia('(display-mode: standalone)').addEventListener('change', (evt) => {
-        if (evt.matches) {
-          localStorage.setItem('ddu_pwa_installed', 'true');
-          this.updateInstallUi();
-        }
-      });
+      const displayMedia = window.matchMedia('(display-mode: standalone)');
+      if (displayMedia && displayMedia.addEventListener) {
+        displayMedia.addEventListener('change', () => this.updateInstallUi());
+      }
     } catch(e) {}
 
     // 4. Register Service Worker
@@ -152,10 +164,9 @@ const App = {
     // 6. Listen for successful app installation
     window.addEventListener("appinstalled", () => {
       console.log("🎉 [PWA] App successfully installed on device!");
-      localStorage.setItem("ddu_pwa_installed", "true");
       window.deferredPrompt = null;
       this.updateInstallUi();
-      App.toast("🎉 DDU B.Tech Notes App installed successfully!", "success");
+      App.toast("🎉 DDU B.Tech Notes App successfully installed! Ab aap ise phone ke Home Screen se open kar sakte hain.", "success");
     });
 
     // 7. Initial UI sync
@@ -163,9 +174,8 @@ const App = {
 
     // 8. Global window.installPwa function callable from buttons
     window.installPwa = () => {
-      if (this.isAppInstalled()) {
-        App.toast("✅ App is already installed on your device!", "info");
-        this.updateInstallUi();
+      if (this.isAppOpen()) {
+        App.toast("✅ Aap pehle se hi DDU Notes App ke andar hain!", "info");
         return;
       }
 
@@ -174,8 +184,6 @@ const App = {
         window.deferredPrompt.userChoice.then((choiceResult) => {
           if (choiceResult.outcome === "accepted") {
             console.log("User accepted PWA installation prompt");
-            localStorage.setItem("ddu_pwa_installed", "true");
-            this.updateInstallUi();
             App.toast("Installing DDU B.Tech Notes App...", "success");
           } else {
             console.log("User dismissed PWA installation prompt");
@@ -183,12 +191,12 @@ const App = {
           window.deferredPrompt = null;
         });
       } else {
-        // Fallback helper modal for iOS Safari / Unsupported Browsers
+        // Fallback helper modal for iOS Safari / Chrome / Other Browsers
         const modal = document.getElementById("pwa-install-modal");
         if (modal) {
           modal.style.display = "flex";
         } else {
-          alert("📲 To install this app:\n\n• On iPhone / iPad: Tap the Share button (📤) in Safari and tap 'Add to Home Screen' (➕).\n• On Android / PC: Open Chrome menu (⋮) and tap 'Install App' or 'Add to Home Screen'.");
+          window.location.hash = "#download-app";
         }
       }
     };

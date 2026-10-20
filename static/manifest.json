@@ -2,7 +2,7 @@
   "short_name": "DDU Notes",
   "name": "DDU B.Tech Notes Hub - Study Portal",
   "description": "Complete B.Tech study material, semester notes, official syllabus, and 5-year PYQs for DDU Gorakhpur University students.",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0b0f19",

@@ -1653,6 +1653,23 @@ body.app-installed #btn-bottom-updates {
   display: flex !important;
 }
 
+/* Automatically hide all install prompts when running inside the standalone App window */
+@media all and (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui), (display-mode: window-controls-overlay) {
+  .pwa-install-card,
+  #pwa-install-card,
+  #btn-nav-install,
+  #nav-install-link,
+  #sub-nav-install-link,
+  #drawer-install-link,
+  #footer-install-link,
+  #btn-bottom-install {
+    display: none !important;
+  }
+  #btn-bottom-updates {
+    display: flex !important;
+  }
+}
+
 /* PWA Install Promotional Card on Home */
 .pwa-install-card {
   display: flex;
