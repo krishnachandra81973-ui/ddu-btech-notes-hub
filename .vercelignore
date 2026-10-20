@@ -6,3 +6,4 @@ __pycache__/
 *.pyc
 .git*
 README.md
+static/uploads/sample_exam_notes_*.pdf
