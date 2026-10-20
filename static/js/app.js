@@ -2851,26 +2851,6 @@ const App = {
           </div>
         </div>
 
-        <!-- ==================== Supporting Co-Founder: AKASH YADAV ==================== -->
-        <div style="margin-top: 24px; background: var(--bg-card); border: 1px solid var(--border); border-left: 4px solid #10b981; border-radius: var(--radius-md); padding: 18px 22px; box-shadow: var(--shadow-sm); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
-          <div style="display: flex; align-items: center; gap: 14px;">
-            <div style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.95rem; flex-shrink: 0; box-shadow: 0 2px 8px rgba(16,185,129,0.25);">
-              AY
-            </div>
-            <div>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin: 0;">AKASH YADAV</h4>
-                <span style="font-size: 0.7rem; font-weight: 800; background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 1px 7px; border-radius: 4px;">CO-FOUNDER</span>
-              </div>
-              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
-                B.Tech Computer Science &amp; Engineering, DDUGU • Student Community &amp; Resource Outreach
-              </div>
-            </div>
-          </div>
-          <div style="font-size: 0.82rem; color: var(--text-muted); max-width: 440px; line-height: 1.5; font-style: italic;">
-            "Contributed towards student outreach, community coordination, and academic study material curation for DDU B.Tech Notes Hub."
-          </div>
-        </div>
 
         <!-- ==================== Official DDU Engineering Department Profile ==================== -->
         <div class="dept-showcase-box" style="margin-top: 40px;">
