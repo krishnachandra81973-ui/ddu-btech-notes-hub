@@ -3280,7 +3280,12 @@ const App = {
 
     // Requirement: "link me chapter(topic)name aaye"
     // Direct website URL pointing to this specific note, with the chapter/topic name slug right in the link!
-    const origin = window.location.origin;
+    let origin = window.location.origin;
+    // Always use the public production domain when running on Vercel so preview deployment URLs
+    // with Vercel Authentication / "Protected Deployment" are NEVER shared!
+    if (origin.includes("vercel.app")) {
+      origin = "https://ddu-btech-kn-notes.vercel.app";
+    }
     const pathname = window.location.pathname.replace(/\/+$/, "");
     const shareUrl = noteId 
       ? `${origin}/note/${noteId}/${topicSlug}`

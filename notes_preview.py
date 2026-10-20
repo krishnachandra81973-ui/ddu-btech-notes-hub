@@ -144,6 +144,8 @@ def render_note_landing_html(note, note_id, slug, base_url="https://ddu-btech-kn
     Includes full OpenGraph tags for WhatsApp/Telegram group link previews
     AND directly renders the PDF in the web page itself (In-Page Web PDF Viewer).
     """
+    if "vercel.app" in base_url:
+        base_url = "https://ddu-btech-kn-notes.vercel.app"
     title = html.escape(str(note.get("title") or "B.Tech Lecture Note"))
     sub_name = html.escape(str(note.get("subject_name") or "B.Tech Engineering"))
     sub_code = html.escape(str(note.get("subject_code") or "DDU"))

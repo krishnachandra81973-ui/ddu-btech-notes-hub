@@ -345,8 +345,13 @@ class handler(BaseHTTPRequestHandler):
                 if note:
                     slug = parts[2] if len(parts) >= 3 and parts[2] else re.sub(r'[^\w\s-]', '', str(note.get("title") or "")).strip().replace(' ', '-')
                     host_header = self.headers.get("Host", "ddu-btech-kn-notes.vercel.app")
-                    scheme = "https" if "vercel.app" in host_header else "http"
-                    base_url = f"{scheme}://{host_header}"
+                    if "vercel.app" in host_header:
+                        base_url = "https://ddu-btech-kn-notes.vercel.app"
+                    elif host_header:
+                        scheme = "https" if self.headers.get("X-Forwarded-Proto") == "https" else "http"
+                        base_url = f"{scheme}://{host_header}"
+                    else:
+                        base_url = "https://ddu-btech-kn-notes.vercel.app"
                     if notes_preview:
                         page_html = notes_preview.render_note_landing_html(note, note_id, slug, base_url=base_url)
                     else:
