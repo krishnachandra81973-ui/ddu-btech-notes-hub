@@ -71,6 +71,14 @@ class DDURequestHandler(BaseHTTPRequestHandler):
         self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
         self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 
+    def end_headers(self):
+        super().end_headers()
+        if getattr(self, "command", "") == "HEAD" and hasattr(self, "wfile") and self.wfile:
+            self.wfile.write = lambda data: len(data) if data else 0
+
+    def do_HEAD(self):
+        self.do_GET()
+
     def do_OPTIONS(self):
         self.send_response(204)
         self.send_cors_headers()
