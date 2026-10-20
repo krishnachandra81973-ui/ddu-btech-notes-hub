@@ -210,12 +210,12 @@ def render_note_landing_html(note, note_id, slug, base_url="https://ddu-btech-kn
       <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
         <a href="/#notes" class="btn-secondary btn-sm" style="padding: 6px 12px; font-size: 0.82rem; text-decoration: none;">📚 All Notes</a>
         <a href="/#semester/{sem}" class="btn-secondary btn-sm" style="padding: 6px 12px; font-size: 0.82rem; text-decoration: none;">🎓 Sem {sem}</a>
-        <a href="{abs_file_url}" target="_blank" download class="btn-primary btn-sm" style="padding: 6px 14px; font-size: 0.82rem; text-decoration: none; font-weight: 700;">⬇ Download</a>
+        <a href="/#note/{note_id}/{slug}?auth=register" id="top-download-btn" class="btn-primary btn-sm" style="padding: 6px 14px; font-size: 0.82rem; text-decoration: none; font-weight: 700;">⬇ Download</a>
       </div>
     </div>
   </header>
 
-  <!-- Main Note Content with Direct In-Page Web PDF Viewer -->
+  <!-- Main Note Content -->
   <main style="flex: 1; padding: 24px 16px 60px; max-width: 1050px; margin: 0 auto; width: 100%;">
 
     <!-- Navigation Bar -->
@@ -249,65 +249,102 @@ def render_note_landing_html(note, note_id, slug, base_url="https://ddu-btech-kn
         {title}
       </h1>
       <p style="font-size: 0.9rem; color: #94a3b8; margin: 0;">
-        {sub_name} • File Size: {file_size} • Direct Web PDF Viewer
+        {sub_name} • File Size: {file_size}
       </p>
     </div>
 
-    <!-- ================= DIRECT IN-PAGE WEB PDF VIEWER ================= -->
-    <div style="border: 2px solid #2563eb; border-radius: 12px; overflow: hidden; background: #1e293b; margin-bottom: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.35);">
+    <!-- ================= LOCKED ACCESS GATE FOR UNAUTHENTICATED VISITORS ================= -->
+    <div id="shared-note-auth-gate" style="text-align: center; background: #1e293b; border: 2px dashed #d97706; border-radius: 12px; padding: 48px 24px; margin-bottom: 24px; box-shadow: 0 8px 30px rgba(0,0,0,0.25);">
+      <div style="width: 76px; height: 76px; background: rgba(217, 119, 6, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; font-size: 2.3rem; border: 2px solid #d97706; box-shadow: 0 4px 15px rgba(217, 119, 6, 0.2);">
+        🔒
+      </div>
+      <div style="font-size: 0.8rem; font-weight: 800; color: #f59e0b; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;">
+        DDU B.Tech Students Access Gate
+      </div>
+      <h2 style="font-size: 1.65rem; font-weight: 800; color: #ffffff; margin-bottom: 12px;">
+        B.Tech Study Note & PDF Locked 🔒
+      </h2>
+      <p style="color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 26px; max-width: 540px; margin-left: auto; margin-right: auto;">
+        Yeh shared lecture note aur complete PDF padhne ke liye kripya pehle Apna Free Student Account banayein (Sign Up / Register karein). Registered students ko sabhi semester notes aur PYQs ka free access milta hai.
+      </p>
       
-      <!-- Viewer Controls Toolbar -->
-      <div style="background: linear-gradient(135deg, #1e40af, #0284c7); padding: 10px 16px; color: #ffffff; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700;">
-          <span>📖</span>
-          <span>Web PDF Reader — Page 1 Preview</span>
+      <div style="display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin-bottom: 26px;">
+        <a href="/#note/{note_id}/{slug}?auth=register" class="btn-primary" style="padding: 13px 26px; font-weight: 800; font-size: 0.98rem; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35); display: inline-flex; align-items: center; gap: 8px;">
+          <span>✨</span> Create Free Student Account (Sign Up)
+        </a>
+        <a href="/#note/{note_id}/{slug}?auth=login" class="btn-secondary" style="padding: 13px 22px; font-weight: 700; font-size: 0.98rem; text-decoration: none; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+          <span>🔑</span> Student Log In
+        </a>
+      </div>
+
+      <div style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px 20px; text-align: left; display: inline-block; max-width: 500px; width: 100%;">
+        <div style="font-size: 0.85rem; font-weight: 700; color: #ffffff; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+          <span>🎯</span> Free Registration ke Fayde:
         </div>
-        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-          <button onclick="toggleViewerMode()" id="btn-toggle-viewer" style="background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
-            🔄 Switch Viewer
-          </button>
-          <a href="{abs_file_url}" target="_blank" style="background: rgba(255,255,255,0.2); text-decoration: none; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 700;">
-            ↗ Fullscreen
-          </a>
-          <a href="{abs_file_url}" target="_blank" download style="background: #ffffff; color: #1e40af; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 0.78rem; font-weight: 800;">
-            ⬇ Download PDF
-          </a>
-        </div>
+        <ul style="font-size: 0.82rem; color: #94a3b8; padding-left: 18px; margin: 0; line-height: 1.8;">
+          <li>1st to 8th Semester ke sabhi verified unit-wise notes</li>
+          <li>5 Saal ke Previous Year Question Papers (2021-2025) PDF</li>
+          <li>Official CBCS Syllabus aur marks scheme</li>
+        </ul>
       </div>
-
-      <!-- In-Page PDF Frame (Works across Desktop + Mobile + WhatsApp In-App WebViews) -->
-      <div id="viewer-container" style="height: 75vh; min-height: 560px; max-height: 850px; background: #334155; position: relative;">
-        <!-- Embedded Viewer Frame -->
-        <iframe 
-          id="web-pdf-frame" 
-          src="{google_docs_embed}" 
-          style="width: 100%; height: 100%; border: none; display: block;" 
-          title="Direct In-Web PDF Viewer"
-          allow="fullscreen">
-        </iframe>
-      </div>
-
-      <!-- Bottom Status Bar -->
-      <div style="background: #0f172a; padding: 8px 16px; font-size: 0.78rem; color: #94a3b8; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-        <span>📄 Note: Agar kisi mobile browser me PDF load na ho, toh 'Switch Viewer' dabayein ya direct download karein.</span>
-        <button onclick="copyCurrentNoteLink()" style="background: #1e293b; border: 1px solid #334155; color: #38bdf8; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 600;">
-          🔗 Copy Share Link
-        </button>
-      </div>
-
     </div>
 
-    <!-- Quick Action Buttons -->
-    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px;">
-      <a href="{abs_file_url}" download class="btn-primary" style="padding: 12px 22px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
-        ⬇ Download Complete PDF ({file_size})
-      </a>
-      <a href="/#note/{note_id}/{slug}" class="btn-secondary" style="padding: 12px 20px; font-weight: 700; text-decoration: none;">
-        👁️ Open in DDU Full Reader
-      </a>
-      <a href="/#semester/{sem}" class="btn-secondary" style="padding: 12px 20px; font-weight: 700; text-decoration: none;">
-        📚 All Semester {sem} Notes
-      </a>
+    <!-- ================= UNLOCKED IN-PAGE WEB PDF VIEWER (STUDENTS ONLY) ================= -->
+    <div id="shared-note-unlocked-viewer" style="display: none;">
+      <div style="border: 2px solid #2563eb; border-radius: 12px; overflow: hidden; background: #1e293b; margin-bottom: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.35);">
+        
+        <!-- Viewer Controls Toolbar -->
+        <div style="background: linear-gradient(135deg, #1e40af, #0284c7); padding: 10px 16px; color: #ffffff; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700;">
+            <span>📖</span>
+            <span>Web PDF Reader — Live Student View</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <button onclick="toggleViewerMode()" id="btn-toggle-viewer" style="background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
+              🔄 Switch Viewer
+            </button>
+            <a href="{abs_file_url}" target="_blank" style="background: rgba(255,255,255,0.2); text-decoration: none; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 700;">
+              ↗ Fullscreen
+            </a>
+            <a href="{abs_file_url}" target="_blank" download style="background: #ffffff; color: #1e40af; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 0.78rem; font-weight: 800;">
+              ⬇ Download PDF
+            </a>
+          </div>
+        </div>
+
+        <!-- In-Page PDF Frame -->
+        <div id="viewer-container" style="height: 75vh; min-height: 560px; max-height: 850px; background: #334155; position: relative;">
+          <iframe 
+            id="web-pdf-frame" 
+            src="about:blank" 
+            style="width: 100%; height: 100%; border: none; display: block;" 
+            title="Direct In-Web PDF Viewer"
+            allow="fullscreen">
+          </iframe>
+        </div>
+
+        <!-- Bottom Status Bar -->
+        <div style="background: #0f172a; padding: 8px 16px; font-size: 0.78rem; color: #94a3b8; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <span>📄 Note: Agar kisi mobile browser me PDF load na ho, toh 'Switch Viewer' dabayein ya direct download karein.</span>
+          <button onclick="copyCurrentNoteLink()" style="background: #1e293b; border: 1px solid #334155; color: #38bdf8; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 600;">
+            🔗 Copy Share Link
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Quick Action Buttons for Logged-In Students -->
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px;">
+        <a href="{abs_file_url}" download class="btn-primary" style="padding: 12px 22px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+          ⬇ Download Complete PDF ({file_size})
+        </a>
+        <a href="/#note/{note_id}/{slug}" class="btn-secondary" style="padding: 12px 20px; font-weight: 700; text-decoration: none;">
+          👁️ Open in DDU Full Reader
+        </a>
+        <a href="/#semester/{sem}" class="btn-secondary" style="padding: 12px 20px; font-weight: 700; text-decoration: none;">
+          📚 All Semester {sem} Notes
+        </a>
+      </div>
     </div>
 
     <!-- Student Onboarding Banner -->
@@ -336,6 +373,42 @@ def render_note_landing_html(note, note_id, slug, base_url="https://ddu-btech-kn
     let isGoogleDocs = true;
     const directPdfUrl = "{abs_file_url}";
     const googleDocsUrl = "{google_docs_embed}";
+    const noteId = "{note_id}";
+    const noteSlug = "{slug}";
+
+    // Check student authentication state
+    const token = localStorage.getItem("ddu_token");
+    if (!token) {{
+      // Unauthenticated visitor: automatically redirect to student registration gate
+      window.location.replace("/#note/" + noteId + "/" + noteSlug + "?auth=register");
+    }} else {{
+      // Authenticated student: unlock and load PDF viewer
+      const gate = document.getElementById("shared-note-auth-gate");
+      const viewer = document.getElementById("shared-note-unlocked-viewer");
+      const topDownload = document.getElementById("top-download-btn");
+      if (gate) gate.style.display = "none";
+      if (viewer) viewer.style.display = "block";
+      if (topDownload) {{
+        topDownload.href = directPdfUrl;
+        topDownload.setAttribute("download", "");
+        topDownload.target = "_blank";
+      }}
+
+      const frame = document.getElementById("web-pdf-frame");
+      const btn = document.getElementById("btn-toggle-viewer");
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (frame) {{
+        if (!isMobile) {{
+          frame.src = directPdfUrl + "#view=FitH&toolbar=1";
+          isGoogleDocs = false;
+          if (btn) btn.innerText = "🔄 Switch to Google Docs Viewer";
+        }} else {{
+          frame.src = googleDocsUrl;
+          isGoogleDocs = true;
+          if (btn) btn.innerText = "🔄 Switch to Native PDF";
+        }}
+      }}
+    }}
 
     function toggleViewerMode() {{
       const frame = document.getElementById("web-pdf-frame");
@@ -358,18 +431,6 @@ def render_note_landing_html(note, note_id, slug, base_url="https://ddu-btech-kn
       }}).catch(() => {{
         prompt("Copy this note link:", window.location.href);
       }});
-    }}
-
-    // Auto-detect desktop browsers: Native PDF is often faster and crisp on desktop
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (!isMobile) {{
-      const frame = document.getElementById("web-pdf-frame");
-      const btn = document.getElementById("btn-toggle-viewer");
-      if (frame) {{
-        frame.src = directPdfUrl + "#view=FitH&toolbar=1";
-        isGoogleDocs = false;
-        if (btn) btn.innerText = "🔄 Switch to Google Docs Viewer";
-      }}
     }}
   </script>
 

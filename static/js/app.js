@@ -362,7 +362,8 @@ const App = {
   },
 
   // ------------------- Content Lock Gate Component -------------------
-  renderLockGate(container, title = "Study Material Access Locked", desc = "") {
+  renderLockGate(container, title = "Study Material Access Locked", desc = "", defaultTab = "register") {
+    const isRegister = defaultTab === "register";
     container.innerHTML = `
       <div class="container" style="padding: 40px 20px 80px;">
         <div class="content-lock-gate" style="background: var(--bg-card); border: 2px dashed rgba(217, 119, 6, 0.45); border-radius: var(--radius-lg); padding: 50px 24px; text-align: center; max-width: 680px; margin: 30px auto; box-shadow: var(--shadow-md);">
@@ -376,16 +377,25 @@ const App = {
             ${escapeHtml(title)}
           </h2>
           <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 26px; max-width: 540px; margin-left: auto; margin-right: auto;">
-            ${escapeHtml(desc || "DDU Gorakhpur University B.Tech engineering notes, previous year question papers aur syllabus dekhne ke liye kripya pehle Apna Free Student Account banayein (Register karein).")}
+            ${escapeHtml(desc || "DDU Gorakhpur University B.Tech engineering notes, previous year question papers aur syllabus dekhne ke liye kripya pehle Apna Free Student Account banayein (Sign Up / Register karein).")}
           </p>
           
           <div style="display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin-bottom: 28px;">
-            <button onclick="Auth.openModal('login')" class="btn-primary" style="padding: 13px 26px; font-weight: 800; font-size: 0.98rem; border-radius: var(--radius-md); box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35); display: inline-flex; align-items: center; gap: 8px;">
-              <span>🔑</span> Student Log In
-            </button>
-            <button onclick="Auth.openModal('register')" class="btn-secondary" style="padding: 13px 22px; font-weight: 700; font-size: 0.98rem; border-radius: var(--radius-md); display: inline-flex; align-items: center; gap: 6px;">
-              <span>✨</span> Create Free Student Account (Register)
-            </button>
+            ${isRegister ? `
+              <button onclick="Auth.openModal('register')" class="btn-primary" style="padding: 13px 26px; font-weight: 800; font-size: 0.98rem; border-radius: var(--radius-md); box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35); display: inline-flex; align-items: center; gap: 8px;">
+                <span>✨</span> Create Free Student Account (Sign Up)
+              </button>
+              <button onclick="Auth.openModal('login')" class="btn-secondary" style="padding: 13px 22px; font-weight: 700; font-size: 0.98rem; border-radius: var(--radius-md); display: inline-flex; align-items: center; gap: 6px;">
+                <span>🔑</span> Student Log In
+              </button>
+            ` : `
+              <button onclick="Auth.openModal('login')" class="btn-primary" style="padding: 13px 26px; font-weight: 800; font-size: 0.98rem; border-radius: var(--radius-md); box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35); display: inline-flex; align-items: center; gap: 8px;">
+                <span>🔑</span> Student Log In
+              </button>
+              <button onclick="Auth.openModal('register')" class="btn-secondary" style="padding: 13px 22px; font-weight: 700; font-size: 0.98rem; border-radius: var(--radius-md); display: inline-flex; align-items: center; gap: 6px;">
+                <span>✨</span> Create Free Student Account (Sign Up)
+              </button>
+            `}
           </div>
 
           <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 18px 22px; text-align: left; display: inline-block; max-width: 520px; width: 100%;">
@@ -415,7 +425,11 @@ const App = {
       return;
     }
 
-    const hash = window.location.hash.slice(1) || "home";
+    const rawHash = window.location.hash.slice(1) || "home";
+    const [hashPath, hashQueryStr] = rawHash.split("?");
+    const hash = hashPath || "home";
+    const hashParams = new URLSearchParams(hashQueryStr || "");
+    const authQuery = hashParams.get("auth") || urlParams.get("auth");
     const container = document.getElementById("main-content");
     if (!container) return;
 
@@ -467,31 +481,50 @@ const App = {
 
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    // Authentication Access Gate: Student must be logged in to view notes, pyq, syllabus, semesters, updates
+    // Authentication Access Gate: Student must be logged in to view notes, pyq, syllabus, semesters, updates, or direct shared notes
     const protectedContentRoutes = ["notes", "pyq", "syllabus", "semesters", "updates"];
-    const isProtected = protectedContentRoutes.includes(hash) || hash.startsWith("semester/");
+    const isNoteRoute = hash.startsWith("note/");
+    const isProtected = protectedContentRoutes.includes(hash) || hash.startsWith("semester/") || isNoteRoute;
 
     if (isProtected && !Auth.currentUser) {
       let title = "B.Tech Study Materials & Curriculum Locked";
-      let desc = "DDU Gorakhpur University B.Tech portal ka study material dekhne ke liye kripya pehle Apna Student Account Login karein ya Free Register karein.";
-      if (hash === "notes") {
+      let desc = "DDU Gorakhpur University B.Tech portal ka study material dekhne ke liye kripya pehle Apna Free Student Account banayein (Sign Up / Register karein) ya Login karein.";
+      let authTab = "register";
+
+      if (isNoteRoute) {
+        title = "B.Tech Study Note & PDF Locked 🔒";
+        desc = "Yeh shared study note aur complete PDF padhne ke liye kripya pehle Apna Free Student Account banayein (Sign Up / Register karein). Agar aapka pehle se account bana hai toh Login karein.";
+        authTab = "register";
+      } else if (hash === "notes") {
         title = "B.Tech Lecture Notes & Study Materials Locked";
-        desc = "DDU Gorakhpur University ke B.Tech semester-wise lecture notes dekhne ke liye kripya pehle Student Login karein ya Register karein.";
+        desc = "DDU Gorakhpur University ke B.Tech semester-wise lecture notes dekhne ke liye kripya pehle Free Student Account banayein (Sign Up karein) ya Login karein.";
+        authTab = "register";
       } else if (hash === "pyq") {
         title = "Previous Year Question Papers (2021-2025) Locked";
-        desc = "DDU B.Tech 5-year end-term examination question papers aur answer keys download karne ke liye kripya pehle Student Login karein.";
+        desc = "DDU B.Tech 5-year end-term examination question papers aur answer keys download karne ke liye kripya pehle Free Student Account banayein ya Login karein.";
+        authTab = "register";
       } else if (hash === "syllabus") {
         title = "Official CBCS Syllabus Curricula Locked";
-        desc = "Official university course scheme aur subject-wise syllabus dekhne ke liye kripya pehle Student Login karein.";
+        desc = "Official university course scheme aur subject-wise syllabus dekhne ke liye kripya pehle Free Student Account banayein ya Login karein.";
+        authTab = "register";
       } else if (hash === "semesters" || hash.startsWith("semester/")) {
         title = "B.Tech Academic Semesters Curriculum Locked";
-        desc = "DDU Gorakhpur University 1st to 8th Semester curriculum aur subjects dekhne ke liye kripya pehle Student Login karein.";
+        desc = "DDU Gorakhpur University 1st to 8th Semester curriculum aur subjects dekhne ke liye kripya pehle Free Student Account banayein ya Login karein.";
+        authTab = "register";
       } else if (hash === "updates") {
         title = "Daily Academic Notices & Campus Updates Locked";
-        desc = "DDU Gorakhpur University ki sabhi daily campus notices, examination circulars aur official announcements dekhne ke liye kripya pehle Student Login karein.";
+        desc = "DDU Gorakhpur University ki sabhi daily campus notices, examination circulars aur official announcements dekhne ke liye kripya pehle Free Student Account banayein ya Login karein.";
+        authTab = "register";
       }
-      this.renderLockGate(container, title, desc);
-      Auth.openModal("login");
+
+      if (authQuery === "login") {
+        authTab = "login";
+      } else if (authQuery === "register" || authQuery === "signup") {
+        authTab = "register";
+      }
+
+      this.renderLockGate(container, title, desc, authTab);
+      Auth.openModal(authTab);
       return;
     }
 
@@ -3071,10 +3104,10 @@ const App = {
   },
 
   // ------------------- PDF Viewer Modal -------------------
-  openPdfViewer(fileUrl, title = "Document Preview", noteId = null, isDirectShared = false) {
-    if (!Auth.currentUser && !isDirectShared) {
-      Auth.openModal("login");
-      this.toast("Study notes aur documents dekhne ke liye kripya pahle Student Login karein.", "warning");
+  openPdfViewer(fileUrl, title = "Document Preview", noteId = null) {
+    if (!Auth.currentUser) {
+      Auth.openModal("register");
+      this.toast("Study notes aur PDF padhne ke liye kripya pehle Free Student Account banayein (Sign Up) ya Login karein.", "warning");
       return;
     }
     this.currentPdfNote = { fileUrl, title, noteId };
@@ -3173,8 +3206,8 @@ const App = {
   // ------------------- Secure File Download -------------------
   downloadFile(fileUrl, title = "Document", noteId = null) {
     if (!Auth.currentUser) {
-      Auth.openModal("login");
-      this.toast("Study notes aur documents download karne ke liye kripya pahle Student Login karein.", "warning");
+      Auth.openModal("register");
+      this.toast("Study notes aur documents download karne ke liye kripya pehle Free Student Account banayein (Sign Up) ya Login karein.", "warning");
       return;
     }
     if (noteId) {
@@ -3407,6 +3440,17 @@ const App = {
 
   // ------------------- Shared Note Direct Landing -------------------
   async renderSharedNote(container, noteId) {
+    if (!Auth.currentUser) {
+      this.renderLockGate(
+        container,
+        "B.Tech Study Note & PDF Locked 🔒",
+        "Yeh shared study note aur complete PDF padhne ke liye kripya pehle Apna Free Student Account banayein (Sign Up / Register karein). Agar aapka pehle se account bana hai toh Login karein.",
+        "register"
+      );
+      Auth.openModal("register");
+      return;
+    }
+
     if (!noteId || isNaN(noteId)) {
       window.location.hash = "#notes";
       return;
@@ -3552,7 +3596,7 @@ const App = {
 
           <!-- Note Actions -->
           <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding-top: 14px; border-top: 1px solid var(--border);">
-            <button onclick="App.openPdfViewer('${note.file_url}', '${escapeHtml(note.title)}', ${note.id}, true)" class="btn-primary" style="padding: 12px 24px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; font-size: 0.95rem;">
+            <button onclick="App.openPdfViewer('${note.file_url}', '${escapeHtml(note.title)}', ${note.id})" class="btn-primary" style="padding: 12px 24px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; font-size: 0.95rem;">
               👁️ Open Modal Reader
             </button>
             <button onclick="App.downloadFile('${note.file_url}', '${escapeHtml(note.title)}', ${note.id})" class="btn-secondary" style="padding: 12px 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
@@ -3569,31 +3613,6 @@ const App = {
             ` : ''}
           </div>
         </div>
-
-        <!-- Student Onboarding Banner for Guests -->
-        ${!Auth.currentUser ? `
-          <div style="background: linear-gradient(135deg, rgba(30, 64, 175, 0.08), rgba(16, 185, 129, 0.08)); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 26px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-            <div style="max-width: 520px;">
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                <span style="font-size: 1.4rem;">🎓</span>
-                <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 0;">
-                  DDU B.Tech Notes Hub par naye hain?
-                </h3>
-              </div>
-              <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0; line-height: 1.5;">
-                Apna Free Student Account banayein aur sabhi 1st se 8th Semester ke subject-wise notes, 5-year PYQs aur official syllabus access karein!
-              </p>
-            </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-              <button onclick="Auth.openModal('register')" class="btn-primary" style="font-weight: 700; padding: 10px 18px;">
-                ✨ Free Register (5 Sec)
-              </button>
-              <button onclick="Auth.openModal('login')" class="btn-secondary" style="font-weight: 700; padding: 10px 18px;">
-                Student Login
-              </button>
-            </div>
-          </div>
-        ` : ''}
 
         <!-- Quick Subject & Semester Navigation -->
         <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 22px;">
@@ -3614,8 +3633,10 @@ const App = {
       </div>
     `;
 
-    // Automatically open the document reader for a seamless experience
-    this.openPdfViewer(note.file_url, note.title, note.id, true);
+    // Automatically open the document reader for logged-in students
+    if (Auth.currentUser && note.file_url) {
+      this.openPdfViewer(note.file_url, note.title, note.id);
+    }
   },
 
   // ------------------- Modals Control -------------------
