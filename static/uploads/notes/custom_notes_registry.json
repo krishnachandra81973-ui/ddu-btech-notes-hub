@@ -48,20 +48,20 @@
     "is_verified": 1
   },
   {
-    "unit_id": 153,
-    "file_url": "/static/uploads/notes/keshav_P_merged_6efd3024.pdf",
-    "title": "CSE (AIML) c programming 1st lacture",
-    "id": 359,
     "is_important": 1,
-    "description": "Core concepts of Programming for Problem Solving (BCS-101), Unit 1. Includes structured programming principles, variables, constants, conditional branching, and practice questions for semester exam preparation.",
-    "subject_id": 33,
+    "unit_id": 153,
+    "file_url": "/static/uploads/notes/keshav_P_6089c931.pdf",
+    "download_count": 0,
+    "id": 359,
+    "is_verified": 1,
+    "title": "CSE (AIML) c programming 1st lacture",
+    "status": "APPROVED",
     "file_name": "CSE (AIML) c programming 1st lacture",
+    "description": "Core concepts of Programming for Problem Solving (BCS-101), Unit 1. Includes structured programming principles, variables, constants, conditional branching, and practice questions for semester exam preparation.",
+    "file_size": "PDF Document",
     "created_at": "2026-09-28 12:50:36",
     "is_published": 1,
-    "download_count": 0,
-    "status": "APPROVED",
-    "is_verified": 1,
-    "file_size": "PDF Document"
+    "subject_id": 33
   },
   {
     "is_verified": 1,
@@ -80,20 +80,20 @@
     "id": 362
   },
   {
-    "description": "Complete Unit 1 lecture notes covering:\n\u2022 Relativistic Mechanics / Wave Optics & Quantum Mechanics fundamentals\n\u2022 Key standard derivations and mathematical formulations\n\u2022 Conceptual questions and high-yield numerical practice\n\u2022 Previous year university exam questions and solutions",
+    "file_size": "PDF Document",
+    "is_important": 1,
+    "file_url": "/static/uploads/notes/Phy1_f9ed3696.pdf",
+    "is_verified": 1,
+    "unit_id": 148,
+    "status": "APPROVED",
+    "title": "Physics complete 1st chapter",
+    "subject_id": 32,
+    "download_count": 0,
+    "id": 376,
     "is_published": 1,
     "created_at": "2026-09-29 12:30:58",
-    "unit_id": 148,
-    "subject_id": 32,
-    "file_name": "Physics complete 1st chapter",
-    "status": "APPROVED",
-    "id": 376,
-    "is_verified": 1,
-    "is_important": 1,
-    "title": "Physics complete 1st chapter",
-    "file_size": "PDF Document",
-    "download_count": 2,
-    "file_url": "/static/uploads/notes/Phy1_completed_chapter_23ecbbc1.pdf"
+    "description": "Complete Unit 1 lecture notes covering:\n\u2022 Relativistic Mechanics / Wave Optics & Quantum Mechanics fundamentals\n\u2022 Key standard derivations and mathematical formulations\n\u2022 Conceptual questions and high-yield numerical practice\n\u2022 Previous year university exam questions and solutions",
+    "file_name": "Physics complete 1st chapter"
   },
   {
     "file_size": "PDF Document",
@@ -196,5 +196,24 @@
     "contributed_by_email": null,
     "download_count": 0,
     "created_at": "2026-10-20 08:33:10"
+  },
+  {
+    "id": 397,
+    "subject_id": 87,
+    "unit_id": 415,
+    "title": "Test ME Note",
+    "description": "Testing custom ME note",
+    "file_url": "/static/test.pdf",
+    "file_name": "test.pdf",
+    "file_size": "100 KB",
+    "is_important": 0,
+    "is_published": 1,
+    "is_verified": 1,
+    "status": "APPROVED",
+    "contributed_by_id": null,
+    "contributed_by_name": null,
+    "contributed_by_email": null,
+    "download_count": 0,
+    "created_at": "2026-10-20 09:43:48"
   }
 ]

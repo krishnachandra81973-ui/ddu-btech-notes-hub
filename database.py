@@ -382,6 +382,7 @@ def ensure_db_schema():
 
     try:
         cursor.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);")
+        cursor.execute("UPDATE sqlite_sequence SET seq = MAX(seq, 500) WHERE name = 'notes'")
         conn.commit()
     except Exception:
         pass
@@ -1075,6 +1076,10 @@ def create_note(subject_id, unit_id, title, description, file_url, file_name, fi
     """, (subject_id, actual_unit_id, title, description, file_url, file_name, file_size, is_important, is_published))
     note_id = cursor.lastrowid
     cursor.execute("DELETE FROM deleted_notes WHERE note_id = ?", (note_id,))
+    try:
+        cursor.execute("UPDATE sqlite_sequence SET seq = MAX(seq, 500) WHERE name = 'notes'")
+    except Exception:
+        pass
     conn.commit()
     try:
         cursor.execute("SELECT * FROM notes WHERE id = ?", (note_id,))
@@ -1244,6 +1249,11 @@ def create_student_note_submission(student_id, student_name, student_email, subj
     VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 'PENDING', ?, ?, ?)
     """, (subject_id, actual_unit_id, title, description, file_url, file_name, file_size, valid_student_id, student_name, student_email))
     note_id = cursor.lastrowid
+    cursor.execute("DELETE FROM deleted_notes WHERE note_id = ?", (note_id,))
+    try:
+        cursor.execute("UPDATE sqlite_sequence SET seq = MAX(seq, 500) WHERE name = 'notes'")
+    except Exception:
+        pass
     conn.commit()
     try:
         cursor.execute("""

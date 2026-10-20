@@ -7,9 +7,11 @@ import threading
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_REGISTRY = os.path.join(BASE_DIR, "custom_notes_registry.json")
+STATIC_REGISTRY = os.path.join(BASE_DIR, "static", "uploads", "notes", "custom_notes_registry.json")
 TMP_REGISTRY = "/tmp/custom_notes_registry.json"
 
 DELETED_REPO_REGISTRY = os.path.join(BASE_DIR, "deleted_notes_registry.json")
+DELETED_STATIC_REGISTRY = os.path.join(BASE_DIR, "static", "uploads", "notes", "deleted_notes_registry.json")
 DELETED_TMP_REGISTRY = "/tmp/deleted_notes_registry.json"
 
 FIRESTORE_PROJECT = "keshav-ai-education"
@@ -22,34 +24,41 @@ _SYNC_INTERVAL = 30  # seconds
 
 def get_registry_path():
     if not os.path.exists(TMP_REGISTRY):
-        if os.path.exists(REPO_REGISTRY):
+        notes = load_local_notes()
+        if notes:
             try:
-                import shutil
-                shutil.copy2(REPO_REGISTRY, TMP_REGISTRY)
+                with open(TMP_REGISTRY, "w", encoding="utf-8") as f:
+                    json.dump(notes, f, indent=2)
             except Exception:
                 pass
     return TMP_REGISTRY if os.path.exists(TMP_REGISTRY) else REPO_REGISTRY
 
 def load_local_notes():
-    path = get_registry_path()
-    if os.path.exists(path):
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return []
-    return []
+    """
+    Loads custom notes from all local registry locations (static, repo, tmp),
+    merging notes by note id so that dynamically uploaded notes are never lost.
+    """
+    merged = {}
+    for p in [STATIC_REGISTRY, REPO_REGISTRY, TMP_REGISTRY]:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        for note in data:
+                            nid = note.get("id")
+                            if nid:
+                                merged[nid] = note
+            except Exception:
+                pass
+    return list(merged.values())
 
 def save_local_notes(notes):
-    path = TMP_REGISTRY if os.path.exists("/tmp") else REPO_REGISTRY
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(notes, f, indent=2)
-    except Exception:
-        pass
-    if path != REPO_REGISTRY:
+    targets = [TMP_REGISTRY, REPO_REGISTRY, STATIC_REGISTRY]
+    for p in targets:
         try:
-            with open(REPO_REGISTRY, "w", encoding="utf-8") as f:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
                 json.dump(notes, f, indent=2)
         except Exception:
             pass
@@ -149,21 +158,36 @@ def get_deleted_registry_path():
 
 
 def load_local_deleted_ids():
-    path = get_deleted_registry_path()
-    if os.path.exists(path):
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return [int(x) for x in data if str(x).isdigit()]
-        except Exception:
-            return []
-    return []
+    deleted = set()
+    for p in [DELETED_STATIC_REGISTRY, DELETED_REPO_REGISTRY, DELETED_TMP_REGISTRY]:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        for x in data:
+                            if str(x).isdigit():
+                                deleted.add(int(x))
+            except Exception:
+                pass
+    # Safety guard: active notes present in the local registry MUST NEVER be marked as deleted
+    try:
+        active_ids = {int(n["id"]) for n in load_local_notes() if str(n.get("id")).isdigit()}
+        deleted = deleted - active_ids
+    except Exception:
+        pass
+    return sorted(list(deleted))
 
 
 def save_local_deleted_ids(ids):
-    clean_ids = sorted(list(set([int(x) for x in ids if str(x).isdigit()])))
-    for p in [DELETED_TMP_REGISTRY, DELETED_REPO_REGISTRY]:
+    try:
+        active_ids = {int(n["id"]) for n in load_local_notes() if str(n.get("id")).isdigit()}
+    except Exception:
+        active_ids = set()
+    clean_ids = sorted(list(set([int(x) for x in ids if str(x).isdigit() and int(x) not in active_ids])))
+    for p in [DELETED_TMP_REGISTRY, DELETED_REPO_REGISTRY, DELETED_STATIC_REGISTRY]:
         try:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
             with open(p, "w", encoding="utf-8") as f:
                 json.dump(clean_ids, f, indent=2)
         except Exception:
@@ -258,11 +282,21 @@ def record_deleted_notes(note_ids):
                 del_bytes,
                 commit_message=f"Permanent sync: {len(clean_ids)} notes deleted"
             )
+            cloud_storage.commit_file_to_github(
+                "static/uploads/notes/deleted_notes_registry.json",
+                del_bytes,
+                commit_message=f"Mirror sync: {len(clean_ids)} notes deleted"
+            )
             custom_bytes = json.dumps(load_local_notes(), indent=2).encode("utf-8")
             cloud_storage.commit_file_to_github(
                 "custom_notes_registry.json",
                 custom_bytes,
                 commit_message="Sync custom notes registry after deletion"
+            )
+            cloud_storage.commit_file_to_github(
+                "static/uploads/notes/custom_notes_registry.json",
+                custom_bytes,
+                commit_message="Mirror sync custom notes registry after deletion"
             )
         except Exception:
             pass
@@ -298,10 +332,16 @@ def record_custom_note(note_dict):
         try:
             import cloud_storage
             custom_bytes = json.dumps(load_local_notes(), indent=2).encode("utf-8")
+            # Always commit to BOTH root and static/uploads/notes so serverless never misses it
             cloud_storage.commit_file_to_github(
                 "custom_notes_registry.json",
                 custom_bytes,
                 commit_message=f"Sync custom notes registry: Note {note_dict.get('id')} updated"
+            )
+            cloud_storage.commit_file_to_github(
+                "static/uploads/notes/custom_notes_registry.json",
+                custom_bytes,
+                commit_message=f"Mirror sync custom notes registry: Note {note_dict.get('id')} updated"
             )
         except Exception:
             pass
@@ -346,70 +386,99 @@ def ensure_custom_notes_synced(conn):
                 cursor.execute(f"DELETE FROM notes WHERE id IN ({placeholders})", tuple(all_deleted))
             conn.commit()
 
-            # 2. Fetch remote notes from Cloud Firestore
+            # 2. Fetch remote notes from Cloud Firestore and merge with local notes
             remote_notes = fetch_firestore_notes()
-            if not remote_notes:
-                remote_notes = load_local_notes()
-            else:
-                save_local_notes(remote_notes)
+            local_notes = load_local_notes()
+            merged_dict = {n.get("id"): n for n in local_notes if n.get("id")}
+            if remote_notes:
+                for rn in remote_notes:
+                    if rn.get("id"):
+                        merged_dict[rn.get("id")] = rn
+            all_active = list(merged_dict.values())
+            save_local_notes(all_active)
 
             # Filter out any notes that have been deleted!
-            active_notes = [n for n in remote_notes if int(n.get("id", 0)) not in all_deleted]
+            active_notes = [n for n in all_active if int(n.get("id", 0)) not in all_deleted]
 
             if not active_notes:
                 return
 
             for n in active_notes:
-                note_id = n.get("id")
-                subject_id = n.get("subject_id")
-                unit_id = n.get("unit_id")
-                title = n.get("title", "")
-                description = n.get("description", "")
-                file_url = n.get("file_url", "")
-                file_name = n.get("file_name", title)
-                file_size = n.get("file_size", "PDF Document")
-                is_important = n.get("is_important", 0)
-                is_published = n.get("is_published", 1)
-                is_verified = n.get("is_verified", 1)
-                status = n.get("status", "APPROVED")
-                contributed_by_id = n.get("contributed_by_id")
-                contributed_by_name = n.get("contributed_by_name")
-                contributed_by_email = n.get("contributed_by_email")
-                download_count = n.get("download_count", 0)
-                created_at = n.get("created_at")
+                try:
+                    note_id = n.get("id")
+                    subject_id = n.get("subject_id")
+                    unit_id = n.get("unit_id")
+                    title = n.get("title", "")
+                    description = n.get("description", "")
+                    file_url = n.get("file_url", "")
+                    file_name = n.get("file_name", title)
+                    file_size = n.get("file_size", "PDF Document")
+                    is_important = n.get("is_important", 0)
+                    is_published = n.get("is_published", 1)
+                    is_verified = n.get("is_verified", 1)
+                    status = n.get("status", "APPROVED")
+                    contributed_by_id = n.get("contributed_by_id")
+                    contributed_by_name = n.get("contributed_by_name")
+                    contributed_by_email = n.get("contributed_by_email")
+                    download_count = n.get("download_count", 0)
+                    created_at = n.get("created_at")
 
-                # Verify subject exists
-                cursor.execute("SELECT id FROM subjects WHERE id = ?", (subject_id,))
-                if not cursor.fetchone():
-                    continue
+                    # Verify subject exists or resolve fallback
+                    cursor.execute("SELECT id FROM subjects WHERE id = ?", (subject_id,))
+                    sub_row = cursor.fetchone()
+                    if not sub_row:
+                        matched_id = None
+                        sub_code = n.get("subject_code")
+                        sub_name = n.get("subject_name")
+                        if sub_code:
+                            cursor.execute("SELECT id FROM subjects WHERE code = ?", (sub_code.strip().upper(),))
+                            found = cursor.fetchone()
+                            if found:
+                                matched_id = found[0]
+                        if not matched_id and sub_name:
+                            cursor.execute("SELECT id FROM subjects WHERE name LIKE ?", (f"%{sub_name.strip()}%",))
+                            found = cursor.fetchone()
+                            if found:
+                                matched_id = found[0]
+                        subject_id = matched_id
 
-                if unit_id:
-                    cursor.execute("SELECT id FROM units WHERE id = ?", (unit_id,))
-                    if not cursor.fetchone():
-                        unit_id = None
+                    if not subject_id:
+                        continue
 
-                cursor.execute("SELECT id FROM notes WHERE id = ?", (note_id,))
-                existing = cursor.fetchone()
-                if existing:
-                    cursor.execute("""
-                        UPDATE notes
-                        SET subject_id = ?, unit_id = ?, title = ?, description = ?,
-                            file_url = ?, file_name = ?, file_size = ?,
-                            is_important = ?, is_published = ?, is_verified = ?, status = ?,
-                            contributed_by_id = ?, contributed_by_name = ?, contributed_by_email = ?
-                        WHERE id = ?
-                    """, (subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, note_id))
-                else:
-                    if created_at:
+                    if unit_id:
+                        cursor.execute("SELECT id FROM units WHERE id = ?", (unit_id,))
+                        if not cursor.fetchone():
+                            unit_id = None
+
+                    if contributed_by_id:
+                        cursor.execute("SELECT id FROM users WHERE id = ?", (contributed_by_id,))
+                        if not cursor.fetchone():
+                            contributed_by_id = None
+
+                    cursor.execute("SELECT id FROM notes WHERE id = ?", (note_id,))
+                    existing = cursor.fetchone()
+                    if existing:
                         cursor.execute("""
-                            INSERT INTO notes (id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, download_count, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (note_id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, download_count, created_at))
+                            UPDATE notes
+                            SET subject_id = ?, unit_id = ?, title = ?, description = ?,
+                                file_url = ?, file_name = ?, file_size = ?,
+                                is_important = ?, is_published = ?, is_verified = ?, status = ?,
+                                contributed_by_id = ?, contributed_by_name = ?, contributed_by_email = ?
+                            WHERE id = ?
+                        """, (subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, note_id))
                     else:
-                        cursor.execute("""
-                            INSERT INTO notes (id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, download_count)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (note_id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, download_count))
-            conn.commit()
+                        if created_at:
+                            cursor.execute("""
+                                INSERT INTO notes (id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, download_count, created_at)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (note_id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, download_count, created_at))
+                        else:
+                            cursor.execute("""
+                                INSERT INTO notes (id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, download_count)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (note_id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, download_count))
+                    conn.commit()
+                except Exception as ne:
+                    print(f"[NotesRegistry] Notice on note {n.get('id')}: {ne}")
         except Exception as e:
             print("[NotesRegistry] Sync notice:", e)

@@ -39,8 +39,14 @@ def commit_file_to_github(rel_path, file_bytes, commit_message="Upload study not
 
     repo = os.environ.get("GITHUB_REPO", REPO_OWNER_NAME).strip()
     fname = os.path.basename(rel_path.strip("/"))
-    # Standardized storage location in repo
-    clean_path = f"static/uploads/notes/{fname}"
+    norm_path = rel_path.strip("/").replace("\\", "/")
+    # Preserve explicit paths or root-level registry JSON files
+    if norm_path in ("custom_notes_registry.json", "deleted_notes_registry.json") or (norm_path.endswith(".json") and "/" not in norm_path):
+        clean_path = norm_path
+    elif "/" in norm_path:
+        clean_path = norm_path
+    else:
+        clean_path = f"static/uploads/notes/{fname}"
     api_url = f"https://api.github.com/repos/{repo}/contents/{clean_path}"
 
     payload = {
