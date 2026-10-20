@@ -3,7 +3,16 @@
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "includeFiles": [
+          "students_registry.json",
+          "custom_notes_registry.json",
+          "deleted_notes_registry.json",
+          "campus_updates_registry.json",
+          "ddu_seed.db"
+        ]
+      }
     },
     {
       "src": "static/**",

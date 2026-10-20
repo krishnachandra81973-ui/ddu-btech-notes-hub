@@ -14,6 +14,10 @@ import threading
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_REGISTRY = os.path.join(BASE_DIR, "students_registry.json")
+STATIC_REGISTRY = os.path.join(BASE_DIR, "static", "students_registry.json")
+STATIC_UPLOADS_REGISTRY = os.path.join(BASE_DIR, "static", "uploads", "students_registry.json")
+STATIC_NOTES_REGISTRY = os.path.join(BASE_DIR, "static", "uploads", "notes", "students_registry.json")
+API_REGISTRY = os.path.join(BASE_DIR, "api", "students_registry.json")
 TMP_REGISTRY = "/tmp/students_registry.json"
 
 SECRET_KEY = os.environ.get("DDU_PORTAL_SECRET", "ddu_btech_portal_secure_jwt_2026_xyz98124_prod")
@@ -210,42 +214,60 @@ def delete_firestore_student(email):
 # ----------------- Registry Operations -----------------
 
 def get_registry_path():
-    if not os.path.exists(TMP_REGISTRY):
-        if os.path.exists(REPO_REGISTRY):
+    candidates = [
+        TMP_REGISTRY,
+        REPO_REGISTRY,
+        STATIC_NOTES_REGISTRY,
+        STATIC_UPLOADS_REGISTRY,
+        STATIC_REGISTRY,
+        API_REGISTRY
+    ]
+    for p in candidates:
+        if os.path.exists(p) and os.path.getsize(p) > 50:
+            return p
+    return TMP_REGISTRY
+
+def load_registry(fetch_remote=False):
+    candidates = [
+        TMP_REGISTRY,
+        STATIC_NOTES_REGISTRY,
+        STATIC_UPLOADS_REGISTRY,
+        STATIC_REGISTRY,
+        REPO_REGISTRY,
+        API_REGISTRY,
+        os.path.join(os.path.dirname(BASE_DIR), "students_registry.json")
+    ]
+    user_map = {}
+    for p in candidates:
+        if os.path.exists(p):
             try:
-                shutil.copy2(REPO_REGISTRY, TMP_REGISTRY)
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        for u in data:
+                            em = u.get("email", "").lower().strip()
+                            if em and em not in FAKE_EMAILS:
+                                u_clean = dict(u)
+                                u_clean.pop("plain_password", None)
+                                if em not in user_map:
+                                    user_map[em] = u_clean
+                                else:
+                                    user_map[em].update({k: v for k, v in u_clean.items() if v is not None and v != ""})
             except Exception:
                 pass
-        else:
-            try:
-                with open(TMP_REGISTRY, "w", encoding="utf-8") as f:
-                    json.dump([ADMIN_USER], f, indent=2)
-            except Exception:
-                pass
-    return TMP_REGISTRY if os.path.exists(TMP_REGISTRY) else REPO_REGISTRY
 
-def load_registry(fetch_remote=True):
-    path = get_registry_path()
-    users = []
-    if os.path.exists(path):
+    # Ultimate fallback: If registry files were missing or only had admin, pull from SQLite users table
+    if len([u for u in user_map.values() if u.get("role") != "ADMIN"]) == 0:
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                users = json.load(f)
-                for u in users:
-                    u.pop("plain_password", None)
-        except Exception:
-            users = []
-
-    # Merge with repo registry if different
-    if path != REPO_REGISTRY and os.path.exists(REPO_REGISTRY):
-        try:
-            with open(REPO_REGISTRY, "r", encoding="utf-8") as f:
-                repo_users = json.load(f)
-                known_emails = {u.get("email", "").lower().strip() for u in users}
-                for ru in repo_users:
-                    ru.pop("plain_password", None)
-                    if ru.get("email", "").lower().strip() not in known_emails:
-                        users.append(ru)
+            import database
+            conn = database.get_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT id, full_name, email, college, course, branch, semester, role, is_active, created_at FROM users")
+            for r in cur.fetchall():
+                em = r["email"].lower().strip()
+                if em and em not in FAKE_EMAILS and em not in user_map:
+                    user_map[em] = dict(r)
+            conn.close()
         except Exception:
             pass
 
@@ -254,7 +276,6 @@ def load_registry(fetch_remote=True):
         try:
             remote_students = fetch_firestore_students()
             if remote_students and isinstance(remote_students, list) and len(remote_students) > 0:
-                user_map = {u.get("email", "").lower().strip(): u for u in users if u.get("email")}
                 for rs in remote_students:
                     em = rs.get("email", "").lower().strip()
                     if em and em not in FAKE_EMAILS:
@@ -262,18 +283,24 @@ def load_registry(fetch_remote=True):
                             user_map[em].update(rs)
                         else:
                             user_map[em] = rs
-                users = list(user_map.values())
-                save_registry(users, sync_remote=False)
         except Exception:
             pass
 
     # Clean fake student accounts permanently
-    users = [u for u in users if u.get("email", "").lower().strip() not in FAKE_EMAILS]
+    users = [u for u in user_map.values() if u.get("email", "").lower().strip() not in FAKE_EMAILS]
 
     # Ensure admin is always present
     has_admin = any(u.get("email", "").lower() == ADMIN_EMAIL.lower() for u in users)
     if not has_admin:
         users.insert(0, ADMIN_USER)
+
+    # Warm-save to TMP_REGISTRY so subsequent calls in this container are instantaneous
+    if len(users) > 1 and not os.path.exists(TMP_REGISTRY):
+        try:
+            with open(TMP_REGISTRY, "w", encoding="utf-8") as f:
+                json.dump(users, f, indent=2)
+        except Exception:
+            pass
 
     return users
 
@@ -287,7 +314,15 @@ def save_registry(users, sync_remote=False):
         du.pop("plain_password", None)
         disk_users.append(du)
 
-    for target in [TMP_REGISTRY, REPO_REGISTRY]:
+    targets = [
+        TMP_REGISTRY,
+        REPO_REGISTRY,
+        STATIC_NOTES_REGISTRY,
+        STATIC_UPLOADS_REGISTRY,
+        STATIC_REGISTRY,
+        API_REGISTRY
+    ]
+    for target in targets:
         try:
             target_dir = os.path.dirname(target)
             if target_dir:
@@ -298,9 +333,29 @@ def save_registry(users, sync_remote=False):
             pass
 
     if sync_remote:
-        for u in cleaned_users:
-            if u.get("role") != "ADMIN":
-                threading.Thread(target=save_firestore_student, args=(u,), daemon=True).start()
+        def _sync_bg():
+            for u in cleaned_users:
+                if u.get("role") != "ADMIN":
+                    try:
+                        save_firestore_student(u)
+                    except Exception:
+                        pass
+            try:
+                import cloud_storage
+                content_bytes = json.dumps(disk_users, indent=2).encode("utf-8")
+                cloud_storage.commit_file_to_github(
+                    "students_registry.json",
+                    content_bytes,
+                    commit_message=f"Sync registered students: {len(disk_users)} accounts"
+                )
+                cloud_storage.commit_file_to_github(
+                    "static/uploads/notes/students_registry.json",
+                    content_bytes,
+                    commit_message=f"Mirror sync students registry: {len(disk_users)} accounts"
+                )
+            except Exception:
+                pass
+        threading.Thread(target=_sync_bg, daemon=True).start()
 
 def save_user_to_registry(user_dict, allow_update=True, sync_remote=True):
     email_clean = user_dict.get("email", "").lower().strip()

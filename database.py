@@ -751,12 +751,12 @@ def get_all_users(search=""):
     for em, du in db_users.items():
         if em in combined:
             combined[em].update({k: v for k, v in du.items() if v is not None and v != "" and k not in ("password_hash", "salt", "plain_password")})
-        elif du.get("role") == "ADMIN":
-            clean_admin = dict(du)
-            clean_admin.pop("password_hash", None)
-            clean_admin.pop("salt", None)
-            clean_admin.pop("plain_password", None)
-            combined[em] = clean_admin
+        else:
+            clean_u = dict(du)
+            clean_u.pop("password_hash", None)
+            clean_u.pop("salt", None)
+            clean_u.pop("plain_password", None)
+            combined[em] = clean_u
 
     # Ensure admin is always present
     if user_registry.ADMIN_EMAIL.lower() not in combined:

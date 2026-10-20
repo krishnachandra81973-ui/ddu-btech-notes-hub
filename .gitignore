@@ -13,8 +13,9 @@ __pycache__/
 *.db-shm
 *.sqlite
 *.sqlite3
-ddu_portal.db
-students_registry.json
+
+# Track seed registry files
+!students_registry.json
 
 # Environment variables & secrets
 .env
