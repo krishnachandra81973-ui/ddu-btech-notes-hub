@@ -3665,14 +3665,20 @@ const App = {
             </div>
 
             <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Subject *</label>
-                <select name="subject_id" required class="form-control">
+              <div class="form-group" style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="form-label" style="margin-bottom: 0;">Subject *</label>
+                  <button type="button" onclick="App.toggleStudentCustomSubject()" style="background: none; border: none; color: var(--primary); font-size: 0.76rem; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 0;">
+                    ✍️ Type Subject Manually
+                  </button>
+                </div>
+                <select name="subject_id" id="student-subject-select" required class="form-control" onchange="App.onStudentSubjectSelectChange(this)">
                   <option value="">Select Subject...</option>
                   ${subOptions}
+                  <option value="__custom__" style="font-weight: 800; color: #2563eb; background: rgba(37,99,235,0.08);">➕ Other / Enter Subject Manually (ME / New)...</option>
                 </select>
               </div>
-              <div class="form-group">
+              <div class="form-group" style="width: 130px; flex-shrink: 0;">
                 <label class="form-label">Unit Number *</label>
                 <select name="unit_number" class="form-control">
                   <option value="1">Unit 1</option>
@@ -3682,6 +3688,39 @@ const App = {
                   <option value="5">Unit 5</option>
                 </select>
               </div>
+            </div>
+
+            <!-- Custom Subject Direct Text Input Fields for Students -->
+            <div id="student-custom-subject-box" style="display: none; background: rgba(59, 130, 246, 0.05); border: 1.5px dashed var(--primary); border-radius: var(--radius-md); padding: 12px; margin-bottom: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.82rem; font-weight: 800; color: var(--primary);">✍️ Enter Subject Details Directly (ME / Other)</span>
+                <button type="button" onclick="App.cancelStudentCustomSubject()" style="background: none; border: none; color: var(--accent-rose); font-size: 0.75rem; cursor: pointer; font-weight: 600;">✕ Back to Dropdown</button>
+              </div>
+              <div class="form-row">
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label class="form-label" style="font-size: 0.78rem;">Subject Name *</label>
+                  <input type="text" name="custom_subject_name" id="student-custom-subject-name" placeholder="e.g. Basic Mechanical Engineering or Fluid Mechanics" class="form-control">
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label class="form-label" style="font-size: 0.78rem;">Subject Code (optional)</label>
+                  <input type="text" name="custom_subject_code" id="student-custom-subject-code" placeholder="e.g. BME-101 or ME" class="form-control" style="text-transform: uppercase;">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 0.78rem;">Semester *</label>
+                  <select name="custom_semester_id" class="form-control">
+                    ${[1, 2, 3, 4, 5, 6, 7, 8].map(s => `<option value="${s}">Semester ${s}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 0.78rem;">Branch</label>
+                  <input type="text" name="custom_branch" value="ME" class="form-control">
+                </div>
+              </div>
+              <small style="color: var(--text-muted); font-size: 0.72rem; display: block; margin-top: 4px;">
+                💡 <em>Subject list me na hone par aap direct naam enter karke note submit kar sakte hain.</em>
+              </small>
             </div>
 
             <div class="form-group">
@@ -3773,13 +3812,53 @@ const App = {
     }
   },
 
+  onStudentSubjectSelectChange(selectEl) {
+    const box = document.getElementById("student-custom-subject-box");
+    if (!box) return;
+    if (selectEl.value === "__custom__") {
+      box.style.display = "block";
+      const nameInp = document.getElementById("student-custom-subject-name");
+      if (nameInp) nameInp.focus();
+    } else {
+      box.style.display = "none";
+    }
+  },
+
+  toggleStudentCustomSubject() {
+    const box = document.getElementById("student-custom-subject-box");
+    const subSel = document.getElementById("student-subject-select");
+    if (!box || !subSel) return;
+    if (box.style.display === "none") {
+      box.style.display = "block";
+      subSel.value = "__custom__";
+      const nameInp = document.getElementById("student-custom-subject-name");
+      if (nameInp) nameInp.focus();
+    } else {
+      this.cancelStudentCustomSubject();
+    }
+  },
+
+  cancelStudentCustomSubject() {
+    const box = document.getElementById("student-custom-subject-box");
+    const subSel = document.getElementById("student-subject-select");
+    if (box) box.style.display = "none";
+    if (subSel && subSel.value === "__custom__") subSel.value = "";
+  },
+
   async handleStudentNoteSubmit(e) {
     e.preventDefault();
     const form = e.target;
     const btn = document.getElementById("student-submit-btn");
 
     const title = form.title.value.trim();
-    const subject_id = parseInt(form.subject_id.value);
+    const rawSubject = form.subject_id.value;
+    const customBox = document.getElementById("student-custom-subject-box");
+    const isCustom = rawSubject === "__custom__" || (customBox && customBox.style.display !== "none");
+    const customSubjectName = (form.custom_subject_name?.value || "").trim();
+    const customSubjectCode = (form.custom_subject_code?.value || "").trim().toUpperCase();
+    const customSemId = parseInt(form.custom_semester_id?.value || 1);
+    const customBranch = (form.custom_branch?.value || "ME").trim();
+
     const unit_id = parseInt(form.unit_number.value);
     const description = (form.description.value || "").trim();
     let file_url = (form.file_url.value || "").trim();
@@ -3801,7 +3880,19 @@ const App = {
       }
     }
 
-    if (!title || !subject_id || !file_url) {
+    if (isCustom && !customSubjectName) {
+      this.toast("Kripya subject ka naam enter karein.", "warning");
+      const nameInp = document.getElementById("student-custom-subject-name");
+      if (nameInp) nameInp.focus();
+      return;
+    }
+
+    if (!isCustom && (!rawSubject || isNaN(parseInt(rawSubject)))) {
+      this.toast("Kripya ek valid Subject select karein ya manually enter karein.", "warning");
+      return;
+    }
+
+    if (!title || !file_url) {
       this.toast("Kripya sabhi fields bharein aur PDF attach karein.", "warning");
       if (btn) {
         btn.disabled = false;
@@ -3821,11 +3912,15 @@ const App = {
         headers: { "Content-Type": "application/json", ...Auth.getAuthHeaders() },
         body: JSON.stringify({
           title,
-          subject_id,
+          subject_id: isCustom ? "__custom__" : parseInt(rawSubject),
           unit_id,
           description: description || "Detailed notes will be shared in PDF format shortly.",
           file_url,
-          file_name: title
+          file_name: title,
+          custom_subject_name: customSubjectName,
+          custom_subject_code: customSubjectCode,
+          custom_semester_id: customSemId,
+          custom_branch: customBranch
         })
       });
       const data = await res.json();

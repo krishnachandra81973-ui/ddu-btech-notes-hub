@@ -922,8 +922,22 @@ class DDURequestHandler(BaseHTTPRequestHandler):
 
             if path == "/api/admin/notes":
                 body = self.read_json_body()
+                subject_id = body.get("subject_id")
+                # Direct text / custom subject support (e.g. ME)
+                if str(subject_id) in ("__custom__", "custom", "None", "") or not subject_id or not str(subject_id).isdigit():
+                    custom_name = (body.get("custom_subject_name") or body.get("subject_name") or "").strip()
+                    if custom_name:
+                        custom_code = (body.get("custom_subject_code") or body.get("subject_code") or "ME").strip().upper()
+                        custom_sem = int(body.get("custom_semester_id") or body.get("semester_id") or 1)
+                        custom_branch = (body.get("custom_branch") or body.get("branch") or "ME").strip()
+                        subject_id = db.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
+
+                if not subject_id:
+                    self.send_error_json("Valid Subject ID or custom subject name is required.", status=400)
+                    return
+
                 note_id = db.create_note(
-                    subject_id=int(body["subject_id"]),
+                    subject_id=int(subject_id),
                     unit_id=int(body["unit_id"]) if body.get("unit_id") else None,
                     title=body["title"].strip(),
                     description=body.get("description", ""),

@@ -1105,14 +1105,21 @@ const Admin = {
             </div>
 
             <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Subject *</label>
-                <select name="subject_id" required class="form-control">
+              <div class="form-group" style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="form-label" style="margin-bottom: 0;">Subject *</label>
+                  <button type="button" onclick="Admin.toggleCustomSubject()" id="toggle-custom-sub-btn" style="background: none; border: none; color: var(--primary); font-size: 0.78rem; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 0;">
+                    ✍️ Type Subject Manually
+                  </button>
+                </div>
+                <select name="subject_id" id="note-subject-select" required class="form-control" onchange="Admin.onSubjectSelectChange(this)">
+                  <option value="">-- Select Subject from List --</option>
                   ${subOptions}
+                  <option value="__custom__" style="font-weight: 800; color: #2563eb; background: rgba(37,99,235,0.08);">➕ Other / Enter Subject Manually (ME / New)...</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label class="form-label">Unit Number (1 to 5)</label>
+              <div class="form-group" style="width: 140px; flex-shrink: 0;">
+                <label class="form-label">Unit Number</label>
                 <select name="unit_number" class="form-control">
                   <option value="1" ${isEdit && note.unit_number === 1 ? 'selected' : ''}>Unit 1</option>
                   <option value="2" ${isEdit && note.unit_number === 2 ? 'selected' : ''}>Unit 2</option>
@@ -1121,6 +1128,50 @@ const Admin = {
                   <option value="5" ${isEdit && note.unit_number === 5 ? 'selected' : ''}>Unit 5</option>
                 </select>
               </div>
+            </div>
+
+            <!-- Custom Subject Direct Text Input Fields (Visible when custom option selected) -->
+            <div id="custom-subject-inputs" style="display: none; background: rgba(59, 130, 246, 0.05); border: 1.5px dashed var(--primary); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span style="font-size: 0.85rem; font-weight: 800; color: var(--primary); display: inline-flex; align-items: center; gap: 5px;">
+                  ✍️ Enter Subject Details Directly (ME / Custom Subject)
+                </span>
+                <button type="button" onclick="Admin.cancelCustomSubject()" style="background: none; border: none; color: var(--accent-rose); font-size: 0.78rem; cursor: pointer; font-weight: 600;">
+                  ✕ Use Existing Dropdown
+                </button>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" style="font-size: 0.8rem;">Subject Name *</label>
+                  <input type="text" name="custom_subject_name" id="custom-subject-name" placeholder="e.g. Basic Mechanical Engineering or Fluid Mechanics" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" style="font-size: 0.8rem;">Subject Code *</label>
+                  <input type="text" name="custom_subject_code" id="custom-subject-code" placeholder="e.g. BME-101 or ME" class="form-control" style="text-transform: uppercase;">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" style="font-size: 0.8rem;">Semester *</label>
+                  <select name="custom_semester_id" id="custom-semester-id" class="form-control">
+                    <option value="1">Semester 1</option>
+                    <option value="2">Semester 2</option>
+                    <option value="3">Semester 3</option>
+                    <option value="4">Semester 4</option>
+                    <option value="5">Semester 5</option>
+                    <option value="6">Semester 6</option>
+                    <option value="7">Semester 7</option>
+                    <option value="8">Semester 8</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" style="font-size: 0.8rem;">Branch *</label>
+                  <input type="text" name="custom_branch" id="custom-branch" value="ME" placeholder="e.g. ME / Mechanical Engineering" class="form-control">
+                </div>
+              </div>
+              <small style="color: var(--text-muted); font-size: 0.74rem; display: block; margin-top: 4px;">
+                💡 <em>Ye subject automatically create hokar database me save ho jayega aur units 1 to 5 bhi ready ho jayengi.</em>
+              </small>
             </div>
 
             <div class="form-group">
@@ -1163,6 +1214,41 @@ const Admin = {
     App.showGenericModal(modalHtml);
   },
 
+  onSubjectSelectChange(selectEl) {
+    const customBox = document.getElementById("custom-subject-inputs");
+    if (!customBox) return;
+    if (selectEl.value === "__custom__") {
+      customBox.style.display = "block";
+      const nameInput = document.getElementById("custom-subject-name");
+      if (nameInput) nameInput.focus();
+    } else {
+      customBox.style.display = "none";
+    }
+  },
+
+  toggleCustomSubject() {
+    const customBox = document.getElementById("custom-subject-inputs");
+    const subSelect = document.getElementById("note-subject-select") || document.querySelector("#admin-note-form select[name='subject_id']");
+    if (!customBox || !subSelect) return;
+    if (customBox.style.display === "none") {
+      customBox.style.display = "block";
+      subSelect.value = "__custom__";
+      const nameInput = document.getElementById("custom-subject-name");
+      if (nameInput) nameInput.focus();
+    } else {
+      this.cancelCustomSubject();
+    }
+  },
+
+  cancelCustomSubject() {
+    const customBox = document.getElementById("custom-subject-inputs");
+    const subSelect = document.getElementById("note-subject-select") || document.querySelector("#admin-note-form select[name='subject_id']");
+    if (customBox) customBox.style.display = "none";
+    if (subSelect && subSelect.value === "__custom__") {
+      subSelect.value = this.cachedSubjects[0]?.id || "";
+    }
+  },
+
   openEditNoteModal(note) {
     this.openAddNoteModal(note);
   },
@@ -1184,14 +1270,73 @@ const Admin = {
       return;
     }
 
+    let targetSubjectId = form.subject_id.value;
+    const customBox = document.getElementById("custom-subject-inputs");
+    const isCustom = targetSubjectId === "__custom__" || (customBox && customBox.style.display !== "none");
+
+    if (isCustom) {
+      const customName = (form.custom_subject_name?.value || "").trim();
+      let customCode = (form.custom_subject_code?.value || "").trim().toUpperCase();
+      const customSem = parseInt(form.custom_semester_id?.value || 1);
+      const customBranch = (form.custom_branch?.value || "ME").trim();
+
+      if (!customName) {
+        App.toast("Kripya subject ka naam (Subject Name) enter karein.", "warning");
+        const nameInput = document.getElementById("custom-subject-name");
+        if (nameInput) nameInput.focus();
+        return;
+      }
+      if (!customCode) {
+        customCode = customName.split(" ").map(w => w[0]).join("").toUpperCase() || "ME";
+      }
+
+      // Check if this subject already exists in cachedSubjects
+      const existing = this.cachedSubjects.find(s => s.code.toUpperCase() === customCode || s.name.toLowerCase() === customName.toLowerCase());
+      if (existing) {
+        targetSubjectId = existing.id;
+      } else {
+        // Create subject via API
+        try {
+          const subRes = await fetch("/api/admin/subjects", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...Auth.getAuthHeaders() },
+            body: JSON.stringify({
+              code: customCode,
+              name: customName,
+              semester_id: customSem,
+              branch: customBranch,
+              description: `Subject ${customName} (${customCode})`
+            })
+          });
+          const subData = await subRes.json();
+          if (!subRes.ok || (!subData.subject_id && !subData.id)) {
+            App.toast(subData.error || "Custom subject create karne me asafalta hui.", "error");
+            return;
+          }
+          targetSubjectId = subData.subject_id || subData.id;
+          await this.preloadDropdowns();
+        } catch (err) {
+          App.toast("Subject create error: " + err.message, "error");
+          return;
+        }
+      }
+    }
+
+    if (!targetSubjectId || targetSubjectId === "__custom__") {
+      App.toast("Kripya ek valid Subject select karein ya subject ka naam likhein.", "warning");
+      return;
+    }
+
     const body = {
       title: form.title.value.trim ? form.title.value.trim() : form.title.value,
-      subject_id: parseInt(form.subject_id.value),
+      subject_id: parseInt(targetSubjectId),
       unit_id: parseInt(form.unit_number.value), // maps to unit
       description: (form.description.value || "").trim(),
       file_url: fileUrl,
       is_important: form.is_important.checked,
-      is_published: form.is_published.checked
+      is_published: form.is_published.checked,
+      custom_subject_name: form.custom_subject_name?.value || "",
+      custom_subject_code: form.custom_subject_code?.value || ""
     };
 
     try {
@@ -1205,6 +1350,7 @@ const Admin = {
       if (res.ok) {
         App.closeActiveModal();
         App.toast(noteId ? "Note updated successfully!" : "New note published successfully!", "success");
+        await this.preloadDropdowns();
         this.renderNotesTab(document.getElementById("admin-tab-content"));
       } else {
         const err = await res.json();

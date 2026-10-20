@@ -966,6 +966,40 @@ def get_subject_detail(subject_id):
     conn.close()
     return subject
 
+def get_subject_by_code(code):
+    if not code:
+        return None
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT sub.*, sem.number as semester_number, sem.title as semester_title
+    FROM subjects sub
+    JOIN semesters sem ON sub.semester_id = sem.id
+    WHERE UPPER(sub.code) = ?
+    LIMIT 1
+    """, (code.strip().upper(),))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def get_or_create_subject(name, code=None, semester_id=1, branch="ME"):
+    if not name or not name.strip():
+        return None
+    name = name.strip()
+    if not code or not code.strip():
+        code = "".join(w[0] for w in name.split() if w).upper()
+        if not code:
+            code = "ME"
+    code = code.strip().upper()
+    existing = get_subject_by_code(code)
+    if existing:
+        return existing["id"]
+    sub_id = create_subject(int(semester_id or 1), name, code, branch or "ME", f"Subject: {name}")
+    if sub_id:
+        return sub_id
+    existing2 = get_subject_by_code(code)
+    return existing2["id"] if existing2 else None
+
 # ----------------- Notes Queries & CRUD -----------------
 
 def get_notes(semester_id=None, subject_id=None, unit_number=None, branch=None, search=None, only_published=True, status=None, note_id=None):

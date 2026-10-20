@@ -926,8 +926,15 @@ class handler(BaseHTTPRequestHandler):
                 if not title or len(title) < 3:
                     self.send_json({"error": "Note title must be at least 3 characters long."}, 400)
                     return
+                if str(subject_id) in ("__custom__", "custom", "None", "") or not subject_id or not str(subject_id).isdigit():
+                    custom_name = (payload.get("custom_subject_name") or payload.get("subject_name") or "").strip()
+                    if custom_name:
+                        custom_code = (payload.get("custom_subject_code") or payload.get("subject_code") or "ME").strip().upper()
+                        custom_sem = int(payload.get("custom_semester_id") or payload.get("semester_id") or 1)
+                        custom_branch = (payload.get("custom_branch") or payload.get("branch") or "ME").strip()
+                        subject_id = database.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
                 if not subject_id:
-                    self.send_json({"error": "Please select a valid subject."}, 400)
+                    self.send_json({"error": "Please select a valid subject or enter subject name."}, 400)
                     return
                 if not file_url:
                     self.send_json({"error": "PDF file or document link is required."}, 400)
@@ -1088,6 +1095,15 @@ class handler(BaseHTTPRequestHandler):
                         note_id = int(note_id_str)
 
                 subject_id = payload.get("subject_id")
+                # Direct text / custom subject support (e.g. ME)
+                if str(subject_id) in ("__custom__", "custom", "None", "") or not subject_id or not str(subject_id).isdigit():
+                    custom_name = (payload.get("custom_subject_name") or payload.get("subject_name") or "").strip()
+                    if custom_name:
+                        custom_code = (payload.get("custom_subject_code") or payload.get("subject_code") or "ME").strip().upper()
+                        custom_sem = int(payload.get("custom_semester_id") or payload.get("semester_id") or 1)
+                        custom_branch = (payload.get("custom_branch") or payload.get("branch") or "ME").strip()
+                        subject_id = database.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
+
                 unit_id = payload.get("unit_id")
                 title = payload.get("title", "").strip()
                 description = payload.get("description", "").strip() or "Detailed notes will be shared in PDF format shortly."
