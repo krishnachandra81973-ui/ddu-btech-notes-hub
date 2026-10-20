@@ -7,3 +7,5 @@ __pycache__/
 .git*
 README.md
 static/uploads/sample_exam_notes_*.pdf
+vendor/
+

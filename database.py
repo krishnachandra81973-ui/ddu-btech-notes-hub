@@ -1314,15 +1314,113 @@ def get_student_submissions(student_id):
     conn.close()
     return rows
 
-def verify_student_note(note_id, action="approve"):
+def verify_student_note(note_id, action="approve", apply_watermark=False, watermark_text=""):
     conn = get_connection()
     cursor = conn.cursor()
+    cursor.execute("SELECT * FROM notes WHERE id = ?", (note_id,))
+    note = cursor.fetchone()
+    if not note:
+        conn.close()
+        return False
+
+    note_dict = dict(note)
+    file_url = note_dict.get("file_url") or ""
+    new_file_url = file_url
+    new_file_name = note_dict.get("file_name") or "note.pdf"
+
+    if action == "approve" and apply_watermark and file_url:
+        try:
+            import pdf_watermark
+            pdf_bytes = None
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+
+            # Clean path to find file locally
+            clean_rel = file_url.replace("/static/uploads/", "").lstrip("/")
+            fname = os.path.basename(clean_rel)
+            candidates = [
+                os.path.join(base_dir, "static", "uploads", "notes", fname),
+                os.path.join(base_dir, "static", "uploads", fname),
+                os.path.join(base_dir, file_url.lstrip("/")),
+                os.path.join("/tmp", "uploads", "notes", fname),
+                os.path.join("/tmp", "uploads", fname),
+                os.path.join("/tmp", fname),
+            ]
+            for c in candidates:
+                if os.path.exists(c) and os.path.isfile(c) and os.path.getsize(c) > 0:
+                    try:
+                        with open(c, "rb") as f:
+                            pdf_bytes = f.read()
+                        if pdf_bytes:
+                            break
+                    except Exception:
+                        pass
+
+            if not pdf_bytes and file_url.startswith(("http://", "https://")):
+                try:
+                    import urllib.request
+                    req = urllib.request.Request(file_url, headers={"User-Agent": "Mozilla/5.0"})
+                    with urllib.request.urlopen(req, timeout=10) as r:
+                        pdf_bytes = r.read()
+                except Exception:
+                    pass
+
+            if not pdf_bytes:
+                # Check DB blob if available
+                blob_bytes, _ = get_uploaded_blob(fname)
+                if blob_bytes:
+                    pdf_bytes = blob_bytes
+
+            if pdf_bytes:
+                student_name = note_dict.get("contributed_by_name") or ""
+                note_title = note_dict.get("title") or ""
+                wm_bytes = pdf_watermark.watermark_pdf_bytes(
+                    pdf_bytes,
+                    watermark_text=watermark_text or "DDU B.TECH NOTES HUB — VERIFIED BY ADMIN",
+                    student_name=student_name,
+                    note_title=note_title
+                )
+
+                stem, ext = os.path.splitext(fname)
+                if not stem.endswith("_wm"):
+                    wm_fname = f"{stem}_wm{ext or '.pdf'}"
+                else:
+                    wm_fname = fname
+
+                target_dirs = [
+                    os.path.join(base_dir, "static", "uploads", "notes"),
+                    os.path.join(base_dir, "static", "uploads"),
+                    "/tmp/uploads/notes",
+                    "/tmp/uploads"
+                ]
+                for td in target_dirs:
+                    try:
+                        os.makedirs(td, exist_ok=True)
+                        with open(os.path.join(td, wm_fname), "wb") as f:
+                            f.write(wm_bytes)
+                    except Exception:
+                        pass
+
+                new_file_url = f"/static/uploads/notes/{wm_fname}"
+                new_file_name = wm_fname
+
+                try:
+                    import cloud_storage
+                    cloud_storage.commit_file_to_github(
+                        f"static/uploads/notes/{wm_fname}",
+                        wm_bytes,
+                        f"Add watermarked PDF for verified note {note_id}: {note_title}"
+                    )
+                except Exception:
+                    pass
+        except Exception as e:
+            print("[Database] Watermark processing exception during verification:", e)
+
     if action == "approve":
         cursor.execute("""
         UPDATE notes
-        SET is_verified = 1, is_published = 1, status = 'APPROVED'
+        SET is_verified = 1, is_published = 1, status = 'APPROVED', file_url = ?, file_name = ?
         WHERE id = ?
-        """, (note_id,))
+        """, (new_file_url, new_file_name, note_id))
     elif action == "reject":
         cursor.execute("""
         UPDATE notes
@@ -1330,6 +1428,8 @@ def verify_student_note(note_id, action="approve"):
         WHERE id = ?
         """, (note_id,))
     conn.commit()
+
+    updated_row = None
     try:
         cursor.execute("""
         SELECT n.*, sub.name as subject_name, sub.code as subject_code, sub.semester_id,
@@ -1342,11 +1442,12 @@ def verify_student_note(note_id, action="approve"):
         """, (note_id,))
         row = cursor.fetchone()
         if row:
-            notes_registry.record_custom_note(dict(row))
+            updated_row = dict(row)
+            notes_registry.record_custom_note(updated_row)
     except Exception:
         pass
     conn.close()
-    return True
+    return updated_row or {"id": note_id, "file_url": new_file_url, "status": "APPROVED" if action == "approve" else "REJECTED"}
 
 # ----------------- Subject CRUD -----------------
 

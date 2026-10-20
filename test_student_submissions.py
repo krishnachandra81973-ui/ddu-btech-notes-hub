@@ -2,6 +2,7 @@ import http.client
 import json
 import time
 import threading
+import os
 from http.server import ThreadingHTTPServer
 import server
 import database as db
@@ -49,14 +50,20 @@ def test_workflow():
     admin_token = json.loads(res.read().decode())["token"]
     print("✓ Admin login successful.")
 
+    # 2b. Get a valid subject
+    conn.request("GET", "/api/subjects")
+    res = conn.getresponse()
+    subjects = json.loads(res.read().decode())["subjects"]
+    target_subject_id = subjects[0]["id"]
+
     # 3. Student submits a new note
     submit_body = json.dumps({
         "title": f"Unit 2: Graph Theory Handwritten Notes {unique_ts}",
-        "subject_id": 16,
+        "subject_id": target_subject_id,
         "unit_id": 2,
         "description": "Clean handwritten notes covering Euler and Hamiltonian graphs.",
-        "file_url": "https://example.com/notes_unit2.pdf",
-        "file_name": "graph_theory_notes.pdf",
+        "file_url": "/static/uploads/notes/time_table_btech_50179394.pdf",
+        "file_name": "time_table_btech_50179394.pdf",
         "file_size": "2.4 MB"
     })
     conn.request("POST", "/api/student/notes/submit", submit_body, {
@@ -70,7 +77,7 @@ def test_workflow():
     print(f"✓ Student submitted note #{note_id}. Status: PENDING.")
 
     # 4. Verify note is NOT in public notes API
-    conn.request("GET", f"/api/notes?subject_id=16")
+    conn.request("GET", f"/api/notes?subject_id={target_subject_id}")
     res = conn.getresponse()
     notes = json.loads(res.read().decode())["notes"]
     matching = [n for n in notes if n["id"] == note_id]
@@ -96,10 +103,12 @@ def test_workflow():
     assert admin_note[0]["contributed_by_name"] == "Aman Verma"
     print("✓ Admin successfully sees student's pending note in verification queue.")
 
-    # 7. Admin 'Ticks' (Approves) the note
+    # 7. Admin 'Ticks' (Approves with Watermark) the note
     verify_body = json.dumps({
         "note_id": note_id,
-        "action": "approve"
+        "action": "approve",
+        "apply_watermark": True,
+        "watermark_text": "DDU B.TECH NOTES HUB — VERIFIED BY KESHAV NARAYAN"
     })
     conn.request("POST", "/api/admin/notes/verify", verify_body, {
         "Content-Type": "application/json",
@@ -107,17 +116,19 @@ def test_workflow():
     })
     res = conn.getresponse()
     assert res.status == 200, f"Admin verify failed: {res.status}"
-    print("✓ Admin successfully approved (ticked) the note.")
+    verify_resp = json.loads(res.read().decode())
+    print("✓ Admin successfully approved & watermarked the note:", verify_resp["message"])
 
     # 8. Note is now LIVE in public notes API
-    conn.request("GET", f"/api/notes?subject_id=16")
+    conn.request("GET", f"/api/notes?subject_id={target_subject_id}")
     res = conn.getresponse()
     public_notes = json.loads(res.read().decode())["notes"]
     now_live = [n for n in public_notes if n["id"] == note_id]
     assert len(now_live) == 1, "Approved note did not appear in public notes list!"
     assert now_live[0]["contributed_by_name"] == "Aman Verma"
     assert now_live[0]["is_verified"] == 1
-    print(f"✓ LIVE TEST PASSED: Approved note is now active on public student portal with Contributor '{now_live[0]['contributed_by_name']}'!")
+    assert "_wm" in now_live[0]["file_url"], f"Expected watermarked file_url, got {now_live[0]['file_url']}"
+    print(f"✓ LIVE TEST PASSED: Approved note is now active on public student portal with Watermark URL '{now_live[0]['file_url']}' and Contributor '{now_live[0]['contributed_by_name']}'!")
 
     # 9. Clean up test note
     conn.request("DELETE", f"/api/admin/notes/{note_id}", headers={"Authorization": f"Bearer {admin_token}"})

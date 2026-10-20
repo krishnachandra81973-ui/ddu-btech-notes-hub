@@ -970,7 +970,7 @@ class handler(BaseHTTPRequestHandler):
                 })
                 return
 
-            # 4c. Admin Verify Note ("Tick" / Approve or Reject)
+            # 4c. Admin Verify Note ("Tick" / Approve or Reject with optional Watermark)
             if path in ("/api/admin/notes/verify", "/api/admin/notes/approve"):
                 current_user = self.get_auth_user()
                 if not current_user or current_user.get("role") != "ADMIN":
@@ -979,6 +979,9 @@ class handler(BaseHTTPRequestHandler):
 
                 note_id = payload.get("note_id")
                 action = (payload.get("action") or "approve").lower()
+                apply_watermark = bool(payload.get("apply_watermark") or payload.get("watermark"))
+                watermark_text = (payload.get("watermark_text") or "").strip()
+
                 if not note_id:
                     self.send_json({"error": "Note ID is required."}, 400)
                     return
@@ -987,13 +990,21 @@ class handler(BaseHTTPRequestHandler):
                     return
 
                 try:
-                    database.verify_student_note(int(note_id), action=action)
+                    result = database.verify_student_note(
+                        int(note_id),
+                        action=action,
+                        apply_watermark=apply_watermark,
+                        watermark_text=watermark_text
+                    )
                 except Exception as e:
                     self.send_json({"error": f"Verification failed: {str(e)}"}, 500)
                     return
 
                 msg = "Note verified and published live to student portal!" if action == "approve" else "Note marked as rejected."
-                self.send_json({"success": True, "message": msg, "action": action, "note_id": note_id})
+                if apply_watermark and action == "approve":
+                    msg = "Note successfully watermarked and published live to student portal!"
+                file_url = result.get("file_url") if isinstance(result, dict) else None
+                self.send_json({"success": True, "message": msg, "action": action, "note_id": note_id, "file_url": file_url})
                 return
 
             if path in ("/api/admin/notes/bulk-delete", "/api/admin/notes/delete-multiple", "/api/admin/notes/bulk"):

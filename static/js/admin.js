@@ -569,9 +569,12 @@ const Admin = {
                           ` : `<span style="font-size: 0.8rem; color: var(--text-muted);">No file</span>`}
                         </td>
                         <td>
-                          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button onclick="Admin.verifySubmission(${s.id}, 'approve')" class="btn-primary btn-sm" style="background: #10b981; border-color: #10b981; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px;" title="Verify and publish immediately">
-                              ✓ Verify & Publish (Tick)
+                          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button onclick="Admin.openWatermarkModal(${s.id}, '${escapeHtml(s.title).replace(/'/g, "\\'")}', '${escapeHtml(s.contributed_by_name || 'Student').replace(/'/g, "\\'")}')" class="btn-primary btn-sm" style="background: linear-gradient(135deg, #0284c7 0%, #1e40af 100%); border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);" title="PDF me official watermark add karke publish karein">
+                              💧 Watermark &amp; Publish
+                            </button>
+                            <button onclick="Admin.verifySubmission(${s.id}, 'approve')" class="btn-secondary btn-sm" style="font-weight: 600; display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px;" title="Bina watermark ke direct publish karein">
+                              ✓ Direct OK
                             </button>
                             <button onclick="Admin.verifySubmission(${s.id}, 'reject')" class="btn-outline-danger btn-sm" style="font-weight: 600; display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px;" title="Reject submission">
                               ✕ Reject
@@ -592,7 +595,83 @@ const Admin = {
     }
   },
 
-  async verifySubmission(noteId, action) {
+  openWatermarkModal(noteId, title, studentName) {
+    const defaultText = `DDU B.Tech Notes Hub • Verified by Keshav Narayan`;
+    const modalHtml = `
+      <div class="modal-box" style="max-width: 540px;">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.4rem;">💧</span>
+            <div>
+              <h3 class="modal-title">Watermark Add Karein &amp; Publish Karein</h3>
+              <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">Student ke uploaded PDF me official university watermark add karein</p>
+            </div>
+          </div>
+          <button onclick="App.closeActiveModal()" class="modal-close-btn">✕</button>
+        </div>
+        <div class="modal-body" style="padding-top: 16px;">
+          <div style="background: rgba(30, 64, 175, 0.08); border-left: 3px solid var(--primary); padding: 12px 14px; border-radius: var(--radius-sm); margin-bottom: 16px;">
+            <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">
+              📄 ${escapeHtml(title)}
+            </div>
+            <div style="font-size: 0.76rem; color: var(--text-muted);">
+              Submitted by Student: <strong>${escapeHtml(studentName || 'Student Contributor')}</strong>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" style="font-weight: 700;">Watermark Text (Diagonal Center):</label>
+            <input type="text" id="admin-watermark-text-input" value="${escapeHtml(defaultText)}" class="form-control" placeholder="e.g. DDU B.Tech Notes Hub • Verified by Keshav Narayan">
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 6px;">Quick Presets / Templates (Click to Select):</label>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button type="button" onclick="document.getElementById('admin-watermark-text-input').value = 'DDU B.Tech Notes Hub • Verified by Keshav Narayan'" class="btn-secondary btn-sm" style="font-size: 0.72rem; padding: 4px 8px;">
+                ⭐ Keshav Narayan
+              </button>
+              <button type="button" onclick="document.getElementById('admin-watermark-text-input').value = 'DDU B.Tech Notes Hub — Official Study Portal'" class="btn-secondary btn-sm" style="font-size: 0.72rem; padding: 4px 8px;">
+                🏛️ Official Portal
+              </button>
+              <button type="button" onclick="document.getElementById('admin-watermark-text-input').value = 'Deen Dayal Upadhyaya Gorakhpur University'" class="btn-secondary btn-sm" style="font-size: 0.72rem; padding: 4px 8px;">
+                🎓 DDU University
+              </button>
+            </div>
+          </div>
+
+          <div style="background: var(--bg-main); border: 1px dashed var(--border); border-radius: var(--radius-sm); padding: 12px; font-size: 0.78rem; color: var(--text-muted); line-height: 1.5;">
+            <div style="font-weight: 700; color: var(--text-main); margin-bottom: 4px;">✨ Automatic 3-Layer PDF Branding:</div>
+            <ul style="margin: 0; padding-left: 18px;">
+              <li><strong>Top Header Bar:</strong> DDU B.Tech Notes Hub + Note Title + Contributed by ${escapeHtml(studentName || 'Student')}</li>
+              <li><strong>Center Page:</strong> Semi-transparent diagonal watermark text</li>
+              <li><strong>Bottom Footer:</strong> Official Portal Link &amp; Free Educational Access stamp</li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" onclick="App.closeActiveModal()" class="btn-secondary">Cancel</button>
+          <button type="button" id="admin-confirm-watermark-btn" onclick="Admin.submitVerificationWithWatermark(${noteId})" class="btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+            <span>💧</span> Apply Watermark &amp; Publish Live
+          </button>
+        </div>
+      </div>
+    `;
+    App.showGenericModal(modalHtml);
+  },
+
+  async submitVerificationWithWatermark(noteId) {
+    const textInput = document.getElementById("admin-watermark-text-input");
+    const wmText = textInput ? textInput.value.trim() : "DDU B.TECH NOTES HUB — VERIFIED BY ADMIN";
+    const btn = document.getElementById("admin-confirm-watermark-btn");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Applying Watermark & Publishing...";
+    }
+    await this.verifySubmission(noteId, 'approve', true, wmText);
+    App.closeActiveModal();
+  },
+
+  async verifySubmission(noteId, action, applyWatermark = false, watermarkText = "") {
     if (action === 'reject') {
       if (!confirm("Are you sure you want to reject this student note submission?")) return;
     }
@@ -600,11 +679,16 @@ const Admin = {
       const res = await fetch("/api/admin/notes/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...Auth.getAuthHeaders() },
-        body: JSON.stringify({ note_id: noteId, action })
+        body: JSON.stringify({
+          note_id: noteId,
+          action,
+          apply_watermark: applyWatermark,
+          watermark_text: watermarkText
+        })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        App.toast(action === 'approve' ? "✓ Note verified and published live to the portal!" : "Submission rejected.", action === 'approve' ? "success" : "info");
+        App.toast(data.message || (action === 'approve' ? "✓ Note verified and published live to the portal!" : "Submission rejected."), action === 'approve' ? "success" : "info");
         const content = document.getElementById("admin-tab-content");
         if (content) {
           await this.renderSubmissionsTab(content);

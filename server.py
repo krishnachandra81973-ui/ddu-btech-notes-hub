@@ -840,15 +840,26 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 body = self.read_json_body()
                 note_id = body.get("note_id")
                 action = (body.get("action") or "approve").lower()
+                apply_watermark = bool(body.get("apply_watermark") or body.get("watermark"))
+                watermark_text = (body.get("watermark_text") or "").strip()
+
                 if not note_id:
                     self.send_error_json("note_id is required", status=400)
                     return
                 if action not in ("approve", "reject"):
                     self.send_error_json("Action must be 'approve' or 'reject'.", status=400)
                     return
-                db.verify_student_note(int(note_id), action=action)
+                result = db.verify_student_note(
+                    int(note_id),
+                    action=action,
+                    apply_watermark=apply_watermark,
+                    watermark_text=watermark_text
+                )
                 msg = "Note verified and published live to student portal!" if action == "approve" else "Note marked as rejected."
-                self.send_json({"success": True, "message": msg, "action": action, "note_id": note_id})
+                if apply_watermark and action == "approve":
+                    msg = "Note successfully watermarked and published live to student portal!"
+                file_url = result.get("file_url") if isinstance(result, dict) else None
+                self.send_json({"success": True, "message": msg, "action": action, "note_id": note_id, "file_url": file_url})
                 return
 
             if path in ("/api/admin/notes/bulk-delete", "/api/admin/notes/delete-multiple", "/api/admin/notes/bulk"):
