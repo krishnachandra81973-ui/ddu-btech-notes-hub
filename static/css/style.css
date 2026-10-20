@@ -2408,6 +2408,135 @@ body.app-installed #btn-bottom-updates {
   .footer-grid {
     grid-template-columns: 1fr !important;
   }
+
+  /* ==================== Profile / Student Dashboard Mobile Fix ==================== */
+  #dashboard-two-col,
+  .dashboard-two-col {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+  .dashboard-welcome-card {
+    padding: 20px 16px !important;
+  }
+  .dashboard-welcome-card h1 {
+    font-size: 1.45rem !important;
+  }
+  .dashboard-card {
+    padding: 18px 14px !important;
+    margin-bottom: 20px !important;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* ==================== Notes Section Mobile Card & Toolbar Fix ==================== */
+  .note-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 14px 12px !important;
+  }
+  .note-info {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+  }
+  .note-actions {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    border-top: 1px solid var(--border) !important;
+    padding-top: 10px !important;
+    margin-top: 4px !important;
+    flex-wrap: nowrap !important;
+  }
+  .note-actions button,
+  .note-actions a {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 8px 6px !important;
+    font-size: 0.8rem !important;
+    white-space: nowrap !important;
+  }
+  .note-actions button[title*="bookmark"],
+  .note-actions button[title*="Bookmark"],
+  .note-actions button[title*="Save"],
+  .note-actions button[title*="save"],
+  .note-actions button[onclick*="Bookmark"],
+  .note-actions button[onclick*="removeBookmark"],
+  .note-actions button[onclick*="toggleBookmark"] {
+    flex: 0 0 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    padding: 0 !important;
+    height: 34px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* ==================== About Section Mobile Responsive Polish ==================== */
+  .dev-header-banner {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 24px 16px !important;
+    gap: 14px !important;
+  }
+  .dev-photo-ring {
+    width: 84px !important;
+    height: 84px !important;
+  }
+  .dev-hero-name {
+    font-size: 1.5rem !important;
+    justify-content: center !important;
+  }
+  .dev-hero-title,
+  .dev-hero-sub {
+    text-align: center !important;
+  }
+  .dev-skill-tags-group {
+    justify-content: center !important;
+  }
+  .dev-body-content {
+    padding: 20px 14px !important;
+  }
+  .dev-quote-box {
+    padding: 16px 14px !important;
+    font-size: 0.92rem !important;
+  }
+  .dev-linkedin-card {
+    padding: 18px 14px !important;
+  }
+  .dev-linkedin-card a.btn-primary {
+    width: 100% !important;
+    justify-content: center !important;
+    margin-top: 10px !important;
+  }
+  .dev-inquiry-grid,
+  .dev-pillars-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .dept-showcase-box {
+    padding: 20px 14px !important;
+    margin: 20px 0 !important;
+  }
+  .dept-stats-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  .lab-grid,
+  .official-syllabus-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
 }
 
 /* Extra Small Phones (< 480px) */
@@ -2455,6 +2584,14 @@ body.app-installed #btn-bottom-updates {
     flex-direction: column !important;
     gap: 10px !important;
     text-align: center !important;
+  }
+  .note-actions button,
+  .note-actions a {
+    padding: 7px 5px !important;
+    font-size: 0.76rem !important;
+  }
+  .dept-stats-row {
+    grid-template-columns: 1fr !important;
   }
 }
 

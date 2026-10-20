@@ -55,7 +55,7 @@ const Dashboard = {
     container.innerHTML = `
       <div class="container" style="padding-top: 40px; padding-bottom: 60px;">
         <!-- Welcome Banner -->
-        <div style="background: linear-gradient(135deg, rgba(30, 64, 175, 0.12), rgba(14, 165, 233, 0.08)); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 30px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+        <div class="dashboard-welcome-card" style="background: linear-gradient(135deg, rgba(30, 64, 175, 0.12), rgba(14, 165, 233, 0.08)); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 30px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
           <div>
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
               <span class="hero-badge" style="margin-bottom: 0;">Student Portal</span>
@@ -123,11 +123,11 @@ const Dashboard = {
         </div>
 
         <!-- Main Dashboard 2-Column Grid -->
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;" id="dashboard-two-col">
+        <div class="dashboard-two-col" style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;" id="dashboard-two-col">
           <!-- Left Column: Bookmarks & History -->
           <div>
             <!-- Bookmarked Notes -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; margin-bottom: 30px; box-shadow: var(--shadow-sm);">
+            <div class="dashboard-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; margin-bottom: 30px; box-shadow: var(--shadow-sm);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
                 <h3 style="font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
                   <span>⭐</span> Saved / Bookmarked Notes
@@ -181,7 +181,7 @@ const Dashboard = {
             </div>
 
             <!-- My Contributed Notes Section -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; margin-bottom: 30px; box-shadow: var(--shadow-sm);">
+            <div class="dashboard-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; margin-bottom: 30px; box-shadow: var(--shadow-sm);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; flex-wrap: wrap; gap: 10px;">
                 <div>
                   <h3 style="font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
@@ -239,7 +239,7 @@ const Dashboard = {
             </div>
 
             <!-- Recently Viewed Notes -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; box-shadow: var(--shadow-sm);">
+            <div class="dashboard-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; box-shadow: var(--shadow-sm);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
                 <h3 style="font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
                   <span>🕒</span> Recently Viewed Notes
@@ -281,7 +281,7 @@ const Dashboard = {
           <!-- Right Column: Campus Notices & Quick Actions -->
           <div>
             <!-- Latest Updates Card -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; margin-bottom: 30px; box-shadow: var(--shadow-sm);">
+            <div class="dashboard-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; margin-bottom: 30px; box-shadow: var(--shadow-sm);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
                 <h3 style="font-size: 1.15rem; font-weight: 700;">📢 Campus Updates</h3>
                 <a href="#updates" style="font-size: 0.82rem; color: var(--primary); font-weight: 600;">View All →</a>
@@ -306,7 +306,7 @@ const Dashboard = {
             </div>
 
             <!-- Profile Info Card -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; box-shadow: var(--shadow-sm);">
+            <div class="dashboard-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; box-shadow: var(--shadow-sm);">
               <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
                 👤 Academic Profile
               </h3>

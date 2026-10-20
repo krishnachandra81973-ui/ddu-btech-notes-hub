@@ -2744,7 +2744,7 @@ const App = {
                   </h4>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; font-size: 0.86rem; color: var(--text-muted); line-height: 1.6;">
+                <div class="dev-inquiry-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; font-size: 0.86rem; color: var(--text-muted); line-height: 1.6;">
                   <div style="display: flex; align-items: flex-start; gap: 10px; background: var(--bg-main); padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
                     <span style="color: #0a66c2; font-weight: 800; font-size: 1.1rem; line-height: 1;">💻</span>
                     <div>

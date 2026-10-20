@@ -1,5 +1,5 @@
 // Service Worker for DDU B.Tech Notes Hub PWA
-const CACHE_NAME = 'ddu-notes-pwa-v18';
+const CACHE_NAME = 'ddu-notes-pwa-v19';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
