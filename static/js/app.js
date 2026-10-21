@@ -57,17 +57,13 @@ const App = {
   // ------------------- PWA & Offline Support -------------------
   isAppOpen() {
     try {
+      // User Requirement: "web per hamesha rakho download hone ka kyonki jiske me download hoga vo to vaise bhi app per kholega"
+      // Only return true when running STRICTLY inside the dedicated standalone PWA app window.
       const isStandalone = (window.matchMedia && (
           window.matchMedia('(display-mode: standalone)').matches 
-          || window.matchMedia('(display-mode: fullscreen)').matches 
-          || window.matchMedia('(display-mode: minimal-ui)').matches 
-          || window.matchMedia('(display-mode: window-controls-overlay)').matches
+          || window.matchMedia('(display-mode: fullscreen)').matches
         ))
-        || window.navigator.standalone === true 
-        || (document.referrer && document.referrer.includes('android-app://'))
-        || window.location.search.includes('source=pwa')
-        || window.location.search.includes('mode=standalone')
-        || window.location.search.includes('mode=app');
+        || window.navigator.standalone === true;
       return Boolean(isStandalone);
     } catch (e) {
       return false;
@@ -75,9 +71,7 @@ const App = {
   },
 
   isAppInstalled() {
-    // User Requirement: "download ke lie home page per hamesha option aaye bus jab app open ho tab na aaye"
-    // In web browsers, ALWAYS return false so download cards & buttons are permanently available.
-    // Return true ONLY when the user is actively running inside the opened standalone app.
+    // In web browsers, ALWAYS return false so download cards & buttons are permanently available for first-time or re-install.
     return this.isAppOpen();
   },
 
@@ -89,7 +83,7 @@ const App = {
       document.body.classList.remove('app-installed');
     }
 
-    // Hide or show all install cards and promotional banners
+    // User Requirement: Web browser me download option hamesha visible rahe
     document.querySelectorAll(".pwa-install-card, #pwa-install-card").forEach(el => {
       el.style.display = isAppRunning ? "none" : "flex";
     });
@@ -114,17 +108,14 @@ const App = {
     const footerInstall = document.getElementById("footer-install-link");
     if (footerInstall) footerInstall.style.display = isAppRunning ? "none" : "";
 
-    // Mobile bottom navigation: Switch between App Install and Updates tab
+    // Mobile bottom navigation: In web browsers, ALWAYS show App Install button
     const bottomInstall = document.getElementById("btn-bottom-install");
     const bottomUpdates = document.getElementById("btn-bottom-updates");
-    if (bottomInstall && bottomUpdates) {
-      if (isAppRunning) {
-        bottomInstall.style.display = "none";
-        bottomUpdates.style.display = "flex";
-      } else {
-        bottomInstall.style.display = "flex";
-        bottomUpdates.style.display = "none";
-      }
+    if (bottomInstall) {
+      bottomInstall.style.display = isAppRunning ? "none" : "flex";
+    }
+    if (bottomUpdates) {
+      bottomUpdates.style.display = isAppRunning ? "flex" : "none";
     }
   },
 
@@ -3819,22 +3810,66 @@ const App = {
 
   checkPhoneNotificationPermission() {
     if (!("Notification" in window)) return;
+    if (Notification.permission === "granted") return;
+
     if (Notification.permission === "default") {
+      // Pop up notification modal after 1.2s on page visit
       setTimeout(() => {
-        if (Notification.permission === "default" && !document.getElementById("phone-notification-prompt-banner")) {
-          const banner = document.createElement("div");
-          banner.id = "phone-notification-prompt-banner";
-          banner.style.cssText = "position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); z-index: 99999; background: linear-gradient(135deg, #059669, #10b981); color: #fff; padding: 10px 18px; border-radius: 99px; box-shadow: 0 10px 25px rgba(16,185,129,0.45); display: flex; align-items: center; gap: 10px; max-width: 92vw; cursor: pointer;";
-          banner.onclick = () => this.enablePhoneNotifications();
-          banner.innerHTML = `
-            <span style="font-size: 1.25rem;">🔔</span>
-            <span style="font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Phone status bar me live alerts enable karein</span>
-            <span style="background: rgba(255,255,255,0.25); padding: 4px 10px; border-radius: 99px; font-size: 0.76rem; font-weight: 800; white-space: nowrap;">Allow</span>
-            <button onclick="event.stopPropagation(); this.closest('#phone-notification-prompt-banner').remove();" style="background: none; border: none; color: rgba(255,255,255,0.8); font-size: 1.1rem; cursor: pointer; padding: 0 4px; line-height: 1;">&times;</button>
-          `;
-          document.body.appendChild(banner);
+        if (Notification.permission === "default") {
+          const modal = document.getElementById("notification-permission-modal");
+          let dismissed = false;
+          try { dismissed = Boolean(sessionStorage.getItem("notif_modal_dismissed")); } catch(e) {}
+          if (modal && !dismissed) {
+            modal.style.display = "flex";
+          } else {
+            this.showNotificationBottomPill();
+          }
         }
-      }, 2000);
+      }, 1200);
+    }
+  },
+
+  dismissNotificationModal() {
+    const modal = document.getElementById("notification-permission-modal");
+    if (modal) modal.style.display = "none";
+    try { sessionStorage.setItem("notif_modal_dismissed", "1"); } catch (e) {}
+    this.showNotificationBottomPill();
+  },
+
+  showNotificationBottomPill() {
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "default") return;
+    if (document.getElementById("phone-notification-prompt-banner")) return;
+    const banner = document.createElement("div");
+    banner.id = "phone-notification-prompt-banner";
+    banner.style.cssText = "position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); z-index: 99999; background: linear-gradient(135deg, #059669, #10b981); color: #fff; padding: 10px 18px; border-radius: 99px; box-shadow: 0 10px 25px rgba(16,185,129,0.45); display: flex; align-items: center; gap: 10px; max-width: 92vw; cursor: pointer;";
+    banner.onclick = () => this.enablePhoneNotifications();
+    banner.innerHTML = `
+      <span style="font-size: 1.25rem;">🔔</span>
+      <span style="font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Phone status bar me live alerts enable karein</span>
+      <span style="background: rgba(255,255,255,0.25); padding: 4px 10px; border-radius: 99px; font-size: 0.76rem; font-weight: 800; white-space: nowrap;">Allow</span>
+      <button onclick="event.stopPropagation(); this.closest('#phone-notification-prompt-banner').remove();" style="background: none; border: none; color: rgba(255,255,255,0.8); font-size: 1.1rem; cursor: pointer; padding: 0 4px; line-height: 1;">&times;</button>
+    `;
+    document.body.appendChild(banner);
+  },
+
+  handleBellClick() {
+    if (!("Notification" in window)) {
+      this.toggleAnnouncementCenter();
+      return;
+    }
+    if (Notification.permission === "default") {
+      const modal = document.getElementById("notification-permission-modal");
+      if (modal) {
+        modal.style.display = "flex";
+      } else {
+        this.enablePhoneNotifications();
+      }
+    } else if (Notification.permission === "denied") {
+      this.toast("⚠️ Notification blocked hai. Allow karne ke liye browser URL bar me 🔒 icon -> Permissions me Notifications Allow karein.", "warning");
+      this.toggleAnnouncementCenter();
+    } else {
+      this.toggleAnnouncementCenter();
     }
   },
 
@@ -3843,10 +3878,14 @@ const App = {
       this.toast("This browser does not support web notifications.", "warning");
       return;
     }
+    const modal = document.getElementById("notification-permission-modal");
+    if (modal) modal.style.display = "none";
+    const banner = document.getElementById("phone-notification-prompt-banner");
+    if (banner) banner.remove();
+
     try {
       const permission = await Notification.requestPermission();
-      const banner = document.getElementById("phone-notification-prompt-banner");
-      if (banner) banner.remove();
+      this.updatePushPermissionUi();
 
       if (permission === "granted") {
         this.playNotificationSound();
@@ -3865,7 +3904,7 @@ const App = {
           }
         }
       } else {
-        this.toast("Notification permission blocked hai. Browser settings se enable karein.", "warning");
+        this.toast("⚠️ Notification permission blocked hai. Browser settings se enable karein.", "warning");
       }
     } catch (e) {
       console.warn("Enable notifications error:", e);
@@ -4163,26 +4202,7 @@ const App = {
   },
 
   async requestPushNotificationPermission() {
-    if (!("Notification" in window)) {
-      this.toast("Desktop/mobile web notifications are not supported in this browser.", "warning");
-      return;
-    }
-    try {
-      const permission = await Notification.requestPermission();
-      if (permission === "granted") {
-        this.toast("🔔 Notifications enabled! You will now receive instant push alerts for exam & campus updates.", "success");
-        this.updatePushPermissionUi();
-        new Notification("🎉 DDU Campus Alerts Enabled", {
-          body: "You're all set! Important exam notices and syllabus circulars will now be delivered to your device.",
-          icon: "/logo.png"
-        });
-      } else {
-        this.toast("Notifications permission was denied. You can enable it in your browser settings.", "warning");
-        this.updatePushPermissionUi();
-      }
-    } catch (e) {
-      console.warn("Notification request error:", e);
-    }
+    return this.enablePhoneNotifications();
   },
 
   updatePushPermissionUi() {

@@ -1637,21 +1637,8 @@ button {
    PWA Installation & Multi-Device Mobile/Tablet/Laptop Enhancements
    ========================================================================== */
 
-/* Clean Interface when App is Installed (Hides all download prompts automatically) */
-body.app-installed .pwa-install-card,
-body.app-installed #pwa-install-card,
-body.app-installed #btn-nav-install,
-body.app-installed #nav-install-link,
-body.app-installed #sub-nav-install-link,
-body.app-installed #drawer-install-link,
-body.app-installed #footer-install-link,
-body.app-installed #btn-bottom-install {
-  display: none !important;
-}
-
-body.app-installed #btn-bottom-updates {
-  display: flex !important;
-}
+/* User Requirement: Web par download option hamesha visible rahe taaki app delete hone par dobara download kar sakein */
+/* Hide download banners ONLY when running strictly inside installed Standalone app window */
 
 /* Automatically hide all install prompts when running inside the standalone App window */
 @media all and (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui), (display-mode: window-controls-overlay) {
