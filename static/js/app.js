@@ -3791,48 +3791,98 @@ const App = {
     }
   },
 
-  showUpdateToast(u) {
-    const existing = document.getElementById("toast-new-update-alert");
+  playNotificationSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      // WhatsApp style dual-frequency melodic chime
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.38);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.38);
+    } catch (e) {}
+  },
+
+  showWhatsAppStyleToast(u) {
+    const existing = document.getElementById("whatsapp-student-toast-banner");
     if (existing) existing.remove();
 
+    this.playNotificationSound();
+    if (navigator.vibrate) {
+      try { navigator.vibrate([200, 100, 200]); } catch (e) {}
+    }
+
     const toast = document.createElement("div");
-    toast.id = "toast-new-update-alert";
-    toast.className = "toast-update-alert";
+    toast.id = "whatsapp-student-toast-banner";
+    toast.className = "whatsapp-student-toast";
+    toast.onclick = (e) => {
+      if (e.target.closest('.toast-close-btn')) return;
+      this.toggleAnnouncementCenter();
+      toast.classList.remove('active');
+      setTimeout(() => toast.remove(), 400);
+    };
+
+    const sender = u.title || "DDU Notes Hub";
+    const bodyText = u.short_description || u.full_details || "New message received.";
+
     toast.innerHTML = `
-      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <span style="font-size: 1.2rem;">📢</span>
-          <span style="font-size: 0.82rem; font-weight: 800; color: var(--primary);">New Campus Notice</span>
+      <div class="whatsapp-avatar-box">
+        <img src="/logo.png" alt="DDU Avatar" onerror="this.src='/static/favicon.png'">
+        <span class="whatsapp-online-dot"></span>
+      </div>
+      <div class="whatsapp-notify-content">
+        <div class="whatsapp-notify-header">
+          <div class="whatsapp-notify-sender">
+            ${escapeHtml(sender)}
+            <span class="whatsapp-notify-badge">Message</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="whatsapp-notify-time">now</span>
+            <button class="toast-close-btn" onclick="event.stopPropagation(); this.closest('.whatsapp-student-toast').classList.remove('active'); setTimeout(() => this.closest('.whatsapp-student-toast').remove(), 400);" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0 4px;">&times;</button>
+          </div>
         </div>
-        <button onclick="this.closest('.toast-update-alert').remove()" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: var(--text-muted);">&times;</button>
-      </div>
-      <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); line-height: 1.3;">
-        ${escapeHtml(u.title || 'New Announcement')}
-      </div>
-      <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0; line-height: 1.35;">
-        ${escapeHtml(u.short_description || '')}
-      </p>
-      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
-        <button onclick="App.toggleAnnouncementCenter(); this.closest('.toast-update-alert').remove();" class="btn-primary btn-xs" style="font-weight: 700; padding: 4px 10px;">
-          View Details →
-        </button>
+        <div class="whatsapp-notify-text">
+          ${escapeHtml(bodyText)}
+        </div>
       </div>
     `;
+
     document.body.appendChild(toast);
+    // Smooth entrance
+    requestAnimationFrame(() => {
+      toast.classList.add('active');
+    });
+
+    // Auto dismiss after 8.5 seconds
     setTimeout(() => {
-      if (toast && toast.parentNode) toast.remove();
-    }, 9000);
+      if (toast && toast.parentNode) {
+        toast.classList.remove('active');
+        setTimeout(() => toast.remove(), 450);
+      }
+    }, 8500);
+  },
+
+  showUpdateToast(u) {
+    this.showWhatsAppStyleToast(u);
   },
 
   triggerWebNotification(u) {
     try {
+      this.playNotificationSound();
       if (!("Notification" in window) || Notification.permission !== "granted") return;
-      const title = `📢 DDU Notice: ${u.title}`;
+      const title = u.title || `📢 DDU Notes Hub`;
       const options = {
-        body: u.short_description || u.category || 'New academic update posted on DDU Notes Hub.',
+        body: u.short_description || u.full_details || u.category || 'New message posted on DDU Notes Hub.',
         icon: '/logo.png',
         badge: '/static/favicon.png',
         tag: 'ddu-update-' + (u.id || Date.now()),
+        vibrate: [200, 100, 200],
         requireInteraction: false
       };
 

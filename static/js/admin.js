@@ -64,6 +64,9 @@ const Admin = {
           <button onclick="Admin.switchTab('updates')" class="admin-nav-item ${this.currentTab === 'updates' ? 'active' : ''}">
             📢 Daily Updates & Notices
           </button>
+          <button onclick="Admin.switchTab('instant-push')" class="admin-nav-item ${this.currentTab === 'instant-push' ? 'active' : ''}" style="color: #10b981; font-weight: 700; background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10b981;">
+            💬 Push Web Notification
+          </button>
           <button onclick="Admin.switchTab('students')" class="admin-nav-item ${this.currentTab === 'students' ? 'active' : ''}">
             🎓 Student Accounts
           </button>
@@ -136,6 +139,8 @@ const Admin = {
       await this.renderPyqsTab(content);
     } else if (this.currentTab === "updates") {
       await this.renderUpdatesTab(content);
+    } else if (this.currentTab === "instant-push") {
+      await this.renderInstantPushTab(content);
     } else if (this.currentTab === "students") {
       await this.renderStudentsTab(content);
     } else if (this.currentTab === "files") {
@@ -902,9 +907,14 @@ const Admin = {
               <h2 style="font-size: 1.6rem; font-weight: 800;">Campus Notices & Daily Updates</h2>
               <p style="color: var(--text-muted); font-size: 0.88rem;">Publish exam timetables, admit card notices, syllabus changes, and university alerts.</p>
             </div>
-            <button onclick="Admin.openAddUpdateModal()" class="btn-primary" style="font-weight: 800; font-size: 0.95rem; padding: 10px 20px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
-              🚀 + Push New Notice
-            </button>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <button onclick="Admin.openInstantPushModal()" class="btn-primary" style="font-weight: 800; font-size: 0.95rem; padding: 10px 20px; background: linear-gradient(135deg, #10b981, #059669); border-color: #059669; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35); display: inline-flex; align-items: center; gap: 8px;">
+                💬 Push WhatsApp Notification
+              </button>
+              <button onclick="Admin.openAddUpdateModal()" class="btn-secondary" style="font-weight: 700; font-size: 0.95rem; padding: 10px 18px;">
+                📝 Full Notice Form
+              </button>
+            </div>
           </div>
 
           <!-- GitHub Push & Actions Helper Banner -->
@@ -2417,6 +2427,380 @@ const Admin = {
       }
     } catch (e) {
       App.toast(e.message, "error");
+    }
+  },
+
+  // ------------------- Instant WhatsApp-Style Web Notification -------------------
+  async renderInstantPushTab(container) {
+    container.innerHTML = `
+      <div style="max-width: 920px; margin: 0 auto;">
+        <div style="margin-bottom: 24px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(16,185,129,0.15); color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 12px rgba(16,185,129,0.25);">
+              💬
+            </div>
+            <div>
+              <h2 style="font-size: 1.6rem; font-weight: 800; margin: 0; color: var(--text-main);">Instant Web Notification Studio</h2>
+              <span style="font-size: 0.84rem; color: var(--text-muted);">Push instant pop-up notifications directly to students' devices like a WhatsApp message alert.</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px; align-items: start;">
+          <!-- Left Column: Notification Form -->
+          <div style="background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 24px; box-shadow: var(--shadow-sm);">
+            <form onsubmit="Admin.broadcastInstantNotification(event)">
+              <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label" style="font-weight: 700; font-size: 0.88rem; display: flex; justify-content: space-between;">
+                  <span>Notification Sender / Title</span>
+                  <span style="font-size: 0.74rem; font-weight: 400; color: var(--text-muted);">Shows as WhatsApp contact / app name</span>
+                </label>
+                <input type="text" id="instant-msg-title" value="DDU Notes Hub" class="form-control" style="font-weight: 600;" placeholder="e.g. DDU Notes Hub or Dean Office" oninput="Admin.updateInstantNotificationPreview()" required>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 14px;">
+                <label class="form-label" style="font-weight: 700; font-size: 0.88rem; display: flex; justify-content: space-between;">
+                  <span>Message Text *</span>
+                  <span style="font-size: 0.74rem; font-weight: 400; color: var(--text-muted);">The text that pops up on student screens</span>
+                </label>
+                <textarea id="instant-msg-text" rows="4" class="form-control" placeholder="Type notification message here... e.g. Kal college me Diwali holiday rahegi. Sabhi log time table check kar lein." style="font-size: 0.92rem; line-height: 1.45;" oninput="Admin.updateInstantNotificationPreview()" required></textarea>
+              </div>
+
+              <!-- Quick Templates -->
+              <div style="margin-bottom: 18px;">
+                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">
+                  ⚡ Quick Message Templates (Click to fill):
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <button type="button" class="quick-template-chip" onclick="Admin.applyQuickTemplate('Holiday', 'Important: University / Institute will remain closed tomorrow due to official holiday.')">
+                    🏖️ Holiday Alert
+                  </button>
+                  <button type="button" class="quick-template-chip" onclick="Admin.applyQuickTemplate('Exam', 'B.Tech Odd Semester examination schedule and exam forms are live on the portal. Check now.')">
+                    📝 Exam Schedule
+                  </button>
+                  <button type="button" class="quick-template-chip" onclick="Admin.applyQuickTemplate('Result', 'Even Semester regular & carry-over results have been declared. Check your marks now!')">
+                    🎯 Result Declared
+                  </button>
+                  <button type="button" class="quick-template-chip" onclick="Admin.applyQuickTemplate('Notes', 'New Unit 3 & 4 Handwritten Notes and PYQs uploaded for CSE & IT students.')">
+                    📖 New Notes Out
+                  </button>
+                </div>
+              </div>
+
+              <!-- Sound & Vibration Options -->
+              <div style="padding: 12px 14px; background: rgba(16,185,129,0.06); border: 1px dashed rgba(16,185,129,0.3); border-radius: var(--radius-sm); margin-bottom: 20px;">
+                <div style="font-size: 0.82rem; font-weight: 700; color: #059669; margin-bottom: 6px;">
+                  🔔 WhatsApp-Style Alerts Enabled:
+                </div>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; cursor: pointer; margin-bottom: 6px;">
+                  <input type="checkbox" id="instant-opt-sound" checked style="accent-color: #10b981;">
+                  <span>🔊 Play WhatsApp Chime Sound on student device</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; cursor: pointer;">
+                  <input type="checkbox" id="instant-opt-vibrate" checked style="accent-color: #10b981;">
+                  <span>📳 Mobile Vibration Buzz [200ms, 100ms, 200ms]</span>
+                </label>
+              </div>
+
+              <!-- Action Buttons -->
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button type="button" onclick="Admin.testInstantNotification()" class="btn-secondary" style="font-weight: 700; padding: 11px 18px; display: inline-flex; align-items: center; gap: 6px;">
+                  🔔 Test on My Screen
+                </button>
+                <button type="submit" id="instant-broadcast-btn" class="btn-primary" style="flex: 1; min-width: 180px; font-weight: 800; font-size: 1rem; padding: 11px 22px; background: linear-gradient(135deg, #10b981, #059669); border-color: #059669; box-shadow: 0 4px 14px rgba(16,185,129,0.35); display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                  🚀 Broadcast Notification Now
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Right Column: Live Mobile Notification Preview -->
+          <div>
+            <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; letter-spacing: 0.5px;">
+              📱 Live Device Notification Preview:
+            </div>
+
+            <!-- Mock Smartphone Top Bar -->
+            <div style="background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border-radius: 28px; padding: 18px 14px 28px; box-shadow: 0 20px 45px rgba(0,0,0,0.3); border: 2px solid #334155; position: relative;">
+              <!-- Phone Speaker & Camera Notch -->
+              <div style="width: 80px; height: 16px; background: #000; border-radius: 10px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;">
+                <div style="width: 8px; height: 8px; background: #1e293b; border-radius: 50%;"></div>
+              </div>
+
+              <!-- Incoming WhatsApp Banner -->
+              <div class="whatsapp-notify-preview" id="live-whatsapp-preview" style="background: rgba(255, 255, 255, 0.98); color: #0f172a; border-radius: 16px;">
+                <div class="whatsapp-avatar-box">
+                  <img src="/logo.png" alt="DDU Logo" onerror="this.src='/static/favicon.png'">
+                  <span class="whatsapp-online-dot"></span>
+                </div>
+                <div class="whatsapp-notify-content">
+                  <div class="whatsapp-notify-header">
+                    <div class="whatsapp-notify-sender" id="preview-notify-sender" style="color: #0f172a;">
+                      DDU Notes Hub
+                      <span class="whatsapp-notify-badge" style="background: rgba(16,185,129,0.15); color: #059669;">now</span>
+                    </div>
+                    <span style="font-size: 0.85rem;">💬</span>
+                  </div>
+                  <div class="whatsapp-notify-text" id="preview-notify-text" style="color: #334155;">
+                    Type your message text on the left to see live preview here...
+                  </div>
+                </div>
+              </div>
+
+              <div style="text-align: center; margin-top: 20px; font-size: 0.72rem; color: #94a3b8;">
+                Swipe down or tap to open on student screen • Plays audio ping
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  openInstantPushModal() {
+    const modalHtml = `
+      <div class="modal-box" style="max-width: 600px; display: flex; flex-direction: column; max-height: 90vh;">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(16,185,129,0.15); color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+              💬
+            </div>
+            <div>
+              <h3 class="modal-title" style="margin: 0; font-size: 1.15rem; font-weight: 800;">Push WhatsApp-Style Web Notification</h3>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Instant alert with chime sound & vibration</span>
+            </div>
+          </div>
+          <button onclick="App.closeActiveModal()" class="modal-close-btn">✕</button>
+        </div>
+
+        <form onsubmit="Admin.broadcastInstantNotification(event)" style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; margin: 0;">
+          <div class="modal-body" style="overflow-y: auto; flex: 1; min-height: 0; padding: 20px 24px;">
+            <!-- Live WhatsApp Notification Preview -->
+            <div style="margin-bottom: 18px;">
+              <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">
+                📱 Student Screen Preview:
+              </div>
+              <div class="whatsapp-notify-preview" id="modal-whatsapp-preview">
+                <div class="whatsapp-avatar-box">
+                  <img src="/logo.png" alt="DDU Logo" onerror="this.src='/static/favicon.png'">
+                  <span class="whatsapp-online-dot"></span>
+                </div>
+                <div class="whatsapp-notify-content">
+                  <div class="whatsapp-notify-header">
+                    <div class="whatsapp-notify-sender" id="modal-preview-sender">
+                      DDU Notes Hub
+                      <span class="whatsapp-notify-badge">now</span>
+                    </div>
+                    <span style="font-size: 0.85rem;">💬</span>
+                  </div>
+                  <div class="whatsapp-notify-text" id="modal-preview-text">
+                    Type your notification message below...
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label class="form-label" style="font-weight: 700; font-size: 0.88rem;">Notification Title / Sender</label>
+              <input type="text" id="instant-msg-title" value="DDU Notes Hub" class="form-control" oninput="Admin.updateInstantNotificationPreview()" required>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label class="form-label" style="font-weight: 700; font-size: 0.88rem;">Notification Message Text *</label>
+              <textarea id="instant-msg-text" rows="3" class="form-control" placeholder="e.g. Kal college me holiday rahegi. Sabhi log time table check kar lein." oninput="Admin.updateInstantNotificationPreview()" required></textarea>
+            </div>
+
+            <!-- Quick Template Chips -->
+            <div style="margin-bottom: 14px;">
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button type="button" class="quick-template-chip" onclick="Admin.applyQuickTemplate('Holiday', 'Important: College will remain closed tomorrow due to official holiday.')">
+                  🏖️ Holiday
+                </button>
+                <button type="button" class="quick-template-chip" onclick="Admin.applyQuickTemplate('Exam', 'Odd Semester examination schedule and exam forms are live on the portal.')">
+                  📝 Exam Notice
+                </button>
+                <button type="button" class="quick-template-chip" onclick="Admin.applyQuickTemplate('Result', 'Semester exam results declared! Check your marksheets on the portal.')">
+                  🎯 Results Out
+                </button>
+              </div>
+            </div>
+
+            <div style="padding: 10px 14px; background: rgba(16,185,129,0.06); border: 1px dashed rgba(16,185,129,0.3); border-radius: var(--radius-sm); font-size: 0.8rem; color: #059669;">
+              🔊 <strong>WhatsApp Sound & Vibration:</strong> When broadcasted, all students active on the portal will hear the notification chime and receive the pop-up alert!
+            </div>
+          </div>
+
+          <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" onclick="Admin.testInstantNotification()" class="btn-secondary" style="font-weight: 700;">
+              🔔 Test on My Screen
+            </button>
+            <button type="submit" id="instant-broadcast-btn" class="btn-primary" style="font-weight: 800; background: linear-gradient(135deg, #10b981, #059669); border-color: #059669; box-shadow: 0 4px 14px rgba(16,185,129,0.35);">
+              🚀 Broadcast to All Students
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+    App.showGenericModal(modalHtml);
+  },
+
+  updateInstantNotificationPreview() {
+    const title = (document.getElementById('instant-msg-title')?.value || 'DDU Notes Hub').trim();
+    const text = (document.getElementById('instant-msg-text')?.value || '').trim();
+
+    const previewSender1 = document.getElementById('preview-notify-sender');
+    if (previewSender1 && previewSender1.childNodes[0]) {
+      previewSender1.childNodes[0].nodeValue = title + ' ';
+    }
+
+    const previewSender2 = document.getElementById('modal-preview-sender');
+    if (previewSender2 && previewSender2.childNodes[0]) {
+      previewSender2.childNodes[0].nodeValue = title + ' ';
+    }
+
+    const previewText1 = document.getElementById('preview-notify-text');
+    if (previewText1) {
+      previewText1.textContent = text || 'Type your message text on the left to see live preview here...';
+    }
+
+    const previewText2 = document.getElementById('modal-preview-text');
+    if (previewText2) {
+      previewText2.textContent = text || 'Type your notification message below...';
+    }
+  },
+
+  applyQuickTemplate(category, message) {
+    const textInput = document.getElementById('instant-msg-text');
+    if (textInput) {
+      textInput.value = message;
+      this.updateInstantNotificationPreview();
+      textInput.focus();
+    }
+  },
+
+  playNotificationSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.38);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.38);
+    } catch (e) {}
+  },
+
+  async testInstantNotification() {
+    const title = (document.getElementById('instant-msg-title')?.value || 'DDU Notes Hub').trim();
+    const message = (document.getElementById('instant-msg-text')?.value || '').trim();
+    if (!message) {
+      App.toast("Please type a notification message text first!", "warning");
+      return;
+    }
+
+    // Play WhatsApp chime
+    this.playNotificationSound();
+    if (navigator.vibrate) {
+      try { navigator.vibrate([200, 100, 200]); } catch (e) {}
+    }
+
+    if (!("Notification" in window)) {
+      App.toast("Web notifications are not supported in this browser.", "warning");
+      return;
+    }
+
+    let permission = Notification.permission;
+    if (permission === "default") {
+      permission = await Notification.requestPermission();
+    }
+
+    if (permission === "granted") {
+      new Notification(title, {
+        body: message,
+        icon: "/logo.png",
+        badge: "/static/favicon.png",
+        tag: "ddu-test-" + Date.now(),
+        vibrate: [200, 100, 200]
+      });
+      App.toast("🔔 WhatsApp-style notification popped up on your screen!", "success");
+    } else {
+      App.toast("Browser notification permission is blocked. Please enable notifications in site settings.", "warning");
+    }
+  },
+
+  async broadcastInstantNotification(e) {
+    if (e) e.preventDefault();
+    const title = (document.getElementById('instant-msg-title')?.value || 'DDU Notes Hub').trim();
+    const message = (document.getElementById('instant-msg-text')?.value || '').trim();
+    if (!message) {
+      App.toast("Please enter notification message text.", "warning");
+      return;
+    }
+
+    const submitBtn = document.getElementById('instant-broadcast-btn');
+    const origText = submitBtn ? submitBtn.innerHTML : "Broadcast";
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "⏳ Broadcasting to All Students...";
+    }
+
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const payload = {
+        title: title,
+        category: "Instant Alert",
+        short_description: message,
+        full_details: message,
+        is_important: 1,
+        publish_date: todayStr,
+        duration_days: 7
+      };
+
+      const res = await fetch("/api/admin/updates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...Auth.getAuthHeaders() },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success !== false) {
+        // Play WhatsApp chime
+        this.playNotificationSound();
+        if (navigator.vibrate) {
+          try { navigator.vibrate([200, 100, 200]); } catch (e) {}
+        }
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification(title, {
+            body: message,
+            icon: "/logo.png",
+            badge: "/static/favicon.png",
+            tag: "ddu-broadcast-" + Date.now(),
+            vibrate: [200, 100, 200]
+          });
+        }
+        App.toast("🎉 Instant WhatsApp-style notification broadcasted to all students!", "success");
+        if (document.getElementById('instant-msg-text')) {
+          document.getElementById('instant-msg-text').value = '';
+          this.updateInstantNotificationPreview();
+        }
+        if (this.currentTab === "updates") {
+          await this.renderUpdatesTab(document.getElementById("admin-tab-content"));
+        }
+        App.closeActiveModal();
+      } else {
+        App.toast(data.error || "Failed to broadcast notification.", "error");
+      }
+    } catch (err) {
+      App.toast("Error: " + err.message, "error");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = origText;
+      }
     }
   },
 
