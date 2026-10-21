@@ -47,6 +47,7 @@ const App = {
 
     // Initialize Campus Updates & Message Push System
     this.initAnnouncements();
+    this.initInstantNotifications();
 
     // Initial Route
     this.handleRouting();
@@ -3711,6 +3712,99 @@ const App = {
     }
   },
 
+  // ------------------- Instant Ephemeral WhatsApp-Style Live Notifications -------------------
+  lastInstantNotifKey: "ddu_last_instant_notif_id",
+  instantNotifPollTimer: null,
+
+  initInstantNotifications() {
+    try {
+      this.checkInstantNotification(true);
+      if (!this.instantNotifPollTimer) {
+        // Poll every 12 seconds for real-time live WhatsApp message alerts
+        this.instantNotifPollTimer = setInterval(() => {
+          this.checkInstantNotification(false);
+        }, 12000);
+      }
+      // Immediate poll when window becomes visible again (e.g. user unlocks phone)
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) this.checkInstantNotification(false);
+      });
+      window.addEventListener("focus", () => {
+        this.checkInstantNotification(false);
+      });
+    } catch (e) {
+      console.warn("Instant notifications init notice:", e);
+    }
+  },
+
+  async checkInstantNotification(isInitial = false) {
+    try {
+      const res = await fetch(`/api/instant-notification?_nocache=${Date.now()}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const notif = data.notification;
+      if (!notif || !notif.id || !notif.message) return;
+
+      const prevSeenId = parseInt(localStorage.getItem(this.lastInstantNotifKey) || "0");
+      const notifId = parseInt(notif.id);
+
+      const nowMs = Date.now();
+      const isFresh = notifId > 0 && (nowMs - notifId) < (5 * 60 * 1000); // 5 minutes
+
+      if (notifId > prevSeenId) {
+        localStorage.setItem(this.lastInstantNotifKey, notifId.toString());
+
+        // Alert if:
+        // 1. New notification arrived while student is browsing, OR
+        // 2. Just loaded site and notification was broadcasted in the last 2 minutes!
+        const shouldPop = (prevSeenId > 0) || (isFresh && (nowMs - notifId) < 120000);
+
+        if (shouldPop) {
+          // 1. Play WhatsApp chime
+          this.playNotificationSound();
+
+          // 2. Mobile vibration
+          if (navigator.vibrate) {
+            try { navigator.vibrate([200, 100, 200]); } catch (e) {}
+          }
+
+          // 3. Top WhatsApp slide-down banner
+          this.showWhatsAppStyleToast({
+            title: notif.title || "DDU Notes Hub",
+            message: notif.message,
+            isInstantAlert: true
+          });
+
+          // 4. OS / Native Browser Notification
+          this.triggerNativePushNotification(notif.title || "DDU Notes Hub", notif.message, notifId);
+        }
+      }
+    } catch (e) {}
+  },
+
+  triggerNativePushNotification(title, message, notifId) {
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          action: "showNotification",
+          title: title,
+          body: message,
+          id: notifId,
+          icon: "/logo.png",
+          vibrate: [200, 100, 200]
+        });
+      } else if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(title, {
+          body: message,
+          icon: "/logo.png",
+          badge: "/static/favicon.png",
+          tag: "whatsapp-msg-" + notifId,
+          vibrate: [200, 100, 200]
+        });
+      }
+    } catch (e) {}
+  },
+
   async fetchAnnouncements(isInitial = false) {
     try {
       const res = await fetch(`/api/updates?_nocache=${Date.now()}`);
@@ -3823,13 +3917,15 @@ const App = {
     toast.className = "whatsapp-student-toast";
     toast.onclick = (e) => {
       if (e.target.closest('.toast-close-btn')) return;
-      this.toggleAnnouncementCenter();
+      if (!u.isInstantAlert) {
+        this.toggleAnnouncementCenter();
+      }
       toast.classList.remove('active');
       setTimeout(() => toast.remove(), 400);
     };
 
     const sender = u.title || "DDU Notes Hub";
-    const bodyText = u.short_description || u.full_details || "New message received.";
+    const bodyText = u.message || u.short_description || u.full_details || "New message received.";
 
     toast.innerHTML = `
       <div class="whatsapp-avatar-box">

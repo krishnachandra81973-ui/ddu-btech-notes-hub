@@ -2751,18 +2751,12 @@ const Admin = {
     }
 
     try {
-      const todayStr = new Date().toISOString().split('T')[0];
       const payload = {
         title: title,
-        category: "Instant Alert",
-        short_description: message,
-        full_details: message,
-        is_important: 1,
-        publish_date: todayStr,
-        duration_days: 7
+        message: message
       };
 
-      const res = await fetch("/api/admin/updates", {
+      const res = await fetch("/api/admin/instant-notification", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...Auth.getAuthHeaders() },
         body: JSON.stringify(payload)
@@ -2783,13 +2777,10 @@ const Admin = {
             vibrate: [200, 100, 200]
           });
         }
-        App.toast("🎉 Instant WhatsApp-style notification broadcasted to all students!", "success");
+        App.toast("🎉 WhatsApp-style notification sent! (Sirf popup aayega, website notices me save nahi hoga)", "success");
         if (document.getElementById('instant-msg-text')) {
           document.getElementById('instant-msg-text').value = '';
           this.updateInstantNotificationPreview();
-        }
-        if (this.currentTab === "updates") {
-          await this.renderUpdatesTab(document.getElementById("admin-tab-content"));
         }
         App.closeActiveModal();
       } else {

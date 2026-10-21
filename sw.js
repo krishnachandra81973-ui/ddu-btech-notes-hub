@@ -1,5 +1,5 @@
 // Service Worker for DDU B.Tech Notes Hub PWA
-const CACHE_NAME = 'ddu-notes-pwa-v26';
+const CACHE_NAME = 'ddu-notes-pwa-v27';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -97,6 +97,19 @@ self.addEventListener('message', (e) => {
     }).then(() => {
       if (e.source) e.source.postMessage({ status: 'cacheCleared' });
     });
+  }
+  if (e.data && e.data.action === 'showNotification') {
+    const title = e.data.title || 'DDU Notes Hub';
+    const options = {
+      body: e.data.body || '',
+      icon: e.data.icon || '/logo.png',
+      badge: '/static/favicon.png',
+      vibrate: e.data.vibrate || [200, 100, 200],
+      tag: 'whatsapp-instant-' + (e.data.id || Date.now()),
+      renotify: true,
+      data: '/'
+    };
+    self.registration.showNotification(title, options);
   }
 });
 

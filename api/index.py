@@ -655,6 +655,12 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({"updates": updates})
                 return
 
+            # 16b. Live Instant Push Notification (Ephemeral - not saved in notice board)
+            if path == "/api/instant-notification":
+                notif = updates_registry.get_latest_instant_notification()
+                self.send_json({"notification": notif})
+                return
+
             if path.startswith("/api/admin/updates/"):
                 user = self.get_auth_user()
                 if not user or user.get("role") != "ADMIN":
@@ -1287,6 +1293,23 @@ class handler(BaseHTTPRequestHandler):
 
                 new_id = database.create_update(title, category, short_description, full_details, attachment_url, is_important, publish_date=publish_date, duration_days=duration_days)
                 self.send_json({"success": True, "message": "Campus update published", "update_id": new_id})
+                return
+
+            # 12b. Admin Broadcast Instant WhatsApp-Style Notification (NEVER SAVED TO NOTICE BOARD)
+            if path == "/api/admin/instant-notification":
+                current_user = self.get_auth_user()
+                if not current_user or current_user.get("role") != "ADMIN":
+                    self.send_json({"error": "Admin access required"}, 403)
+                    return
+
+                title = (payload.get("title") or "DDU Notes Hub").strip()
+                message = (payload.get("message") or "").strip()
+                if not message:
+                    self.send_json({"error": "Notification message text is required."}, 400)
+                    return
+
+                notif = updates_registry.broadcast_instant_notification(title, message)
+                self.send_json({"success": True, "message": "Instant notification broadcasted", "notification": notif})
                 return
 
             if path.startswith("/api/admin/updates/"):

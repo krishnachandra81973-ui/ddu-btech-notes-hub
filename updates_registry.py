@@ -238,3 +238,89 @@ def ensure_campus_updates_synced(conn, force_remote=False):
         else:
             threading.Thread(target=_bg_sync, daemon=True).start()
 
+
+FIRESTORE_BROADCAST_URL = f"https://firestore.googleapis.com/v1/projects/{FIRESTORE_PROJECT}/databases/(default)/documents/ddu_instant_broadcast/latest"
+TMP_BROADCAST_FILE = "/tmp/latest_instant_notification.json"
+
+def broadcast_instant_notification(title, message):
+    """
+    Broadcasts an ephemeral WhatsApp-style live notification.
+    CRITICAL: This is strictly NOT saved to the website's notice board or campus_updates database.
+    It purely pushes live alerts to active student devices.
+    """
+    notif_id = int(time.time() * 1000)
+    now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+    notif = {
+        "id": notif_id,
+        "title": title or "DDU Notes Hub",
+        "message": message,
+        "timestamp": now_str
+    }
+
+    try:
+        with open(TMP_BROADCAST_FILE, "w", encoding="utf-8") as f:
+            json.dump(notif, f)
+    except Exception:
+        pass
+
+    def _push():
+        try:
+            payload = json.dumps({
+                "fields": {
+                    "id": {"integerValue": str(notif_id)},
+                    "title": {"stringValue": str(title or "DDU Notes Hub")},
+                    "message": {"stringValue": str(message)},
+                    "timestamp": {"stringValue": str(now_str)}
+                }
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                FIRESTORE_BROADCAST_URL,
+                data=payload,
+                headers={"Content-Type": "application/json", "User-Agent": "DDU-Portal-InstantPush"},
+                method="PATCH"
+            )
+            urllib.request.urlopen(req, timeout=3.0)
+        except Exception as e:
+            print("[InstantPush] Firestore broadcast error:", e)
+
+    threading.Thread(target=_push, daemon=True).start()
+    return notif
+
+def get_latest_instant_notification():
+    """Retrieves the latest broadcast notification without touching any notices table."""
+    try:
+        if os.path.exists(TMP_BROADCAST_FILE):
+            with open(TMP_BROADCAST_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if data and "id" in data:
+                    return data
+    except Exception:
+        pass
+
+    try:
+        req = urllib.request.Request(FIRESTORE_BROADCAST_URL, headers={"User-Agent": "DDU-Portal-InstantFetch"})
+        with urllib.request.urlopen(req, timeout=2.0) as resp:
+            doc = json.loads(resp.read().decode("utf-8"))
+            fields = doc.get("fields", {})
+            notif = {}
+            if "id" in fields:
+                notif["id"] = int(fields["id"].get("integerValue", 0))
+            if "title" in fields:
+                notif["title"] = fields["title"].get("stringValue", "DDU Notes Hub")
+            if "message" in fields:
+                notif["message"] = fields["message"].get("stringValue", "")
+            if "timestamp" in fields:
+                notif["timestamp"] = fields["timestamp"].get("stringValue", "")
+
+            if notif.get("id") and notif.get("message"):
+                try:
+                    with open(TMP_BROADCAST_FILE, "w", encoding="utf-8") as f:
+                        json.dump(notif, f)
+                except Exception:
+                    pass
+                return notif
+    except Exception:
+        pass
+
+    return None
+
