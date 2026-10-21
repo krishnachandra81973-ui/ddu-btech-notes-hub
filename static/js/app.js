@@ -1670,8 +1670,27 @@ const App = {
     const listEl = document.getElementById("home-updates-list");
     if (!listEl) return;
 
+    let broadcastBanner = '';
+    if (this.latestBroadcast && this.latestBroadcast.message) {
+      broadcastBanner = `
+        <div id="home-live-broadcast-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.14) 0%, rgba(5, 150, 105, 0.08) 100%); border: 1.5px solid rgba(16, 185, 129, 0.45); border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 14px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.12); display: flex; align-items: flex-start; gap: 12px; cursor: pointer;" onclick="App.toggleAnnouncementCenter()">
+          <span style="font-size: 1.5rem; line-height: 1;">📢</span>
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="badge" style="background: #10b981; color: #fff; font-weight: 800; font-size: 0.72rem; padding: 2px 7px; border-radius: 4px;">⚡ LIVE BROADCAST</span>
+                <span style="font-weight: 800; font-size: 0.95rem; color: var(--text-main);">${escapeHtml(this.latestBroadcast.title || 'DDU Notes Hub')}</span>
+              </div>
+              <span style="font-size: 0.72rem; font-weight: 700; color: #059669;">Active Now</span>
+            </div>
+            <div style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); line-height: 1.5;">${escapeHtml(this.latestBroadcast.message || '')}</div>
+          </div>
+        </div>
+      `;
+    }
+
     if (!Auth.currentUser) {
-      listEl.innerHTML = `
+      listEl.innerHTML = broadcastBanner + `
         <div style="background: var(--bg-card); border: 2px dashed rgba(217, 119, 6, 0.4); border-radius: var(--radius-md); padding: 32px 20px; text-align: center; margin: 12px 0;">
           <span style="font-size: 2.2rem; display: block; margin-bottom: 8px;">🔒</span>
           <div style="font-weight: 800; font-size: 1.05rem; color: var(--text-main); margin-bottom: 6px;">Daily Academic Notices & Campus Updates Locked</div>
@@ -1696,9 +1715,9 @@ const App = {
       const updates = (data.updates || []).slice(0, 3);
       if (listEl) {
         if (updates.length === 0) {
-          listEl.innerHTML = `<p style="color: var(--text-muted);">No recent updates posted.</p>`;
+          listEl.innerHTML = broadcastBanner + `<p style="color: var(--text-muted);">No recent updates posted.</p>`;
         } else {
-          listEl.innerHTML = updates.map(u => {
+          listEl.innerHTML = broadcastBanner + updates.map(u => {
             const dateObj = new Date(u.publish_date);
             const day = dateObj.getDate() || "26";
             const month = dateObj.toLocaleString("en", { month: "short" }) || "SEP";
@@ -3707,6 +3726,7 @@ const App = {
   // ------------------- Instant Ephemeral WhatsApp-Style Live Notifications -------------------
   lastInstantNotifKey: "ddu_last_instant_notif_id",
   instantNotifPollTimer: null,
+  latestBroadcast: null,
 
   initInstantNotifications() {
     try {
@@ -3729,6 +3749,34 @@ const App = {
     }
   },
 
+  renderBroadcastStrip(notif) {
+    const strip = document.getElementById("website-instant-broadcast-strip");
+    if (!strip) return;
+    if (!notif || !notif.message) {
+      strip.style.display = "none";
+      return;
+    }
+    const dismissedId = localStorage.getItem("ddu_dismissed_broadcast_id");
+    if (dismissedId && dismissedId === notif.id.toString()) {
+      strip.style.display = "none";
+      return;
+    }
+    const textEl = document.getElementById("broadcast-strip-text");
+    if (textEl) {
+      textEl.innerText = (notif.title ? notif.title + " : " : "") + notif.message;
+    }
+    strip.style.display = "block";
+  },
+
+  dismissBroadcastStrip() {
+    const strip = document.getElementById("website-instant-broadcast-strip");
+    if (strip) strip.style.display = "none";
+    if (this.latestBroadcast && this.latestBroadcast.id) {
+      localStorage.setItem("ddu_dismissed_broadcast_id", this.latestBroadcast.id.toString());
+      this.updateUnreadCountBadge();
+    }
+  },
+
   async checkInstantNotification(isInitial = false) {
     try {
       const res = await fetch(`/api/instant-notification?_nocache=${Date.now()}`);
@@ -3743,6 +3791,19 @@ const App = {
       const nowMs = Date.now();
       // Fresh if sent within the last 24 hours
       const isFresh = notifId > 0 && Math.abs(nowMs - notifId) < (24 * 60 * 60 * 1000);
+
+      if (isFresh) {
+        this.latestBroadcast = notif;
+        this.renderBroadcastStrip(notif);
+        this.updateUnreadCountBadge();
+        const homeList = document.getElementById("home-updates-list");
+        if (homeList && !document.getElementById("home-live-broadcast-card")) {
+          this.loadHomeUpdates();
+        }
+      } else {
+        this.latestBroadcast = null;
+        this.renderBroadcastStrip(null);
+      }
 
       if (notifId > prevSeenId && isFresh) {
         localStorage.setItem(this.lastInstantNotifKey, notifId.toString());
@@ -3982,7 +4043,13 @@ const App = {
 
   updateUnreadCountBadge() {
     const seen = this.getSeenAnnouncementIds();
-    const unreadCount = (this.announcements || []).filter(u => !seen.includes(u.id)).length;
+    let unreadCount = (this.announcements || []).filter(u => !seen.includes(u.id)).length;
+    if (this.latestBroadcast && this.latestBroadcast.id) {
+      const dismissedId = localStorage.getItem("ddu_dismissed_broadcast_id");
+      if (dismissedId !== this.latestBroadcast.id.toString()) {
+        unreadCount += 1;
+      }
+    }
 
     const countBadge = document.getElementById("notification-unread-count");
     if (countBadge) {
@@ -4042,9 +4109,7 @@ const App = {
     toast.className = "whatsapp-student-toast";
     toast.onclick = (e) => {
       if (e.target.closest('.toast-close-btn')) return;
-      if (!u.isInstantAlert) {
-        this.toggleAnnouncementCenter();
-      }
+      this.toggleAnnouncementCenter();
       toast.classList.remove('active');
       setTimeout(() => toast.remove(), 400);
     };
@@ -4061,7 +4126,7 @@ const App = {
         <div class="whatsapp-notify-header">
           <div class="whatsapp-notify-sender">
             ${escapeHtml(sender)}
-            <span class="whatsapp-notify-badge">Message</span>
+            <span class="whatsapp-notify-badge">Live Alert</span>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
             <span class="whatsapp-notify-time">now</span>
@@ -4080,13 +4145,13 @@ const App = {
       toast.classList.add('active');
     });
 
-    // Auto dismiss after 8.5 seconds
+    // Auto dismiss after 15 seconds
     setTimeout(() => {
       if (toast && toast.parentNode) {
         toast.classList.remove('active');
         setTimeout(() => toast.remove(), 450);
       }
-    }, 8500);
+    }, 15000);
   },
 
   showUpdateToast(u) {
@@ -4156,6 +4221,24 @@ const App = {
     const container = document.getElementById("announcements-list-container");
     if (!container) return;
 
+    let broadcastHtml = '';
+    if (this.latestBroadcast && this.latestBroadcast.message) {
+      const b = this.latestBroadcast;
+      broadcastHtml = `
+        <div class="announcement-card live-broadcast-card" style="border: 1.5px solid rgba(16, 185, 129, 0.5); background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.05)); border-radius: 12px; padding: 12px 14px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15); margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 1rem;">📢</span>
+              <span class="badge" style="background: #10b981; color: #ffffff; font-weight: 800; font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.5px;">LIVE BROADCAST</span>
+            </div>
+            <span style="font-size: 0.72rem; font-weight: 700; color: #059669;">⚡ Active Now</span>
+          </div>
+          <h4 style="font-size: 0.94rem; font-weight: 800; margin: 0 0 4px 0; color: var(--text-main);">${escapeHtml(b.title || 'DDU Notes Hub')}</h4>
+          <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-main); line-height: 1.45;">${escapeHtml(b.message || '')}</div>
+        </div>
+      `;
+    }
+
     let list = this.announcements || [];
     if (filter === 'Exam') {
       list = list.filter(u => u.category === 'Exam');
@@ -4166,10 +4249,10 @@ const App = {
     }
 
     if (list.length === 0) {
-      container.innerHTML = `
-        <div style="text-align: center; color: var(--text-muted); font-size: 0.88rem; padding: 30px 10px;">
-          <div style="font-size: 2rem; margin-bottom: 8px;">📭</div>
-          <p style="margin: 0;">No updates found in this category.</p>
+      container.innerHTML = broadcastHtml + `
+        <div style="text-align: center; color: var(--text-muted); font-size: 0.88rem; padding: 24px 10px;">
+          <div style="font-size: 1.8rem; margin-bottom: 6px;">📭</div>
+          <p style="margin: 0;">No other regular notices found in this category.</p>
         </div>
       `;
       return;
@@ -4177,7 +4260,7 @@ const App = {
 
     const seen = this.getSeenAnnouncementIds();
 
-    container.innerHTML = list.map(u => {
+    container.innerHTML = broadcastHtml + list.map(u => {
       const isUnread = !seen.includes(u.id);
       const isImg = u.attachment_url && /\.(png|jpg|jpeg|webp|gif)($|\?)/i.test(u.attachment_url);
       const publishDateStr = u.publish_date ? new Date(u.publish_date).toLocaleDateString('en-IN', {

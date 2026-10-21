@@ -64,7 +64,7 @@
   </script>
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/static/css/style.css?v=32">
+  <link rel="stylesheet" href="/static/css/style.css?v=33">
 
   <!-- PWA Web App Manifest & Mobile OS Integration -->
   <link rel="manifest" href="/manifest.json?v=4">
@@ -165,6 +165,21 @@
       <a href="#updates" class="sub-nav-link" data-subnav="updates">📢 Updates <span id="mobile-updates-unread-badge" class="subnav-unread-dot" style="display: none;"></span></a>
       <a href="#about" class="sub-nav-link" data-subnav="about">👨‍💻 About</a>
     </nav>
+
+    <!-- Real-time Live Broadcast Dropdown Alert Strip -->
+    <div id="website-instant-broadcast-strip" class="website-broadcast-strip" style="display: none; cursor: pointer;" onclick="App.toggleAnnouncementCenter()">
+      <div class="container" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px;">
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+          <span style="font-size: 1.15rem; line-height: 1; flex-shrink: 0;">📢</span>
+          <span class="badge" style="background: #10b981; color: #ffffff; font-weight: 800; font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;">LIVE BROADCAST</span>
+          <span id="broadcast-strip-text" style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+          <button type="button" onclick="event.stopPropagation(); App.toggleAnnouncementCenter()" style="background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.4); color: var(--text-main); font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer;">View</button>
+          <button type="button" onclick="event.stopPropagation(); App.dismissBroadcastStrip()" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0 4px;" title="Dismiss">&times;</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Mobile Drawer Menu & Overlay -->
@@ -844,7 +859,7 @@
   <script src="/static/js/ddu_data.js?v=21"></script>
   <script src="/static/js/auth.js?v=22"></script>
   <script src="/static/js/dashboard.js?v=22"></script>
-  <script src="/static/js/app.js?v=32"></script>
+  <script src="/static/js/app.js?v=33"></script>
   <script>
     // Double safeguard: Remove any legacy cached GitHub links immediately
     document.querySelectorAll('a[href*="github.com"]').forEach(function(el){ el.remove(); });
