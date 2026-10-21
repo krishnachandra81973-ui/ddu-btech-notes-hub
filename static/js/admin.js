@@ -196,9 +196,10 @@ const Admin = {
               <h2 style="font-size: 1.8rem; font-weight: 800; color: var(--text-main);">Admin Operations Dashboard</h2>
               <p style="color: var(--text-muted); font-size: 0.9rem;">Live analytics, active uploads, and real-time portal statistics.</p>
             </div>
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
               <button onclick="Admin.openAddStudentModal()" class="btn-secondary btn-sm">+ Register Student</button>
               <button onclick="Admin.openAddNoteModal()" class="btn-secondary btn-sm">+ Add New Note</button>
+              <button onclick="Admin.openInstantPushModal()" class="btn-primary btn-sm" style="background: linear-gradient(135deg, #10b981, #059669); font-weight: 700; border-color: #059669; box-shadow: 0 3px 10px rgba(16,185,129,0.3);">💬 Push WhatsApp Alert</button>
               <button onclick="Admin.openAddUpdateModal()" class="btn-primary btn-sm" style="background: linear-gradient(135deg, #0284c7, #2563eb); font-weight: 700;">🚀 + Push Notice</button>
             </div>
           </div>

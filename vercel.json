@@ -11,7 +11,8 @@
           "deleted_notes_registry.json",
           "campus_updates_registry.json",
           "ddu_seed.db"
-        ]
+        ],
+        "excludeFiles": "{static/uploads/**,vendor/**,ddu_portal.db}"
       }
     },
     {

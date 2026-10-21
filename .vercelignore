@@ -6,6 +6,13 @@ __pycache__/
 *.pyc
 .git*
 README.md
-static/uploads/sample_exam_notes_*.pdf
 vendor/
+ddu_portal.db
+
+# Exclude heavy uploaded PDF files from Serverless Function bundle (streamed via GitHub Raw / jsDelivr CDN)
+static/uploads/notes/*.pdf
+static/uploads/notes/*.PDF
+static/uploads/*.pdf
+static/uploads/**/*.pdf
+
 
