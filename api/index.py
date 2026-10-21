@@ -44,6 +44,7 @@ else:
 
 import database
 import user_registry
+import updates_registry
 database.DB_PATH = DB_PATH
 try:
     database.ensure_db_initialized()
@@ -657,7 +658,11 @@ class handler(BaseHTTPRequestHandler):
 
             # 16b. Live Instant Push Notification (Ephemeral - not saved in notice board)
             if path == "/api/instant-notification":
-                notif = updates_registry.get_latest_instant_notification()
+                try:
+                    import updates_registry
+                    notif = updates_registry.get_latest_instant_notification()
+                except Exception:
+                    notif = None
                 self.send_json({"notification": notif})
                 return
 
@@ -1308,8 +1313,12 @@ class handler(BaseHTTPRequestHandler):
                     self.send_json({"error": "Notification message text is required."}, 400)
                     return
 
-                notif = updates_registry.broadcast_instant_notification(title, message)
-                self.send_json({"success": True, "message": "Instant notification broadcasted", "notification": notif})
+                try:
+                    import updates_registry
+                    notif = updates_registry.broadcast_instant_notification(title, message)
+                    self.send_json({"success": True, "message": "Instant notification broadcasted", "notification": notif})
+                except Exception as e:
+                    self.send_json({"error": f"Failed to broadcast notification: {str(e)}"}, 500)
                 return
 
             if path.startswith("/api/admin/updates/"):
