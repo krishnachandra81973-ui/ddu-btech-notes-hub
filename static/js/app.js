@@ -48,6 +48,7 @@ const App = {
     // Initialize Campus Updates & Message Push System
     this.initAnnouncements();
     this.initInstantNotifications();
+    this.checkPhoneNotificationPermission();
 
     // Initial Route
     this.handleRouting();
@@ -3782,27 +3783,93 @@ const App = {
     } catch (e) {}
   },
 
-  triggerNativePushNotification(title, message, notifId) {
+  async triggerNativePushNotification(title, message, notifId) {
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+
+    const notifOptions = {
+      body: message,
+      icon: "/logo.png",
+      badge: "/static/favicon.png",
+      vibrate: [200, 100, 200],
+      tag: "whatsapp-msg-" + notifId,
+      renotify: true,
+      requireInteraction: true,
+      data: { url: "/" }
+    };
+
+    // 1. Android Chrome & PWA: ServiceWorkerRegistration.showNotification (Mandatory for top status bar)
     try {
-      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({
-          action: "showNotification",
-          title: title,
-          body: message,
-          id: notifId,
-          icon: "/logo.png",
-          vibrate: [200, 100, 200]
-        });
-      } else if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(title, {
-          body: message,
-          icon: "/logo.png",
-          badge: "/static/favicon.png",
-          tag: "whatsapp-msg-" + notifId,
-          vibrate: [200, 100, 200]
-        });
+      if ("serviceWorker" in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        if (reg && reg.showNotification) {
+          await reg.showNotification(title, notifOptions);
+          return;
+        }
       }
+    } catch (swErr) {
+      console.warn("SW showNotification error:", swErr);
+    }
+
+    // 2. Desktop Fallback
+    try {
+      new Notification(title, notifOptions);
     } catch (e) {}
+  },
+
+  checkPhoneNotificationPermission() {
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "default") {
+      setTimeout(() => {
+        if (Notification.permission === "default" && !document.getElementById("phone-notification-prompt-banner")) {
+          const banner = document.createElement("div");
+          banner.id = "phone-notification-prompt-banner";
+          banner.style.cssText = "position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); z-index: 99999; background: linear-gradient(135deg, #059669, #10b981); color: #fff; padding: 10px 18px; border-radius: 99px; box-shadow: 0 10px 25px rgba(16,185,129,0.45); display: flex; align-items: center; gap: 10px; max-width: 92vw; cursor: pointer;";
+          banner.onclick = () => this.enablePhoneNotifications();
+          banner.innerHTML = `
+            <span style="font-size: 1.25rem;">🔔</span>
+            <span style="font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Phone status bar me WhatsApp alert enable karein</span>
+            <span style="background: rgba(255,255,255,0.25); padding: 4px 10px; border-radius: 99px; font-size: 0.76rem; font-weight: 800; white-space: nowrap;">Allow</span>
+            <button onclick="event.stopPropagation(); this.closest('#phone-notification-prompt-banner').remove();" style="background: none; border: none; color: rgba(255,255,255,0.8); font-size: 1.1rem; cursor: pointer; padding: 0 4px; line-height: 1;">&times;</button>
+          `;
+          document.body.appendChild(banner);
+        }
+      }, 2000);
+    }
+  },
+
+  async enablePhoneNotifications() {
+    if (!("Notification" in window)) {
+      this.toast("This browser does not support web notifications.", "warning");
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      const banner = document.getElementById("phone-notification-prompt-banner");
+      if (banner) banner.remove();
+
+      if (permission === "granted") {
+        this.playNotificationSound();
+        if (navigator.vibrate) try { navigator.vibrate([200, 100, 200]); } catch (e) {}
+        this.toast("✅ Phone Notifications active! Ab notification phone ke top bar me aayegi.", "success");
+
+        if ("serviceWorker" in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg && reg.showNotification) {
+            reg.showNotification("🎉 DDU Notes Hub", {
+              body: "Notifications enabled! Ab sabhi alerts WhatsApp message ki tarah aapke phone ke status bar me aayenge.",
+              icon: "/logo.png",
+              badge: "/static/favicon.png",
+              vibrate: [200, 100, 200]
+            });
+          }
+        }
+      } else {
+        this.toast("Notification permission blocked hai. Browser settings se enable karein.", "warning");
+      }
+    } catch (e) {
+      console.warn("Enable notifications error:", e);
+    }
   },
 
   async fetchAnnouncements(isInitial = false) {

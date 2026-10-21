@@ -2710,6 +2710,61 @@ const Admin = {
       try { navigator.vibrate([200, 100, 200]); } catch (e) {}
     }
 
+  async showNativeSystemNotification(title, message, tag = null) {
+    if (!("Notification" in window)) return false;
+    let permission = Notification.permission;
+    if (permission === "default") {
+      try { permission = await Notification.requestPermission(); } catch (e) {}
+    }
+    if (permission !== "granted") return false;
+
+    const notifOptions = {
+      body: message,
+      icon: "/logo.png",
+      badge: "/static/favicon.png",
+      vibrate: [200, 100, 200],
+      tag: tag || ("ddu-admin-" + Date.now()),
+      renotify: true,
+      requireInteraction: true,
+      data: { url: "/" }
+    };
+
+    // 1. Android Chrome & PWA: ServiceWorkerRegistration.showNotification (Mandatory on Android)
+    try {
+      if ("serviceWorker" in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        if (reg && reg.showNotification) {
+          await reg.showNotification(title, notifOptions);
+          return true;
+        }
+      }
+    } catch (swErr) {
+      console.warn("SW showNotification error:", swErr);
+    }
+
+    // 2. Desktop Fallback
+    try {
+      new Notification(title, notifOptions);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  async testInstantNotification() {
+    const title = (document.getElementById('instant-msg-title')?.value || 'DDU Notes Hub').trim();
+    const message = (document.getElementById('instant-msg-text')?.value || '').trim();
+    if (!message) {
+      App.toast("Please type a notification message text first!", "warning");
+      return;
+    }
+
+    // Play WhatsApp chime
+    this.playNotificationSound();
+    if (navigator.vibrate) {
+      try { navigator.vibrate([200, 100, 200]); } catch (e) {}
+    }
+
     if (!("Notification" in window)) {
       App.toast("Web notifications are not supported in this browser.", "warning");
       return;
@@ -2717,20 +2772,18 @@ const Admin = {
 
     let permission = Notification.permission;
     if (permission === "default") {
-      permission = await Notification.requestPermission();
+      try { permission = await Notification.requestPermission(); } catch (e) {}
     }
 
     if (permission === "granted") {
-      new Notification(title, {
-        body: message,
-        icon: "/logo.png",
-        badge: "/static/favicon.png",
-        tag: "ddu-test-" + Date.now(),
-        vibrate: [200, 100, 200]
-      });
-      App.toast("🔔 WhatsApp-style notification popped up on your screen!", "success");
+      const shown = await this.showNativeSystemNotification(title, message, "ddu-test-" + Date.now());
+      if (shown) {
+        App.toast("🔔 Phone ke top status bar me notification aa gaya hai!", "success");
+      } else {
+        App.toast("🔔 Notification sent! Check phone top bar.", "info");
+      }
     } else {
-      App.toast("Browser notification permission is blocked. Please enable notifications in site settings.", "warning");
+      App.toast("Browser notification permission blocked hai. Site settings se allow karein.", "warning");
     }
   },
 
@@ -2768,15 +2821,7 @@ const Admin = {
         if (navigator.vibrate) {
           try { navigator.vibrate([200, 100, 200]); } catch (e) {}
         }
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification(title, {
-            body: message,
-            icon: "/logo.png",
-            badge: "/static/favicon.png",
-            tag: "ddu-broadcast-" + Date.now(),
-            vibrate: [200, 100, 200]
-          });
-        }
+        await this.showNativeSystemNotification(title, message, "ddu-broadcast-" + Date.now());
         App.toast("🎉 WhatsApp-style notification sent! (Sirf popup aayega, website notices me save nahi hoga)", "success");
         if (document.getElementById('instant-msg-text')) {
           document.getElementById('instant-msg-text').value = '';
