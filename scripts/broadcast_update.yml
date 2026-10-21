@@ -1,0 +1,127 @@
+name: 📢 Broadcast Campus Update Message
+
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: 'Notice / Update Title'
+        required: true
+        type: string
+      category:
+        description: 'Category'
+        required: true
+        default: 'University Notice'
+        type: choice
+        options:
+          - 'University Notice'
+          - 'Exam'
+          - 'Result'
+          - 'Admit Card'
+          - 'Syllabus'
+          - 'Notes'
+          - 'Previous Year Paper'
+          - 'Important Announcement'
+      short_description:
+        description: 'Short Message / Summary'
+        required: true
+        type: string
+      full_details:
+        description: 'Full Notice Details (Optional)'
+        required: false
+        type: string
+      attachment_url:
+        description: 'Attachment URL / PDF link (Optional)'
+        required: false
+        type: string
+      is_important:
+        description: 'Mark as Important (Pinned at Top)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  broadcast-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Append Notice to Campus Updates Registry
+        env:
+          INPUT_TITLE: ${{ github.event.inputs.title }}
+          INPUT_CATEGORY: ${{ github.event.inputs.category }}
+          INPUT_SHORT_DESC: ${{ github.event.inputs.short_description }}
+          INPUT_FULL_DETAILS: ${{ github.event.inputs.full_details }}
+          INPUT_ATTACHMENT: ${{ github.event.inputs.attachment_url }}
+          INPUT_IMPORTANT: ${{ github.event.inputs.is_important }}
+        run: |
+          python3 - << 'EOF'
+          import os
+          import json
+          from datetime import datetime
+
+          registry_file = 'campus_updates_registry.json'
+          if not os.path.exists(registry_file):
+              print(f"❌ Error: {registry_file} not found!")
+              exit(1)
+
+          with open(registry_file, 'r', encoding='utf-8') as f:
+              updates = json.load(f)
+
+          max_id = max([u.get('id', 0) for u in updates], default=0)
+          new_id = max_id + 1
+
+          now = datetime.now()
+          today_str = now.strftime('%Y-%m-%d')
+          created_str = now.strftime('%Y-%m-%d %H:%M:%S')
+
+          title = os.environ.get('INPUT_TITLE', '').strip()
+          category = os.environ.get('INPUT_CATEGORY', 'University Notice').strip()
+          short_desc = os.environ.get('INPUT_SHORT_DESC', '').strip()
+          full_details = os.environ.get('INPUT_FULL_DETAILS', '').strip() or short_desc
+          attachment = os.environ.get('INPUT_ATTACHMENT', '').strip() or None
+          is_important = 1 if os.environ.get('INPUT_IMPORTANT', 'false').lower() == 'true' else 0
+
+          new_notice = {
+              "id": new_id,
+              "title": title,
+              "category": category,
+              "short_description": short_desc,
+              "full_details": full_details,
+              "attachment_url": attachment,
+              "is_important": is_important,
+              "is_published": 1,
+              "publish_date": today_str,
+              "duration_days": 0,
+              "created_at": created_str
+          }
+
+          # Insert at beginning so newest notice is on top
+          updates.insert(0, new_notice)
+
+          with open(registry_file, 'w', encoding='utf-8') as f:
+              json.dump(updates, f, indent=2, ensure_ascii=False)
+
+          print(f"✅ Successfully registered Notice #{new_id}: {title}")
+          EOF
+
+      - name: Commit and Push Notice to GitHub
+        run: |
+          git config --local user.name "KESHAV NARAYAN"
+          git config --local user.email "keshavnarayan501@gmail.com"
+          git add campus_updates_registry.json
+          git commit -m "📢 Campus Update: ${{ github.event.inputs.title }} [skip ci]" || echo "No changes to commit"
+          git push origin main
+          echo "🎉 Notice published and deployed successfully to DDU B.Tech Notes Hub!"

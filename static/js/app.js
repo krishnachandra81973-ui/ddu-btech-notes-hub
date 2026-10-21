@@ -6,6 +6,11 @@ const App = {
   theme: localStorage.getItem("ddu_theme") || "light",
   currentRoute: "home",
   searchTimeout: null,
+  announcements: [],
+  activeAnnouncementFilter: 'All',
+  announcementsPollTimer: null,
+  seenAnnouncementsKey: 'ddu_seen_updates_v1',
+  lastSeenUpdateIdKey: 'ddu_last_seen_update_id_v1',
 
   async init() {
     this.initTheme();
@@ -39,6 +44,9 @@ const App = {
 
     // Setup Progressive Web App (PWA) and offline caching
     this.setupPwa();
+
+    // Initialize Campus Updates & Message Push System
+    this.initAnnouncements();
 
     // Initial Route
     this.handleRouting();
@@ -3686,6 +3694,298 @@ const App = {
     const frame = document.getElementById("pdf-viewer-frame");
     if (frame) frame.src = "about:blank";
   },
+
+  // ------------------- Campus Updates & Message Push Announcements -------------------
+  async initAnnouncements() {
+    try {
+      await this.fetchAnnouncements(true);
+      // Periodic background check every 30 seconds for live updates pushed from GitHub
+      if (!this.announcementsPollTimer) {
+        this.announcementsPollTimer = setInterval(() => {
+          this.fetchAnnouncements(false);
+        }, 30000);
+      }
+      this.updatePushPermissionUi();
+    } catch (e) {
+      console.warn("Announcements init non-fatal notice:", e);
+    }
+  },
+
+  async fetchAnnouncements(isInitial = false) {
+    try {
+      const res = await fetch(`/api/updates?_nocache=${Date.now()}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const updates = data.updates || [];
+      if (!Array.isArray(updates)) return;
+
+      const prevMaxId = parseInt(localStorage.getItem(this.lastSeenUpdateIdKey) || '0');
+      const currentMaxId = updates.reduce((max, u) => Math.max(max, u.id || 0), 0);
+
+      this.announcements = updates;
+
+      // Check if new updates arrived while user is active on portal
+      if (!isInitial && currentMaxId > prevMaxId && prevMaxId > 0) {
+        const newUpdates = updates.filter(u => (u.id || 0) > prevMaxId);
+        if (newUpdates.length > 0) {
+          const latest = newUpdates[0];
+          this.ringBellAnimation();
+          this.showUpdateToast(latest);
+          this.triggerWebNotification(latest);
+        }
+      }
+
+      if (isInitial && prevMaxId === 0 && currentMaxId > 0) {
+        localStorage.setItem(this.lastSeenUpdateIdKey, currentMaxId.toString());
+      } else if (currentMaxId > prevMaxId) {
+        localStorage.setItem(this.lastSeenUpdateIdKey, currentMaxId.toString());
+      }
+
+      this.updateUnreadCountBadge();
+    } catch (err) {
+      console.warn("Failed to fetch campus announcements:", err);
+    }
+  },
+
+  getSeenAnnouncementIds() {
+    try {
+      return JSON.parse(localStorage.getItem(this.seenAnnouncementsKey) || '[]');
+    } catch (e) {
+      return [];
+    }
+  },
+
+  saveSeenAnnouncementIds(ids) {
+    try {
+      localStorage.setItem(this.seenAnnouncementsKey, JSON.stringify(ids));
+    } catch (e) {}
+  },
+
+  updateUnreadCountBadge() {
+    const seen = this.getSeenAnnouncementIds();
+    const unreadCount = (this.announcements || []).filter(u => !seen.includes(u.id)).length;
+
+    const countBadge = document.getElementById("notification-unread-count");
+    if (countBadge) {
+      if (unreadCount > 0) {
+        countBadge.innerText = unreadCount > 99 ? '99+' : unreadCount;
+        countBadge.style.display = 'flex';
+      } else {
+        countBadge.style.display = 'none';
+      }
+    }
+
+    const mobileBadge = document.getElementById("mobile-updates-unread-badge");
+    if (mobileBadge) {
+      mobileBadge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
+    }
+  },
+
+  ringBellAnimation() {
+    const bell = document.getElementById("nav-notification-bell");
+    if (bell) {
+      bell.classList.remove("ring");
+      void bell.offsetWidth; // trigger reflow
+      bell.classList.add("ring");
+      setTimeout(() => bell.classList.remove("ring"), 1200);
+    }
+  },
+
+  showUpdateToast(u) {
+    const existing = document.getElementById("toast-new-update-alert");
+    if (existing) existing.remove();
+
+    const toast = document.createElement("div");
+    toast.id = "toast-new-update-alert";
+    toast.className = "toast-update-alert";
+    toast.innerHTML = `
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 1.2rem;">📢</span>
+          <span style="font-size: 0.82rem; font-weight: 800; color: var(--primary);">New Campus Notice</span>
+        </div>
+        <button onclick="this.closest('.toast-update-alert').remove()" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); line-height: 1.3;">
+        ${escapeHtml(u.title || 'New Announcement')}
+      </div>
+      <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0; line-height: 1.35;">
+        ${escapeHtml(u.short_description || '')}
+      </p>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
+        <button onclick="App.toggleAnnouncementCenter(); this.closest('.toast-update-alert').remove();" class="btn-primary btn-xs" style="font-weight: 700; padding: 4px 10px;">
+          View Details →
+        </button>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      if (toast && toast.parentNode) toast.remove();
+    }, 9000);
+  },
+
+  triggerWebNotification(u) {
+    try {
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      const title = `📢 DDU Notice: ${u.title}`;
+      const options = {
+        body: u.short_description || u.category || 'New academic update posted on DDU Notes Hub.',
+        icon: '/logo.png',
+        badge: '/static/favicon.png',
+        tag: 'ddu-update-' + (u.id || Date.now()),
+        requireInteraction: false
+      };
+
+      if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.showNotification(title, options).catch(() => new Notification(title, options));
+        });
+      } else {
+        new Notification(title, options);
+      }
+    } catch (e) {
+      console.warn("Web notification trigger notice:", e);
+    }
+  },
+
+  toggleAnnouncementCenter() {
+    const modal = document.getElementById("announcement-center-modal");
+    if (!modal) return;
+
+    if (modal.classList.contains("active")) {
+      modal.classList.remove("active");
+    } else {
+      this.closeAllModals();
+      modal.classList.add("active");
+      this.renderAnnouncementsList(this.activeAnnouncementFilter);
+      this.updatePushPermissionUi();
+
+      // Automatically mark current announcements as seen
+      const seen = this.getSeenAnnouncementIds();
+      (this.announcements || []).forEach(a => {
+        if (!seen.includes(a.id)) {
+          seen.push(a.id);
+        }
+      });
+      this.saveSeenAnnouncementIds(seen);
+      this.updateUnreadCountBadge();
+    }
+  },
+
+  filterAnnouncementsList(category, btnEl) {
+    this.activeAnnouncementFilter = category;
+    if (btnEl && btnEl.parentNode) {
+      btnEl.parentNode.querySelectorAll(".pill-filter").forEach(b => b.classList.remove("active"));
+      btnEl.classList.add("active");
+    }
+    this.renderAnnouncementsList(category);
+  },
+
+  renderAnnouncementsList(filter = 'All') {
+    const container = document.getElementById("announcements-list-container");
+    if (!container) return;
+
+    let list = this.announcements || [];
+    if (filter === 'Exam') {
+      list = list.filter(u => u.category === 'Exam');
+    } else if (filter === 'Result') {
+      list = list.filter(u => u.category === 'Result');
+    } else if (filter === 'Important') {
+      list = list.filter(u => u.is_important);
+    }
+
+    if (list.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; color: var(--text-muted); font-size: 0.88rem; padding: 30px 10px;">
+          <div style="font-size: 2rem; margin-bottom: 8px;">📭</div>
+          <p style="margin: 0;">No updates found in this category.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const seen = this.getSeenAnnouncementIds();
+
+    container.innerHTML = list.map(u => {
+      const isUnread = !seen.includes(u.id);
+      const isImg = u.attachment_url && /\.(png|jpg|jpeg|webp|gif)($|\?)/i.test(u.attachment_url);
+      const publishDateStr = u.publish_date ? new Date(u.publish_date).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      }) : 'Recent';
+
+      return `
+        <div class="announcement-card ${isUnread ? 'unread' : ''}">
+          <div class="announcement-card-header">
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              ${isUnread ? '<span class="unread-dot" title="Unread Notice"></span>' : ''}
+              <span class="update-category">${escapeHtml(u.category || 'Notice')}</span>
+              ${u.is_important ? '<span class="update-badge-important">Important</span>' : ''}
+            </div>
+            <span class="announcement-date">📅 ${publishDateStr}</span>
+          </div>
+          <h4 class="announcement-card-title">${escapeHtml(u.title || '')}</h4>
+          ${u.short_description ? `<p class="announcement-card-desc">${escapeHtml(u.short_description)}</p>` : ''}
+          ${u.full_details && u.full_details !== u.short_description ? `<div class="announcement-card-details">${escapeHtml(u.full_details)}</div>` : ''}
+          <div class="announcement-card-actions">
+            ${u.attachment_url ? `
+              <button onclick="App.openPdfViewer('${u.attachment_url}', '${escapeHtml(u.title)}')" class="btn-secondary btn-xs" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 0.76rem;">
+                ${isImg ? '🖼️ View Attachment' : '📄 View Circular PDF'}
+              </button>
+            ` : ''}
+            <a href="#updates" onclick="App.closeAllModals()" class="announcement-link">Notice Board →</a>
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  markAllAnnouncementsRead() {
+    const allIds = (this.announcements || []).map(u => u.id);
+    this.saveSeenAnnouncementIds(allIds);
+    this.updateUnreadCountBadge();
+    this.renderAnnouncementsList(this.activeAnnouncementFilter);
+    this.toast("All updates marked as read.", "info");
+  },
+
+  async requestPushNotificationPermission() {
+    if (!("Notification" in window)) {
+      this.toast("Desktop/mobile web notifications are not supported in this browser.", "warning");
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        this.toast("🔔 Notifications enabled! You will now receive instant push alerts for exam & campus updates.", "success");
+        this.updatePushPermissionUi();
+        new Notification("🎉 DDU Campus Alerts Enabled", {
+          body: "You're all set! Important exam notices and syllabus circulars will now be delivered to your device.",
+          icon: "/logo.png"
+        });
+      } else {
+        this.toast("Notifications permission was denied. You can enable it in your browser settings.", "warning");
+        this.updatePushPermissionUi();
+      }
+    } catch (e) {
+      console.warn("Notification request error:", e);
+    }
+  },
+
+  updatePushPermissionUi() {
+    const card = document.getElementById("push-permission-card");
+    if (!card) return;
+    if (!("Notification" in window)) {
+      card.style.display = "none";
+      return;
+    }
+    if (Notification.permission === "granted") {
+      card.style.display = "none";
+    } else {
+      card.style.display = "flex";
+    }
+  },
+
 
   // ------------------- Auth Forms Setup -------------------
   setupAuthForms() {

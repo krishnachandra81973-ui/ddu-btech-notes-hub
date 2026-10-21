@@ -117,6 +117,12 @@
 
         <!-- Action Items & Auth -->
         <div class="nav-actions">
+          <!-- Campus Updates Notification Bell -->
+          <button id="nav-notification-bell" class="notification-bell-btn" onclick="App.toggleAnnouncementCenter()" title="Campus Updates & Announcements" aria-label="Campus Updates & Announcements">
+            <span class="bell-icon">🔔</span>
+            <span id="notification-unread-count" class="notification-unread-badge" style="display: none;">0</span>
+          </button>
+
           <!-- Search Trigger -->
           <button onclick="App.openSearchModal()" class="search-trigger-btn" title="Search Portal">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -156,7 +162,7 @@
       <a href="#syllabus" class="sub-nav-link" data-subnav="syllabus">📖 Syllabus</a>
       <a href="#notes" class="sub-nav-link" data-subnav="notes">📝 Notes</a>
       <a href="#pyq" class="sub-nav-link" data-subnav="pyq">📑 PYQs</a>
-      <a href="#updates" class="sub-nav-link" data-subnav="updates">📢 Updates</a>
+      <a href="#updates" class="sub-nav-link" data-subnav="updates">📢 Updates <span id="mobile-updates-unread-badge" class="subnav-unread-dot" style="display: none;"></span></a>
       <a href="#about" class="sub-nav-link" data-subnav="about">👨‍💻 About</a>
     </nav>
   </div>
@@ -673,6 +679,67 @@
         </form>
       </div>
     </div>
+  </div>
+
+  <!-- 6. Real-Time Announcement Center & Message Push Modal -->
+  <div id="announcement-center-modal" class="modal-overlay" onclick="if(event.target === this) App.closeAllModals()">
+    <div class="modal-box" style="max-width: 580px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden;">
+      <div class="modal-header" style="flex-shrink: 0; padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(37,99,235,0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+            📢
+          </div>
+          <div>
+            <h3 class="modal-title" style="margin: 0; font-size: 1.1rem; font-weight: 800;">Campus Updates & Messages</h3>
+            <span style="font-size: 0.74rem; color: var(--text-muted);">Real-Time Academic Notices from DDU Hub</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" onclick="App.markAllAnnouncementsRead()" class="btn-secondary btn-xs" style="font-size: 0.74rem; padding: 5px 10px; border-radius: 6px; font-weight: 600;" title="Mark all updates as read">
+            ✓ Mark all read
+          </button>
+          <button type="button" onclick="App.closeAllModals()" class="modal-close-btn" aria-label="Close">✕</button>
+        </div>
+      </div>
+
+      <!-- Web Push Notification Opt-in Card -->
+      <div id="push-permission-card" style="margin: 12px 18px 0 18px; padding: 10px 14px; background: linear-gradient(135deg, rgba(37,99,235,0.07), rgba(14,165,233,0.07)); border: 1px dashed rgba(37,99,235,0.3); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 200px;">
+          <span style="font-size: 1.2rem;">🔔</span>
+          <div style="font-size: 0.78rem; color: var(--text-main); line-height: 1.35;">
+            <strong>Never miss an update:</strong> Enable browser notifications to get alerts for exam schedules and result notices.
+          </div>
+        </div>
+        <button type="button" onclick="App.requestPushNotificationPermission()" id="btn-enable-push" class="btn-primary btn-xs" style="white-space: nowrap; font-size: 0.76rem; padding: 5px 12px; font-weight: 700;">
+          Enable Alerts
+        </button>
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div style="padding: 10px 18px 4px 18px; display: flex; gap: 6px; overflow-x: auto; flex-shrink: 0;" id="announcement-filter-pills">
+        <button type="button" class="pill-filter active" onclick="App.filterAnnouncementsList('All', this)">All</button>
+        <button type="button" class="pill-filter" onclick="App.filterAnnouncementsList('Exam', this)">Exams</button>
+        <button type="button" class="pill-filter" onclick="App.filterAnnouncementsList('Result', this)">Results</button>
+        <button type="button" class="pill-filter" onclick="App.filterAnnouncementsList('Important', this)">Important</button>
+      </div>
+
+      <!-- Scrollable Announcements List -->
+      <div class="modal-body" id="announcements-list-container" style="overflow-y: auto; flex: 1; padding: 12px 18px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="text-align: center; color: var(--text-muted); font-size: 0.88rem; padding: 30px 0;">
+          <span class="spinner" style="display: inline-block; margin-bottom: 8px;">⏳</span>
+          <p>Loading campus announcements...</p>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 10px 18px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; background: var(--bg-card);">
+        <a href="#updates" onclick="App.closeAllModals()" style="font-size: 0.82rem; color: var(--primary); font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+          View Full Notice Board ↗
+        </a>
+        <button type="button" onclick="App.closeAllModals()" class="btn-secondary btn-sm" style="padding: 5px 14px;">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Mobile Bottom Navigation Bar (Active on Mobile Screens) -->
   <nav class="mobile-bottom-nav" id="mobile-bottom-navigation">
     <a href="#home" class="bottom-nav-item active" data-nav="home">

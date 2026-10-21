@@ -907,6 +907,20 @@ const Admin = {
             </button>
           </div>
 
+          <!-- GitHub Push & Actions Helper Banner -->
+          <div style="margin-bottom: 16px; padding: 12px 16px; background: linear-gradient(135deg, rgba(37,99,235,0.06), rgba(16,185,129,0.06)); border: 1px dashed rgba(37,99,235,0.25); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 1.4rem;">🐙</span>
+              <div>
+                <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-main);">GitHub Push &amp; Message Broadcast Active</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Push updates from GitHub Actions, terminal (<code>python3 push_update.py</code>), or via this panel. All students get bell notifications &amp; push alerts!</div>
+              </div>
+            </div>
+            <a href="https://github.com/krishnachandra81973-ui/ddu-btech-notes-hub/actions" target="_blank" rel="noopener noreferrer" class="btn-secondary btn-xs" style="padding: 6px 12px; font-weight: 600; text-decoration: none;">
+              Open GitHub Actions ↗
+            </a>
+          </div>
+
           <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; box-shadow: var(--shadow-sm);">
             <div class="table-responsive">
               <table class="modern-table">

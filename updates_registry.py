@@ -17,8 +17,8 @@ _LAST_SYNC_TIME = 0
 _SYNC_INTERVAL = 30  # seconds
 
 def get_registry_path():
-    if not os.path.exists(TMP_REGISTRY):
-        if os.path.exists(REPO_REGISTRY):
+    if os.path.exists(REPO_REGISTRY):
+        if not os.path.exists(TMP_REGISTRY) or (os.path.exists(TMP_REGISTRY) and os.path.getmtime(REPO_REGISTRY) > os.path.getmtime(TMP_REGISTRY)):
             try:
                 import shutil
                 shutil.copy2(REPO_REGISTRY, TMP_REGISTRY)

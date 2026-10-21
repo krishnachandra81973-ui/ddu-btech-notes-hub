@@ -1,5 +1,5 @@
 // Service Worker for DDU B.Tech Notes Hub PWA
-const CACHE_NAME = 'ddu-notes-pwa-v19';
+const CACHE_NAME = 'ddu-notes-pwa-v20';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -98,5 +98,52 @@ self.addEventListener('message', (e) => {
       if (e.source) e.source.postMessage({ status: 'cacheCleared' });
     });
   }
+});
+
+// Web Push Notifications Handler
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { title: '📢 DDU Campus Notice', body: event.data ? event.data.text() : 'New update available on DDU Notes Hub!' };
+  }
+
+  const title = data.title || '📢 DDU Campus Update';
+  const options = {
+    body: data.body || 'New campus circular or exam notice published.',
+    icon: data.icon || '/logo.png',
+    badge: '/static/favicon.png',
+    data: data.url || '/#updates',
+    vibrate: [100, 50, 100],
+    tag: 'ddu-notice-' + (data.id || Date.now()),
+    renotify: true
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Handle Notifications click to focus or open website
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && typeof event.notification.data === 'string') 
+    ? event.notification.data 
+    : '/#updates';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          if (client.navigate) {
+            client.navigate(targetUrl);
+          }
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
 });
 
