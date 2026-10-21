@@ -3792,7 +3792,7 @@ const App = {
       icon: "/logo.png",
       badge: "/static/favicon.png",
       vibrate: [200, 100, 200],
-      tag: "whatsapp-msg-" + notifId,
+      tag: "ddu-alert-" + notifId,
       renotify: true,
       requireInteraction: true,
       data: { url: "/" }
@@ -3828,7 +3828,7 @@ const App = {
           banner.onclick = () => this.enablePhoneNotifications();
           banner.innerHTML = `
             <span style="font-size: 1.25rem;">🔔</span>
-            <span style="font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Phone status bar me WhatsApp alert enable karein</span>
+            <span style="font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Phone status bar me live alerts enable karein</span>
             <span style="background: rgba(255,255,255,0.25); padding: 4px 10px; border-radius: 99px; font-size: 0.76rem; font-weight: 800; white-space: nowrap;">Allow</span>
             <button onclick="event.stopPropagation(); this.closest('#phone-notification-prompt-banner').remove();" style="background: none; border: none; color: rgba(255,255,255,0.8); font-size: 1.1rem; cursor: pointer; padding: 0 4px; line-height: 1;">&times;</button>
           `;
@@ -3857,7 +3857,7 @@ const App = {
           const reg = await navigator.serviceWorker.ready;
           if (reg && reg.showNotification) {
             reg.showNotification("🎉 DDU Notes Hub", {
-              body: "Notifications enabled! Ab sabhi alerts WhatsApp message ki tarah aapke phone ke status bar me aayenge.",
+              body: "Notifications enabled! Ab sabhi important alerts & updates aapke phone ke status bar me aayenge.",
               icon: "/logo.png",
               badge: "/static/favicon.png",
               vibrate: [200, 100, 200]
