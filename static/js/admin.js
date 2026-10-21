@@ -2696,20 +2696,6 @@ const Admin = {
     } catch (e) {}
   },
 
-  async testInstantNotification() {
-    const title = (document.getElementById('instant-msg-title')?.value || 'DDU Notes Hub').trim();
-    const message = (document.getElementById('instant-msg-text')?.value || '').trim();
-    if (!message) {
-      App.toast("Please type a notification message text first!", "warning");
-      return;
-    }
-
-    // Play WhatsApp chime
-    this.playNotificationSound();
-    if (navigator.vibrate) {
-      try { navigator.vibrate([200, 100, 200]); } catch (e) {}
-    }
-
   async showNativeSystemNotification(title, message, tag = null) {
     if (!("Notification" in window)) return false;
     let permission = Notification.permission;

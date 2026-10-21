@@ -8,11 +8,11 @@
   <meta http-equiv="Expires" content="0">
   <title>Admin Portal | DDU B.Tech Notes Hub — Gorakhpur University</title>
   <meta name="robots" content="noindex, nofollow">
-  <link rel="stylesheet" href="/static/css/style.css?v=30">
-  <link rel="icon" type="image/png" href="/logo.png?v=30">
-  <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png?v=30">
-  <link rel="shortcut icon" href="/favicon.ico?v=30" type="image/x-icon">
-  <link rel="apple-touch-icon" href="/logo.png?v=30">
+  <link rel="stylesheet" href="/static/css/style.css?v=31">
+  <link rel="icon" type="image/png" href="/logo.png?v=31">
+  <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png?v=31">
+  <link rel="shortcut icon" href="/favicon.ico?v=31" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/logo.png?v=31">
 </head>
 <body>
 
@@ -77,20 +77,26 @@
   </div>
 
   <!-- Scripts -->
-  <script src="/static/js/auth.js?v=30"></script>
-  <script src="/static/js/admin.js?v=30"></script>
+  <script src="/static/js/auth.js?v=31"></script>
+  <script src="/static/js/admin.js?v=31"></script>
   <script>
     // Standalone Admin Application Orchestrator
     const AdminApp = {
       async init() {
-        App.initTheme();
+        if (typeof App !== "undefined" && App.initTheme) {
+          App.initTheme();
+        }
         Auth.token = localStorage.getItem("ddu_token") || null;
         if (!Auth.token) {
           Auth.currentUser = null;
           this.renderState();
           return;
         }
-        await Auth.init();
+        try {
+          await Auth.init();
+        } catch (e) {
+          console.warn("Auth.init error:", e);
+        }
         if (!Auth.currentUser || Auth.currentUser.role !== "ADMIN") {
           Auth.currentUser = null;
           Auth.token = null;
