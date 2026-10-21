@@ -64,7 +64,7 @@
   </script>
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/static/css/style.css?v=20">
+  <link rel="stylesheet" href="/static/css/style.css?v=32">
 
   <!-- PWA Web App Manifest & Mobile OS Integration -->
   <link rel="manifest" href="/manifest.json?v=4">
@@ -749,11 +749,35 @@
     </div>
   </div>
 
+  <!-- Notification Permission Pop-up Modal -->
+  <div id="notification-permission-modal" class="modal" style="display: none; z-index: 100005;">
+    <div class="modal-backdrop" onclick="App.dismissNotificationModal()"></div>
+    <div class="modal-card" style="max-width: 390px; text-align: center; padding: 26px 22px; border-radius: 18px; border: 1px solid rgba(16, 185, 129, 0.35); box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45); animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+      <div style="width: 64px; height: 64px; margin: 0 auto 14px; background: rgba(16, 185, 129, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem;">
+        🔔
+      </div>
+      <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 8px; color: var(--text-main);">
+        Allow Instant Notifications?
+      </h3>
+      <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 20px;">
+        DDU Gorakhpur University ke exam schedule, result, syllabus updates aur urgent notices apne phone ke status bar me paane ke liye permission allow karein!
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button id="btn-allow-notifications-modal" onclick="App.enablePhoneNotifications()" class="btn-primary" style="width: 100%; padding: 13px; font-weight: 800; font-size: 0.95rem; background: linear-gradient(135deg, #059669, #10b981); border: none; border-radius: 10px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35); cursor: pointer;">
+          🔔 Allow Notifications
+        </button>
+        <button onclick="App.dismissNotificationModal()" class="btn-secondary" style="width: 100%; padding: 10px; font-weight: 600; font-size: 0.84rem; border: none; background: transparent; color: var(--text-muted); cursor: pointer;">
+          Later / Not Now
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- JavaScript Modules -->
   <script src="/static/js/ddu_data.js?v=21"></script>
   <script src="/static/js/auth.js?v=22"></script>
   <script src="/static/js/dashboard.js?v=22"></script>
-  <script src="/static/js/app.js?v=23"></script>
+  <script src="/static/js/app.js?v=32"></script>
   <script>
     // Double safeguard: Remove any legacy cached GitHub links immediately
     document.querySelectorAll('a[href*="github.com"]').forEach(function(el){ el.remove(); });

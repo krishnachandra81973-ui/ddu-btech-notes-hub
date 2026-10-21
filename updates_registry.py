@@ -263,43 +263,46 @@ def broadcast_instant_notification(title, message):
     except Exception:
         pass
 
-    def _push():
-        try:
-            payload = json.dumps({
-                "fields": {
-                    "id": {"integerValue": str(notif_id)},
-                    "title": {"stringValue": str(title or "DDU Notes Hub")},
-                    "message": {"stringValue": str(message)},
-                    "timestamp": {"stringValue": str(now_str)}
-                }
-            }).encode("utf-8")
-            req = urllib.request.Request(
-                FIRESTORE_BROADCAST_URL,
-                data=payload,
-                headers={"Content-Type": "application/json", "User-Agent": "DDU-Portal-InstantPush"},
-                method="PATCH"
-            )
-            urllib.request.urlopen(req, timeout=3.0)
-        except Exception as e:
-            print("[InstantPush] Firestore broadcast error:", e)
+    # Synchronous push so Vercel serverless function does not freeze before delivery
+    try:
+        payload = json.dumps({
+            "fields": {
+                "id": {"integerValue": str(notif_id)},
+                "title": {"stringValue": str(title or "DDU Notes Hub")},
+                "message": {"stringValue": str(message)},
+                "timestamp": {"stringValue": str(now_str)}
+            }
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            FIRESTORE_BROADCAST_URL,
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "DDU-Portal-InstantPush",
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache"
+            },
+            method="PATCH"
+        )
+        with urllib.request.urlopen(req, timeout=3.5) as resp:
+            pass
+    except Exception as e:
+        print("[InstantPush] Firestore broadcast error:", e)
 
-    threading.Thread(target=_push, daemon=True).start()
     return notif
 
 def get_latest_instant_notification():
-    """Retrieves the latest broadcast notification without touching any notices table."""
+    """Retrieves the latest broadcast notification directly from Firestore without touching notices table."""
     try:
-        if os.path.exists(TMP_BROADCAST_FILE):
-            with open(TMP_BROADCAST_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if data and "id" in data:
-                    return data
-    except Exception:
-        pass
-
-    try:
-        req = urllib.request.Request(FIRESTORE_BROADCAST_URL, headers={"User-Agent": "DDU-Portal-InstantFetch"})
-        with urllib.request.urlopen(req, timeout=2.0) as resp:
+        req = urllib.request.Request(
+            FIRESTORE_BROADCAST_URL,
+            headers={
+                "User-Agent": "DDU-Portal-InstantFetch",
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache"
+            }
+        )
+        with urllib.request.urlopen(req, timeout=2.5) as resp:
             doc = json.loads(resp.read().decode("utf-8"))
             fields = doc.get("fields", {})
             notif = {}
@@ -319,6 +322,16 @@ def get_latest_instant_notification():
                 except Exception:
                     pass
                 return notif
+    except Exception:
+        pass
+
+    # Fallback to local /tmp file if Firestore is slow or unreachable
+    try:
+        if os.path.exists(TMP_BROADCAST_FILE):
+            with open(TMP_BROADCAST_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if data and "id" in data:
+                    return data
     except Exception:
         pass
 

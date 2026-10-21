@@ -3712,10 +3712,10 @@ const App = {
     try {
       this.checkInstantNotification(true);
       if (!this.instantNotifPollTimer) {
-        // Poll every 12 seconds for real-time live WhatsApp message alerts
+        // Poll every 7 seconds for real-time live message alerts
         this.instantNotifPollTimer = setInterval(() => {
           this.checkInstantNotification(false);
-        }, 12000);
+        }, 7000);
       }
       // Immediate poll when window becomes visible again (e.g. user unlocks phone)
       document.addEventListener("visibilitychange", () => {
@@ -3741,35 +3741,32 @@ const App = {
       const notifId = parseInt(notif.id);
 
       const nowMs = Date.now();
-      const isFresh = notifId > 0 && (nowMs - notifId) < (5 * 60 * 1000); // 5 minutes
+      // Fresh if sent within the last 24 hours
+      const isFresh = notifId > 0 && Math.abs(nowMs - notifId) < (24 * 60 * 60 * 1000);
 
-      if (notifId > prevSeenId) {
+      if (notifId > prevSeenId && isFresh) {
         localStorage.setItem(this.lastInstantNotifKey, notifId.toString());
 
-        // Alert if:
-        // 1. New notification arrived while student is browsing, OR
-        // 2. Just loaded site and notification was broadcasted in the last 2 minutes!
-        const shouldPop = (prevSeenId > 0) || (isFresh && (nowMs - notifId) < 120000);
+        // 1. Play melodic chime
+        this.playNotificationSound();
 
-        if (shouldPop) {
-          // 1. Play WhatsApp chime
-          this.playNotificationSound();
-
-          // 2. Mobile vibration
-          if (navigator.vibrate) {
-            try { navigator.vibrate([200, 100, 200]); } catch (e) {}
-          }
-
-          // 3. Top WhatsApp slide-down banner
-          this.showWhatsAppStyleToast({
-            title: notif.title || "DDU Notes Hub",
-            message: notif.message,
-            isInstantAlert: true
-          });
-
-          // 4. OS / Native Browser Notification
-          this.triggerNativePushNotification(notif.title || "DDU Notes Hub", notif.message, notifId);
+        // 2. Mobile vibration
+        if (navigator.vibrate) {
+          try { navigator.vibrate([200, 100, 200]); } catch (e) {}
         }
+
+        // 3. Top slide-down banner
+        this.showWhatsAppStyleToast({
+          title: notif.title || "DDU Notes Hub",
+          message: notif.message,
+          isInstantAlert: true
+        });
+
+        // 4. OS / Native Browser Notification (Android top status bar & desktop)
+        this.triggerNativePushNotification(notif.title || "DDU Notes Hub", notif.message, notifId);
+      } else if (notifId > prevSeenId && !isFresh) {
+        // Silently mark as seen if older than 24h
+        localStorage.setItem(this.lastInstantNotifKey, notifId.toString());
       }
     } catch (e) {}
   },
@@ -3813,26 +3810,48 @@ const App = {
     if (Notification.permission === "granted") return;
 
     if (Notification.permission === "default") {
-      // Pop up notification modal after 1.2s on page visit
+      // Pop up notification modal after 1s on page visit
       setTimeout(() => {
         if (Notification.permission === "default") {
-          const modal = document.getElementById("notification-permission-modal");
-          let dismissed = false;
-          try { dismissed = Boolean(sessionStorage.getItem("notif_modal_dismissed")); } catch(e) {}
-          if (modal && !dismissed) {
-            modal.style.display = "flex";
-          } else {
-            this.showNotificationBottomPill();
+          let modal = document.getElementById("notification-permission-modal");
+          if (!modal) {
+            modal = document.createElement("div");
+            modal.id = "notification-permission-modal";
+            modal.className = "modal";
+            modal.style.cssText = "display: none; z-index: 100005;";
+            modal.innerHTML = `
+              <div class="modal-backdrop" onclick="App.dismissNotificationModal()"></div>
+              <div class="modal-card" style="max-width: 390px; text-align: center; padding: 26px 22px; border-radius: 18px; border: 1px solid rgba(16, 185, 129, 0.35); box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45); animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+                <div style="width: 64px; height: 64px; margin: 0 auto 14px; background: rgba(16, 185, 129, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem;">
+                  🔔
+                </div>
+                <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 8px; color: var(--text-main);">
+                  Allow Instant Notifications?
+                </h3>
+                <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 20px;">
+                  DDU Gorakhpur University ke exam schedule, result, syllabus updates aur urgent notices apne phone ke status bar me paane ke liye permission allow karein!
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <button id="btn-allow-notifications-modal" onclick="App.enablePhoneNotifications()" class="btn-primary" style="width: 100%; padding: 13px; font-weight: 800; font-size: 0.95rem; background: linear-gradient(135deg, #059669, #10b981); border: none; border-radius: 10px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35); cursor: pointer;">
+                    🔔 Allow Notifications
+                  </button>
+                  <button onclick="App.dismissNotificationModal()" class="btn-secondary" style="width: 100%; padding: 10px; font-weight: 600; font-size: 0.84rem; border: none; background: transparent; color: var(--text-muted); cursor: pointer;">
+                    Later / Not Now
+                  </button>
+                </div>
+              </div>
+            `;
+            document.body.appendChild(modal);
           }
+          modal.style.display = "flex";
         }
-      }, 1200);
+      }, 1000);
     }
   },
 
   dismissNotificationModal() {
     const modal = document.getElementById("notification-permission-modal");
     if (modal) modal.style.display = "none";
-    try { sessionStorage.setItem("notif_modal_dismissed", "1"); } catch (e) {}
     this.showNotificationBottomPill();
   },
 

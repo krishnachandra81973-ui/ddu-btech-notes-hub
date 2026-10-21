@@ -2505,7 +2505,7 @@ const Admin = {
 
               <!-- Action Buttons -->
               <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <button type="button" onclick="Admin.testInstantNotification()" class="btn-secondary" style="font-weight: 700; padding: 11px 18px; display: inline-flex; align-items: center; gap: 6px;">
+                <button type="button" onclick="Admin.testInstantNotification(this)" class="btn-secondary" style="font-weight: 700; padding: 11px 18px; display: inline-flex; align-items: center; gap: 6px;">
                   🔔 Test on My Screen
                 </button>
                 <button type="submit" id="instant-broadcast-btn" class="btn-primary" style="flex: 1; min-width: 180px; font-weight: 800; font-size: 1rem; padding: 11px 22px; background: linear-gradient(135deg, #10b981, #059669); border-color: #059669; box-shadow: 0 4px 14px rgba(16,185,129,0.35); display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
@@ -2567,7 +2567,7 @@ const Admin = {
               💬
             </div>
             <div>
-              <h3 class="modal-title" style="margin: 0; font-size: 1.15rem; font-weight: 800;">Push WhatsApp-Style Web Notification</h3>
+              <h3 class="modal-title" style="margin: 0; font-size: 1.15rem; font-weight: 800;">Push Instant Web Notification</h3>
               <span style="font-size: 0.75rem; color: var(--text-muted);">Instant alert with chime sound & vibration</span>
             </div>
           </div>
@@ -2576,7 +2576,7 @@ const Admin = {
 
         <form onsubmit="Admin.broadcastInstantNotification(event)" style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; margin: 0;">
           <div class="modal-body" style="overflow-y: auto; flex: 1; min-height: 0; padding: 20px 24px;">
-            <!-- Live WhatsApp Notification Preview -->
+            <!-- Live Notification Preview -->
             <div style="margin-bottom: 18px;">
               <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">
                 📱 Student Screen Preview:
@@ -2603,12 +2603,12 @@ const Admin = {
 
             <div class="form-group" style="margin-bottom: 14px;">
               <label class="form-label" style="font-weight: 700; font-size: 0.88rem;">Notification Title / Sender</label>
-              <input type="text" id="instant-msg-title" value="DDU Notes Hub" class="form-control" oninput="Admin.updateInstantNotificationPreview()" required>
+              <input type="text" id="instant-modal-msg-title" value="DDU Notes Hub" class="form-control" oninput="Admin.updateInstantNotificationPreview()" required>
             </div>
 
             <div class="form-group" style="margin-bottom: 14px;">
               <label class="form-label" style="font-weight: 700; font-size: 0.88rem;">Notification Message Text *</label>
-              <textarea id="instant-msg-text" rows="3" class="form-control" placeholder="e.g. Kal college me holiday rahegi. Sabhi log time table check kar lein." oninput="Admin.updateInstantNotificationPreview()" required></textarea>
+              <textarea id="instant-modal-msg-text" rows="3" class="form-control" placeholder="e.g. Kal college me holiday rahegi. Sabhi log time table check kar lein." oninput="Admin.updateInstantNotificationPreview()" required></textarea>
             </div>
 
             <!-- Quick Template Chips -->
@@ -2627,15 +2627,15 @@ const Admin = {
             </div>
 
             <div style="padding: 10px 14px; background: rgba(16,185,129,0.06); border: 1px dashed rgba(16,185,129,0.3); border-radius: var(--radius-sm); font-size: 0.8rem; color: #059669;">
-              🔊 <strong>WhatsApp Sound & Vibration:</strong> When broadcasted, all students active on the portal will hear the notification chime and receive the pop-up alert!
+              🔊 <strong>Alert Sound & Vibration:</strong> When broadcasted, all students active on the portal will hear the notification chime and receive the pop-up alert!
             </div>
           </div>
 
           <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px;">
-            <button type="button" onclick="Admin.testInstantNotification()" class="btn-secondary" style="font-weight: 700;">
+            <button type="button" onclick="Admin.testInstantNotification(this)" class="btn-secondary" style="font-weight: 700;">
               🔔 Test on My Screen
             </button>
-            <button type="submit" id="instant-broadcast-btn" class="btn-primary" style="font-weight: 800; background: linear-gradient(135deg, #10b981, #059669); border-color: #059669; box-shadow: 0 4px 14px rgba(16,185,129,0.35);">
+            <button type="submit" id="instant-modal-broadcast-btn" class="btn-primary" style="font-weight: 800; background: linear-gradient(135deg, #10b981, #059669); border-color: #059669; box-shadow: 0 4px 14px rgba(16,185,129,0.35);">
               🚀 Broadcast to All Students
             </button>
           </div>
@@ -2646,8 +2646,13 @@ const Admin = {
   },
 
   updateInstantNotificationPreview() {
-    const title = (document.getElementById('instant-msg-title')?.value || 'DDU Notes Hub').trim();
-    const text = (document.getElementById('instant-msg-text')?.value || '').trim();
+    const modalInput = document.getElementById('instant-modal-msg-text');
+    const tabInput = document.getElementById('instant-msg-text');
+    const modalTitle = document.getElementById('instant-modal-msg-title');
+    const tabTitle = document.getElementById('instant-msg-title');
+
+    const title = ((modalTitle && modalTitle.value) || (tabTitle && tabTitle.value) || 'DDU Notes Hub').trim();
+    const text = ((modalInput && modalInput.value) || (tabInput && tabInput.value) || '').trim();
 
     const previewSender1 = document.getElementById('preview-notify-sender');
     if (previewSender1 && previewSender1.childNodes[0]) {
@@ -2671,12 +2676,17 @@ const Admin = {
   },
 
   applyQuickTemplate(category, message) {
-    const textInput = document.getElementById('instant-msg-text');
-    if (textInput) {
-      textInput.value = message;
-      this.updateInstantNotificationPreview();
-      textInput.focus();
+    const modalInput = document.getElementById('instant-modal-msg-text');
+    const tabInput = document.getElementById('instant-msg-text');
+    if (modalInput) {
+      modalInput.value = message;
+      modalInput.focus();
     }
+    if (tabInput) {
+      tabInput.value = message;
+      if (!modalInput) tabInput.focus();
+    }
+    this.updateInstantNotificationPreview();
   },
 
   playNotificationSound() {
@@ -2737,15 +2747,31 @@ const Admin = {
     }
   },
 
-  async testInstantNotification() {
-    const title = (document.getElementById('instant-msg-title')?.value || 'DDU Notes Hub').trim();
-    const message = (document.getElementById('instant-msg-text')?.value || '').trim();
+  async testInstantNotification(triggerBtn) {
+    let title = '';
+    let message = '';
+    const container = triggerBtn && triggerBtn.closest ? triggerBtn.closest('form, .modal-box') : null;
+    if (container) {
+      const tEl = container.querySelector('#instant-modal-msg-title, #instant-msg-title, input[type="text"]');
+      const mEl = container.querySelector('#instant-modal-msg-text, #instant-msg-text, textarea');
+      title = (tEl?.value || '').trim();
+      message = (mEl?.value || '').trim();
+    }
+    if (!message) {
+      const modalText = document.getElementById('instant-modal-msg-text')?.value;
+      const tabText = document.getElementById('instant-msg-text')?.value;
+      message = (modalText || tabText || '').trim();
+      const modalTitle = document.getElementById('instant-modal-msg-title')?.value;
+      const tabTitle = document.getElementById('instant-msg-title')?.value;
+      title = (modalTitle || tabTitle || 'DDU Notes Hub').trim();
+    }
+    if (!title) title = 'DDU Notes Hub';
     if (!message) {
       App.toast("Please type a notification message text first!", "warning");
       return;
     }
 
-    // Play WhatsApp chime
+    // Play chime sound
     this.playNotificationSound();
     if (navigator.vibrate) {
       try { navigator.vibrate([200, 100, 200]); } catch (e) {}
@@ -2775,14 +2801,30 @@ const Admin = {
 
   async broadcastInstantNotification(e) {
     if (e) e.preventDefault();
-    const title = (document.getElementById('instant-msg-title')?.value || 'DDU Notes Hub').trim();
-    const message = (document.getElementById('instant-msg-text')?.value || '').trim();
+    const form = e && e.target ? (e.target.tagName === 'FORM' ? e.target : e.target.closest('form')) : null;
+    let title = '';
+    let message = '';
+    if (form) {
+      const tEl = form.querySelector('#instant-modal-msg-title, #instant-msg-title, input[type="text"]');
+      const mEl = form.querySelector('#instant-modal-msg-text, #instant-msg-text, textarea');
+      title = (tEl?.value || '').trim();
+      message = (mEl?.value || '').trim();
+    }
+    if (!message) {
+      const modalText = document.getElementById('instant-modal-msg-text')?.value;
+      const tabText = document.getElementById('instant-msg-text')?.value;
+      message = (modalText || tabText || '').trim();
+      const modalTitle = document.getElementById('instant-modal-msg-title')?.value;
+      const tabTitle = document.getElementById('instant-msg-title')?.value;
+      title = (modalTitle || tabTitle || 'DDU Notes Hub').trim();
+    }
+    if (!title) title = 'DDU Notes Hub';
     if (!message) {
       App.toast("Please enter notification message text.", "warning");
       return;
     }
 
-    const submitBtn = document.getElementById('instant-broadcast-btn');
+    const submitBtn = (form && form.querySelector('button[type="submit"]')) || document.getElementById('instant-modal-broadcast-btn') || document.getElementById('instant-broadcast-btn');
     const origText = submitBtn ? submitBtn.innerHTML : "Broadcast";
     if (submitBtn) {
       submitBtn.disabled = true;
@@ -2802,17 +2844,20 @@ const Admin = {
       });
       const data = await res.json();
       if (res.ok && data.success !== false) {
-        // Play WhatsApp chime
+        // Play chime sound
         this.playNotificationSound();
         if (navigator.vibrate) {
           try { navigator.vibrate([200, 100, 200]); } catch (e) {}
         }
         await this.showNativeSystemNotification(title, message, "ddu-broadcast-" + Date.now());
-        App.toast("🎉 WhatsApp-style notification sent! (Sirf popup aayega, website notices me save nahi hoga)", "success");
+        App.toast("🎉 Notification sent! (Sirf popup aayega, website notices me save nahi hoga)", "success");
+        if (document.getElementById('instant-modal-msg-text')) {
+          document.getElementById('instant-modal-msg-text').value = '';
+        }
         if (document.getElementById('instant-msg-text')) {
           document.getElementById('instant-msg-text').value = '';
-          this.updateInstantNotificationPreview();
         }
+        this.updateInstantNotificationPreview();
         App.closeActiveModal();
       } else {
         App.toast(data.error || "Failed to broadcast notification.", "error");
