@@ -3,6 +3,31 @@
 
 window.DDU_NOTES_DATA = [
   {
+    "id": 1000048,
+    "subject_id": 31,
+    "unit_id": 143,
+    "title": "MATHEMATICS - 1 Unit Notes",
+    "description": "Comprehensive Unit 1 lecture notes for Engineering Mathematics-I (BAS-103). Covers Differential Calculus, Successive Differentiation, Leibnitz Theorem, and key solved practice problems.",
+    "file_url": "/static/uploads/notes/MATHEMATICS_-_1_Unit_Notes__f2cadc3a.pdf",
+    "file_name": "MATHEMATICS   - 1 Unit Notes .pdf",
+    "file_size": "5.7 MB",
+    "is_important": 1,
+    "is_published": 1,
+    "is_verified": 1,
+    "status": "APPROVED",
+    "contributed_by_id": null,
+    "contributed_by_name": null,
+    "contributed_by_email": null,
+    "download_count": 0,
+    "created_at": "2026-10-22 23:18:22",
+    "subject_name": "Engineering Mathematics-I",
+    "subject_code": "BAS-103",
+    "semester_id": 1,
+    "semester_number": 1,
+    "unit_number": 1,
+    "unit_title": "Unit 1: Differential Calculus - Successive Differentiation"
+  },
+  {
     "id": 505,
     "subject_id": 72,
     "unit_id": 340,
@@ -831,7 +856,7 @@ window.DDU_SUBJECTS_DATA = [
     "created_at": "2026-09-28 12:05:16",
     "semester_number": 1,
     "semester_title": "1st Semester",
-    "notes_count": 0,
+    "notes_count": 1,
     "pyq_count": 5
   },
   {
@@ -1355,3 +1380,7 @@ window.DDU_SUBJECTS_DATA = [
     "pyq_count": 0
   }
 ];
+
+window.DDU_DATA = window.DDU_DATA || {};
+window.DDU_DATA.notes = window.DDU_NOTES_DATA;
+window.DDU_DATA.subjects = window.DDU_SUBJECTS_DATA;

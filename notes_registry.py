@@ -102,6 +102,74 @@ def _firestore_to_note(doc):
             note[k] = fval["doubleValue"]
     return note
 
+def fetch_github_notes():
+    """Fetches custom_notes_registry.json directly from GitHub Raw or GitHub Contents API"""
+    try:
+        import cloud_storage
+        raw_bytes = cloud_storage.fetch_github_raw("custom_notes_registry.json")
+        if raw_bytes:
+            data = json.loads(raw_bytes.decode("utf-8"))
+            if isinstance(data, list) and data:
+                return data
+    except Exception:
+        pass
+
+    try:
+        import cloud_storage
+        import base64
+        token = cloud_storage.get_github_token()
+        repo = os.environ.get("GITHUB_REPO", cloud_storage.REPO_OWNER_NAME).strip()
+        url = f"https://api.github.com/repos/{repo}/contents/custom_notes_registry.json?ref=main"
+        headers = {"User-Agent": "DDU-Portal-Serverless"}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=4.0) as resp:
+            if resp.status == 200:
+                body = json.loads(resp.read().decode("utf-8"))
+                content = base64.b64decode(body.get("content", "")).decode("utf-8")
+                data = json.loads(content)
+                if isinstance(data, list) and data:
+                    return data
+    except Exception:
+        pass
+    return []
+
+
+def fetch_github_deleted_ids():
+    """Fetches deleted_notes_registry.json directly from GitHub"""
+    try:
+        import cloud_storage
+        raw_bytes = cloud_storage.fetch_github_raw("deleted_notes_registry.json")
+        if raw_bytes:
+            data = json.loads(raw_bytes.decode("utf-8"))
+            if isinstance(data, list):
+                return [int(x) for x in data if str(x).isdigit()]
+    except Exception:
+        pass
+
+    try:
+        import cloud_storage
+        import base64
+        token = cloud_storage.get_github_token()
+        repo = os.environ.get("GITHUB_REPO", cloud_storage.REPO_OWNER_NAME).strip()
+        url = f"https://api.github.com/repos/{repo}/contents/deleted_notes_registry.json?ref=main"
+        headers = {"User-Agent": "DDU-Portal-Serverless"}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=4.0) as resp:
+            if resp.status == 200:
+                body = json.loads(resp.read().decode("utf-8"))
+                content = base64.b64decode(body.get("content", "")).decode("utf-8")
+                data = json.loads(content)
+                if isinstance(data, list):
+                    return [int(x) for x in data if str(x).isdigit()]
+    except Exception:
+        pass
+    return []
+
+
 def fetch_firestore_notes():
     """Fetches custom notes added by admin from Cloud Firestore"""
     try:
@@ -363,7 +431,9 @@ def record_custom_note(note_dict):
         except Exception:
             pass
 
-    threading.Thread(target=_sync, daemon=True).start()
+    t = threading.Thread(target=_sync, daemon=True)
+    t.start()
+    t.join(timeout=4.5)
 
 
 def remove_custom_note(note_id):
@@ -375,10 +445,18 @@ def _sync_notes_to_sqlite(conn, active_notes, all_deleted):
     """Inserts/updates active notes and purges deleted notes in SQLite"""
     try:
         cursor = conn.cursor()
+        active_ids = {int(n.get("id")) for n in active_notes if n.get("id") and str(n.get("id")).isdigit()}
+        # Prevent active notes from ever being purged by stale deleted registry entries
+        all_deleted = [did for did in all_deleted if did not in active_ids]
+
         cursor.execute("CREATE TABLE IF NOT EXISTS deleted_notes (note_id INTEGER PRIMARY KEY, deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP);")
         for did in all_deleted:
             cursor.execute("INSERT OR IGNORE INTO deleted_notes (note_id) VALUES (?)", (did,))
-        
+
+        if active_ids:
+            ph_act = ",".join("?" for _ in active_ids)
+            cursor.execute(f"DELETE FROM deleted_notes WHERE note_id IN ({ph_act})", tuple(active_ids))
+
         if all_deleted:
             placeholders = ",".join("?" for _ in all_deleted)
             cursor.execute(f"DELETE FROM notes WHERE id IN ({placeholders})", tuple(all_deleted))
@@ -400,9 +478,9 @@ def _sync_notes_to_sqlite(conn, active_notes, all_deleted):
                 file_name = n.get("file_name", title)
                 file_size = n.get("file_size", "PDF Document")
                 is_important = n.get("is_important", 0)
-                is_published = n.get("is_published", 1)
-                is_verified = n.get("is_verified", 1)
                 status = n.get("status", "APPROVED")
+                is_verified = 0 if (status == "PENDING" or str(n.get("is_verified")) in ("0", "False", "false")) else 1
+                is_published = 0 if (status == "PENDING" or str(n.get("is_published")) in ("0", "False", "false")) else 1
                 contributed_by_id = n.get("contributed_by_id")
                 contributed_by_name = n.get("contributed_by_name")
                 contributed_by_email = n.get("contributed_by_email")
@@ -426,25 +504,72 @@ def _sync_notes_to_sqlite(conn, active_notes, all_deleted):
                         found = cursor.fetchone()
                         if found:
                             matched_id = found[0]
-                    if not matched_id and ('mecha' in title.lower() or 'mecha' in description.lower()):
-                        cursor.execute("SELECT id FROM subjects WHERE code = 'BME-101' OR name LIKE '%Mechanical%' LIMIT 1")
+                    if not matched_id and subject_id and str(subject_id).isdigit():
+                        cursor.execute("SELECT id FROM subjects WHERE code LIKE ? OR code = ?", (f"%{subject_id}%", f"BAS-{subject_id}"))
                         found = cursor.fetchone()
                         if found:
                             matched_id = found[0]
+                    if not matched_id:
+                        t_lower = (title + " " + (description or "")).lower()
+                        if "math" in t_lower or "calculus" in t_lower:
+                            if "discrete" in t_lower:
+                                cursor.execute("SELECT id FROM subjects WHERE code = 'BCS-303' LIMIT 1")
+                            elif any(k in t_lower for k in ["ii", "math-2", "maths-2", "math 2", "203"]):
+                                cursor.execute("SELECT id FROM subjects WHERE code = 'BAS-203' LIMIT 1")
+                            else:
+                                cursor.execute("SELECT id FROM subjects WHERE code = 'BAS-103' LIMIT 1")
+                            found = cursor.fetchone()
+                            if found:
+                                matched_id = found[0]
+                        elif "mecha" in t_lower:
+                            cursor.execute("SELECT id FROM subjects WHERE code = 'BME-101' OR name LIKE '%Mechanical%' LIMIT 1")
+                            found = cursor.fetchone()
+                            if found:
+                                matched_id = found[0]
+                        elif "physic" in t_lower:
+                            cursor.execute("SELECT id FROM subjects WHERE code = 'BAS-101' LIMIT 1")
+                            found = cursor.fetchone()
+                            if found:
+                                matched_id = found[0]
+                        elif "chem" in t_lower:
+                            cursor.execute("SELECT id FROM subjects WHERE code = 'BAS-102' LIMIT 1")
+                            found = cursor.fetchone()
+                            if found:
+                                matched_id = found[0]
+                        elif "electr" in t_lower or "bee" in t_lower:
+                            cursor.execute("SELECT id FROM subjects WHERE code = 'BEE-101' LIMIT 1")
+                            found = cursor.fetchone()
+                            if found:
+                                matched_id = found[0]
                     subject_id = matched_id
 
                 if not subject_id:
-                    continue
+                    cursor.execute("SELECT id FROM subjects ORDER BY id ASC LIMIT 1")
+                    fallback_sub = cursor.fetchone()
+                    if fallback_sub:
+                        subject_id = fallback_sub[0]
+                    else:
+                        continue
 
-                if unit_id:
-                    cursor.execute("SELECT id FROM units WHERE id = ?", (unit_id,))
+                if unit_id and subject_id:
+                    cursor.execute("SELECT id FROM units WHERE id = ? AND subject_id = ?", (unit_id, subject_id))
                     if not cursor.fetchone():
-                        unit_id = None
+                        cursor.execute("SELECT id FROM units WHERE subject_id = ? AND unit_number = ?", (subject_id, unit_id))
+                        u_match = cursor.fetchone()
+                        unit_id = u_match[0] if u_match else None
                 if not unit_id and subject_id:
-                    cursor.execute("SELECT id FROM units WHERE subject_id = ? AND unit_number = 1 LIMIT 1", (subject_id,))
+                    import re
+                    m = re.search(r'(?:unit\s*[-_:]*\s*(\d+)|(\d+)\s*unit)', (title or "").lower())
+                    unit_num = int(m.group(1) or m.group(2)) if m else 1
+                    cursor.execute("SELECT id FROM units WHERE subject_id = ? AND unit_number = ? LIMIT 1", (subject_id, unit_num))
                     u_row = cursor.fetchone()
                     if u_row:
                         unit_id = u_row[0]
+                    else:
+                        cursor.execute("SELECT id FROM units WHERE subject_id = ? ORDER BY unit_number ASC LIMIT 1", (subject_id,))
+                        u_row = cursor.fetchone()
+                        if u_row:
+                            unit_id = u_row[0]
 
                 if contributed_by_id:
                     cursor.execute("SELECT id FROM users WHERE id = ?", (contributed_by_id,))
@@ -474,17 +599,16 @@ def _sync_notes_to_sqlite(conn, active_notes, all_deleted):
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, (note_id, subject_id, unit_id, title, description, file_url, file_name, file_size, is_important, is_published, is_verified, status, contributed_by_id, contributed_by_name, contributed_by_email, download_count))
                 conn.commit()
-            except Exception as ne:
+            except Exception:
                 pass
-    except Exception as e:
+    except Exception:
         pass
 
 
 def ensure_custom_notes_synced(conn, force_remote=False):
     """
     1. Immediately synchronizes local JSON notes and deleted note IDs into SQLite (<1ms).
-    2. Dispatches Cloud Firestore remote sync to a background daemon thread so user queries
-       NEVER suffer latency or timeout delays.
+    2. Synchronizes GitHub & Firestore remote notes.
     """
     try:
         # Step 1: Instant local sync (<1ms)
@@ -494,25 +618,32 @@ def ensure_custom_notes_synced(conn, force_remote=False):
     except Exception:
         pass
 
-    # Step 2: Background Cloud Firestore check
+    # Step 2: Remote sync (GitHub + Firestore)
     global _LAST_SYNC_TIME
     now = time.time()
     if (now - _LAST_SYNC_TIME >= _SYNC_INTERVAL) or force_remote:
         _LAST_SYNC_TIME = now
 
-        def _bg_firestore_sync():
+        def _sync_remote():
             try:
-                remote_notes = fetch_firestore_notes()
-                remote_deleted = fetch_firestore_deleted_ids()
+                remote_notes = fetch_github_notes()
+                if not remote_notes:
+                    remote_notes = fetch_firestore_notes()
+
+                remote_deleted = fetch_github_deleted_ids()
+                if not remote_deleted:
+                    remote_deleted = fetch_firestore_deleted_ids()
+
                 if not remote_notes and not remote_deleted:
                     return
 
-                cur_deleted = set(load_local_deleted_ids()) | set(remote_deleted)
+                cur_local = [n for n in load_local_notes(filter_deleted=False)]
+                active_local_ids = {int(n.get("id")) for n in cur_local if n.get("id") and str(n.get("id")).isdigit()}
+                cur_deleted = (set(load_local_deleted_ids()) | set(remote_deleted)) - active_local_ids
                 if remote_deleted:
                     save_local_deleted_ids(list(cur_deleted))
 
-                cur_local = [n for n in load_local_notes(filter_deleted=False) if int(n.get("id", 0)) not in cur_deleted]
-                merged_dict = {n.get("id"): n for n in cur_local if n.get("id")}
+                merged_dict = {n.get("id"): n for n in cur_local if int(n.get("id", 0)) not in cur_deleted}
                 if remote_notes:
                     for rn in remote_notes:
                         rn_id = rn.get("id")
@@ -526,11 +657,11 @@ def ensure_custom_notes_synced(conn, force_remote=False):
                 clean_active = [n for n in all_active if int(n.get("id", 0)) not in cur_deleted]
                 _sync_notes_to_sqlite(bg_conn, clean_active, cur_deleted)
                 bg_conn.close()
-            except Exception as e:
+            except Exception:
                 pass
 
         if force_remote:
-            _bg_firestore_sync()
+            _sync_remote()
         else:
-            threading.Thread(target=_bg_firestore_sync, daemon=True).start()
+            threading.Thread(target=_sync_remote, daemon=True).start()
 

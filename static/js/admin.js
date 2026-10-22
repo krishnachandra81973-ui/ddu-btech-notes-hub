@@ -114,7 +114,8 @@ const Admin = {
     this.currentTab = tab;
     document.querySelectorAll(".admin-nav-item").forEach(item => {
       item.classList.remove("active");
-      if (item.getAttribute("onclick").includes(tab)) {
+      const onclickAttr = item.getAttribute("onclick") || "";
+      if (onclickAttr.includes(`'${tab}'`) || onclickAttr.includes(`"${tab}"`) || onclickAttr.includes(tab)) {
         item.classList.add("active");
       }
     });
@@ -151,7 +152,9 @@ const Admin = {
   // ------------------- 1. Dashboard Tab -------------------
   async renderDashboardTab(container) {
     try {
-      const res = await fetch("/api/admin/stats", { headers: Auth.getAuthHeaders() });
+      const res = await fetch(`/api/admin/stats?_t=${Date.now()}`, {
+        headers: { ...Auth.getAuthHeaders(), "Cache-Control": "no-cache", "Pragma": "no-cache" }
+      });
       if (res.status === 401 || res.status === 403) {
         App.toast("Administrator session expired. Please sign in.", "warning");
         Auth.logout(false);
@@ -477,7 +480,24 @@ const Admin = {
   async renderSubmissionsTab(container) {
     container.innerHTML = `<p style="color: var(--text-muted);"><span class="spinner"></span> Loading pending submissions...</p>`;
     try {
-      const res = await fetch("/api/admin/notes/pending", { headers: Auth.getAuthHeaders() });
+      const res = await fetch(`/api/admin/notes/pending?_t=${Date.now()}`, {
+        headers: { ...Auth.getAuthHeaders(), "Cache-Control": "no-cache", "Pragma": "no-cache" }
+      });
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          container.innerHTML = `
+            <div style="background: var(--bg-card); border: 1px solid var(--accent-rose); border-radius: var(--radius-md); padding: 32px 20px; text-align: center;">
+              <div style="font-size: 2.5rem; margin-bottom: 8px;">🔒</div>
+              <h3 style="font-weight: 700; color: var(--accent-rose); margin-bottom: 8px;">Admin Authentication Required</h3>
+              <p style="color: var(--text-muted); margin-bottom: 16px;">Your administrator session has expired or requires sign-in to view student submissions.</p>
+              <button onclick="location.reload()" class="btn-primary">Sign In as Admin</button>
+            </div>
+          `;
+          return;
+        }
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Server error (${res.status})`);
+      }
       const data = await res.json();
       const submissions = data.pending_notes || data.notes || data.submissions || [];
 
@@ -1201,9 +1221,15 @@ const Admin = {
   },
 
   // Modal: Add / Edit Note
+  // Modal: Add / Edit Note
   openAddNoteModal(note = null) {
     const isEdit = !!note;
-    const subOptions = this.cachedSubjects.map(s => `
+    if (!this.cachedSubjects || this.cachedSubjects.length === 0) {
+      if (typeof window !== "undefined" && window.DDU_SUBJECTS_DATA && window.DDU_SUBJECTS_DATA.length > 0) {
+        this.cachedSubjects = window.DDU_SUBJECTS_DATA;
+      }
+    }
+    const subOptions = (this.cachedSubjects || []).map(s => `
       <option value="${s.id}" ${isEdit && note.subject_id === s.id ? 'selected' : ''}>
         [Sem ${s.semester_number}] ${escapeHtml(s.code)} - ${escapeHtml(s.name)}
       </option>
@@ -1300,14 +1326,15 @@ const Admin = {
             <div class="form-group">
               <label class="form-label">Attach PDF Document *</label>
               <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                <input type="file" id="note-file-upload" accept=".pdf" onchange="Admin.uploadFileField('note-file-upload', 'note-file-url-input', 'Notes')" class="form-control" style="flex-grow: 1;">
-                <button type="button" onclick="Admin.uploadFileField('note-file-upload', 'note-file-url-input', 'Notes')" class="btn-secondary btn-sm">
+                <input type="file" id="note-file-upload" accept=".pdf" onchange="Admin.onNoteFileSelected(this)" class="form-control" style="flex-grow: 1;">
+                <button type="button" id="note-upload-btn" onclick="Admin.uploadFileField('note-file-upload', 'note-file-url-input', 'Notes')" class="btn-secondary btn-sm" style="white-space: nowrap;">
                   Upload File
                 </button>
               </div>
-              <input type="text" name="file_url" id="note-file-url-input" required value="${isEdit ? escapeHtml(note.file_url) : ''}" placeholder="/static/uploads/document.pdf" class="form-control" style="font-size: 0.8rem; background: var(--bg-main);">
+              <input type="text" name="file_url" id="note-file-url-input" value="${isEdit ? escapeHtml(note.file_url) : ''}" placeholder="/static/uploads/document.pdf or paste PDF link..." class="form-control" style="font-size: 0.8rem; background: var(--bg-main);">
+              <div id="note-upload-feedback" style="margin-top: 6px; font-size: 0.8rem; display: none;"></div>
               <small style="color: var(--text-muted); font-size: 0.76rem; display: block; margin-top: 4px;">
-                💡 <strong>Tip:</strong> PDF select karte hi automatic cloud par attach hokar address fill ho jayega (Supports files up to 50 MB, or paste any Drive/PDF link).
+                💡 <strong>Tip:</strong> PDF select karte hi automatic cloud par attach ho jayega (Supports files up to 50 MB, or paste any Drive/PDF link).
               </small>
             </div>
 
@@ -1330,6 +1357,59 @@ const Admin = {
       </div>
     `;
     App.showGenericModal(modalHtml);
+  },
+
+  onNoteFileSelected(input) {
+    if (!input || !input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const form = document.getElementById("admin-note-form");
+    if (!form) return;
+
+    // 1. Auto-fill title if blank
+    if (!form.title.value || form.title.value.trim() === "") {
+      const cleanTitle = file.name
+        .replace(/\.[^/.]+$/, "")
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      form.title.value = cleanTitle;
+    }
+
+    // 2. Auto-detect Unit
+    const m = file.name.match(/(?:unit\s*[-_:]*\s*(\d+)|(\d+)\s*unit)/i);
+    if (m) {
+      const unitNum = m[1] || m[2];
+      const uSelect = form.querySelector("select[name='unit_number']");
+      if (uSelect) uSelect.value = unitNum;
+    }
+
+    // 3. Auto-detect Subject
+    const fnameLower = file.name.toLowerCase();
+    const subSelect = document.getElementById("note-subject-select");
+    if (subSelect && (!subSelect.value || subSelect.value === "")) {
+      if (fnameLower.includes("math") || fnameLower.includes("calculus") || fnameLower.includes("103")) {
+        const mathSub = (this.cachedSubjects || []).find(s => s.code === "BAS-103" || s.name.toLowerCase().includes("mathematics-i"));
+        if (mathSub) subSelect.value = mathSub.id;
+      } else if (fnameLower.includes("mecha") || fnameLower.includes("fme") || fnameLower.includes("bme")) {
+        const mechaSub = (this.cachedSubjects || []).find(s => s.code === "BME-101" || s.name.toLowerCase().includes("mechanical"));
+        if (mechaSub) subSelect.value = mechaSub.id;
+      } else if (fnameLower.includes("physic") || fnameLower.includes("101")) {
+        const phySub = (this.cachedSubjects || []).find(s => s.code === "BAS-101" || s.name.toLowerCase().includes("physics"));
+        if (phySub) subSelect.value = phySub.id;
+      } else if (fnameLower.includes("chem") || fnameLower.includes("102")) {
+        const chemSub = (this.cachedSubjects || []).find(s => s.code === "BAS-102" || s.name.toLowerCase().includes("chemistry"));
+        if (chemSub) subSelect.value = chemSub.id;
+      } else if (fnameLower.includes("electr") || fnameLower.includes("bee")) {
+        const beeSub = (this.cachedSubjects || []).find(s => s.code === "BEE-101" || s.name.toLowerCase().includes("electrical"));
+        if (beeSub) subSelect.value = beeSub.id;
+      } else if (fnameLower.includes("cse") || fnameLower.includes("program") || fnameLower.includes("c lang")) {
+        const cseSub = (this.cachedSubjects || []).find(s => s.code === "BCS-101" || s.name.toLowerCase().includes("problem solving"));
+        if (cseSub) subSelect.value = cseSub.id;
+      }
+    }
+
+    // 4. Trigger upload
+    this.uploadFileField('note-file-upload', 'note-file-url-input', 'Notes');
   },
 
   onSubjectSelectChange(selectEl) {
@@ -1374,17 +1454,28 @@ const Admin = {
   async handleSaveNote(e, noteId) {
     e.preventDefault();
     const form = e.target;
-    let fileUrl = (form.file_url.value || "").trim();
+    const submitBtn = form.querySelector('button[type="submit"]');
+    let fileUrl = (form.file_url?.value || "").trim();
 
     // Auto-upload if file is selected in input and file_url is empty
     const fileInput = document.getElementById("note-file-upload");
     if (!fileUrl && fileInput && fileInput.files && fileInput.files.length > 0) {
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `⏳ Uploading PDF (${(fileInput.files[0].size / (1024*1024)).toFixed(1)} MB)...`;
+      }
       fileUrl = await Admin.uploadFileField("note-file-upload", "note-file-url-input", "Notes");
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = noteId ? 'Save Changes' : 'Create & Publish Note';
+      }
       if (!fileUrl) return;
     }
 
     if (!fileUrl) {
-      App.toast("Please select a PDF file or enter a document URL.", "warning");
+      App.toast("Kripya ek PDF file select karein ya document ka URL enter karein.", "warning");
+      const uploadInput = document.getElementById("note-file-upload");
+      if (uploadInput) uploadInput.focus();
       return;
     }
 
@@ -1409,7 +1500,7 @@ const Admin = {
       }
 
       // Check if this subject already exists in cachedSubjects
-      const existing = this.cachedSubjects.find(s => s.code.toUpperCase() === customCode || s.name.toLowerCase() === customName.toLowerCase());
+      const existing = (this.cachedSubjects || []).find(s => s.code.toUpperCase() === customCode || s.name.toLowerCase() === customName.toLowerCase());
       if (existing) {
         targetSubjectId = existing.id;
       } else {
@@ -1445,17 +1536,35 @@ const Admin = {
       return;
     }
 
+    const titleVal = (form.title.value || "").trim();
+    if (!titleVal) {
+      App.toast("Kripya note ka title enter karein.", "warning");
+      form.title.focus();
+      return;
+    }
+
+    const selectedFile = (fileInput && fileInput.files && fileInput.files.length > 0) ? fileInput.files[0] : null;
+    const fileNameStr = selectedFile ? selectedFile.name : (titleVal + ".pdf");
+    const fileSizeStr = selectedFile ? (selectedFile.size < 1024 * 1024 ? `${Math.round(selectedFile.size / 1024)} KB` : `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB`) : "PDF Document";
+
     const body = {
-      title: form.title.value.trim ? form.title.value.trim() : form.title.value,
+      title: titleVal,
       subject_id: parseInt(targetSubjectId),
-      unit_id: parseInt(form.unit_number.value), // maps to unit
+      unit_id: parseInt(form.unit_number.value || 1), // maps to unit
       description: (form.description.value || "").trim(),
       file_url: fileUrl,
+      file_name: fileNameStr,
+      file_size: fileSizeStr,
       is_important: form.is_important.checked,
       is_published: form.is_published.checked,
       custom_subject_name: form.custom_subject_name?.value || "",
       custom_subject_code: form.custom_subject_code?.value || ""
     };
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "⏳ Publishing Note...";
+    }
 
     try {
       const url = noteId ? `/api/admin/notes/${noteId}` : "/api/admin/notes";
@@ -1473,6 +1582,16 @@ const Admin = {
       } else {
         const err = await res.json();
         App.toast(err.error || "Save failed", "error");
+      }
+    } catch (err) {
+      App.toast(err.message, "error");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = noteId ? 'Save Changes' : 'Create & Publish Note';
+      }
+    }
+  },
       }
     } catch (err) {
       App.toast(err.message, "error");

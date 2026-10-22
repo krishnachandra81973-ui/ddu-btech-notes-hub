@@ -161,10 +161,10 @@
   },
   {
     "download_count": 0,
-    "title": "MATHEMATICS   - 1 Unit Notes .pdf",
+    "title": "MATHEMATICS - 1 Unit Notes",
     "unit_id": 143,
-    "file_size": "PDF Document",
-    "description": "Set Theory",
+    "file_size": "5.7 MB",
+    "description": "Comprehensive Unit 1 lecture notes for Engineering Mathematics-I (BAS-103). Covers Differential Calculus, Successive Differentiation, Leibnitz Theorem, and key solved practice problems.",
     "file_name": "MATHEMATICS   - 1 Unit Notes .pdf",
     "is_verified": 1,
     "subject_id": 31,
@@ -173,6 +173,12 @@
     "created_at": "2026-10-22 23:18:22",
     "file_url": "/static/uploads/notes/MATHEMATICS_-_1_Unit_Notes__f2cadc3a.pdf",
     "is_published": 1,
-    "is_important": 1
+    "is_important": 1,
+    "subject_name": "Engineering Mathematics-I",
+    "subject_code": "BAS-103",
+    "semester_id": 1,
+    "semester_number": 1,
+    "unit_number": 1,
+    "unit_title": "Unit 1: Differential Calculus - Successive Differentiation"
   }
 ]

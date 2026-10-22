@@ -100,7 +100,7 @@
     "title": "Samsung Innovation Campus (SIC) AI/ML & IoT Certification at DDU Gorakhpur University",
     "category": "Important Announcement",
     "short_description": "Department of Computer Science & Engineering successfully executes the Samsung Innovation Campus (SIC) program with over 300 students certified.",
-    "full_details": "In collaboration with Samsung Electronics Southwest Asia and NIELIT, students of DDU B.Tech CSE participated in rigorous industry-led training in Artificial Intelligence, Coding, Big Data, and IoT. Felicitations were graced by the Honourable Chief Minister Yogi Adityanath Ji and Samsung CEO. Notable topper Mr. Amit Maurya was awarded ₹1 Lakh cash prize and laptop.",
+    "full_details": "In collaboration with Samsung Electronics Southwest Asia and NIELIT, students of DDU B.Tech CSE participated in rigorous industry-led training in Artificial Intelligence, Coding, Big Data, and IoT. Felicitations were graced by the Honourable Chief Minister Yogi Adityanath Ji and Samsung CEO. Notable topper Mr. Amit Maurya was awarded \u20b91 Lakh cash prize and laptop.",
     "attachment_url": "/static/uploads/ddu_official_btech_cse_aiml_syllabus.pdf",
     "is_important": 1,
     "is_published": 1,
@@ -788,5 +788,33 @@
     "duration_days": 0,
     "expires_at": null,
     "created_at": "2026-10-20 22:21:46"
+  },
+  {
+    "id": 91,
+    "title": "Urgent: Library Reading Room Extended Hours for End-Sem Exam Prep",
+    "category": "University Notice",
+    "short_description": "Central Library will remain open 24x7 during examination weeks.",
+    "full_details": "Special quiet study zones and high-speed Wi-Fi access available for all B.Tech students.",
+    "attachment_url": null,
+    "is_important": 1,
+    "is_published": 1,
+    "publish_date": "2026-09-26",
+    "duration_days": 0,
+    "expires_at": null,
+    "created_at": "2026-10-22 08:04:29"
+  },
+  {
+    "id": 92,
+    "title": "Urgent: Library Reading Room Extended Hours for End-Sem Exam Prep",
+    "category": "University Notice",
+    "short_description": "Central Library will remain open 24x7 during examination weeks.",
+    "full_details": "Special quiet study zones and high-speed Wi-Fi access available for all B.Tech students.",
+    "attachment_url": null,
+    "is_important": 1,
+    "is_published": 1,
+    "publish_date": "2026-09-26",
+    "duration_days": 0,
+    "expires_at": null,
+    "created_at": "2026-10-22 23:11:21"
   }
 ]

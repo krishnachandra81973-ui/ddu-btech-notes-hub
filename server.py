@@ -489,7 +489,7 @@ class DDURequestHandler(BaseHTTPRequestHandler):
             if not user:
                 self.send_error_json("Authentication required", status=401)
                 return
-            data = db.get_student_submissions(user["id"])
+            data = db.get_student_submissions(user["id"], user.get("email"))
             self.send_json({"submissions": data})
             return
 
@@ -501,7 +501,7 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 return
 
             if path == "/api/admin/notes/pending":
-                pending = db.get_pending_notes()
+                pending = db.get_pending_notes(force_remote=True)
                 self.send_json({
                     "notes": pending,
                     "pending_notes": pending,
@@ -511,7 +511,7 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                 return
 
             if path == "/api/admin/stats":
-                stats = db.get_admin_stats()
+                stats = db.get_admin_stats(force_remote=True)
                 self.send_json({"stats": stats})
                 return
 
@@ -1000,12 +1000,21 @@ class DDURequestHandler(BaseHTTPRequestHandler):
                         subject_id = db.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
                 elif str(subject_id).isdigit():
                     if not db.get_subject_detail(int(subject_id)):
-                        custom_name = (body.get("custom_subject_name") or body.get("subject_name") or "").strip()
-                        if custom_name:
-                            custom_code = (body.get("custom_subject_code") or body.get("subject_code") or "ME").strip().upper()
-                            custom_sem = int(body.get("custom_semester_id") or body.get("semester_id") or 1)
-                            custom_branch = (body.get("custom_branch") or body.get("branch") or "ME").strip()
-                            subject_id = db.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
+                        # Check if subject_id matches code e.g. 103 -> BAS-103
+                        conn_chk = db.get_connection()
+                        c_chk = conn_chk.cursor()
+                        c_chk.execute("SELECT id FROM subjects WHERE code LIKE ? OR code = ?", (f"%{subject_id}%", f"BAS-{subject_id}"))
+                        r_chk = c_chk.fetchone()
+                        conn_chk.close()
+                        if r_chk:
+                            subject_id = r_chk[0]
+                        else:
+                            custom_name = (body.get("custom_subject_name") or body.get("subject_name") or "").strip()
+                            if custom_name:
+                                custom_code = (body.get("custom_subject_code") or body.get("subject_code") or "ME").strip().upper()
+                                custom_sem = int(body.get("custom_semester_id") or body.get("semester_id") or 1)
+                                custom_branch = (body.get("custom_branch") or body.get("branch") or "ME").strip()
+                                subject_id = db.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
 
                 if not subject_id:
                     self.send_error_json("Valid Subject ID or custom subject name is required.", status=400)

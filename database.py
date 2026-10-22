@@ -1155,19 +1155,51 @@ def create_note(subject_id, unit_id, title, description, file_url, file_name, fi
     conn = get_connection()
     cursor = conn.cursor()
 
-    # 1. Validate subject exists; if not, fallback to existing or default subject
-    cursor.execute("SELECT id FROM subjects WHERE id = ?", (subject_id,))
-    if not cursor.fetchone():
-        cursor.execute("SELECT id FROM subjects ORDER BY id ASC LIMIT 1")
-        fallback_sub = cursor.fetchone()
-        if fallback_sub:
-            subject_id = fallback_sub[0]
+    # 1. Validate subject exists; if not, fallback to code or keyword matching
+    sub_row = None
+    if subject_id:
+        cursor.execute("SELECT id FROM subjects WHERE id = ?", (subject_id,))
+        sub_row = cursor.fetchone()
+    if not sub_row:
+        if subject_id and str(subject_id).isdigit():
+            cursor.execute("SELECT id FROM subjects WHERE code LIKE ? OR code = ?", (f"%{subject_id}%", f"BAS-{subject_id}"))
+            sub_row = cursor.fetchone()
+        if not sub_row and title:
+            t_lower = (title + " " + (description or "")).lower()
+            if "math" in t_lower or "calculus" in t_lower:
+                if "discrete" in t_lower:
+                    cursor.execute("SELECT id FROM subjects WHERE code = 'BCS-303' LIMIT 1")
+                elif any(k in t_lower for k in ["ii", "math-2", "maths-2", "math 2", "203"]):
+                    cursor.execute("SELECT id FROM subjects WHERE code = 'BAS-203' LIMIT 1")
+                else:
+                    cursor.execute("SELECT id FROM subjects WHERE code = 'BAS-103' LIMIT 1")
+                sub_row = cursor.fetchone()
+            elif "mecha" in t_lower:
+                cursor.execute("SELECT id FROM subjects WHERE code = 'BME-101' OR name LIKE '%Mechanical%' LIMIT 1")
+                sub_row = cursor.fetchone()
+            elif "physic" in t_lower:
+                cursor.execute("SELECT id FROM subjects WHERE code = 'BAS-101' LIMIT 1")
+                sub_row = cursor.fetchone()
+            elif "chem" in t_lower:
+                cursor.execute("SELECT id FROM subjects WHERE code = 'BAS-102' LIMIT 1")
+                sub_row = cursor.fetchone()
+            elif "electr" in t_lower or "bee" in t_lower:
+                cursor.execute("SELECT id FROM subjects WHERE code = 'BEE-101' LIMIT 1")
+                sub_row = cursor.fetchone()
+
+        if sub_row:
+            subject_id = sub_row[0]
         else:
-            conn.close()
-            return None
+            cursor.execute("SELECT id FROM subjects ORDER BY id ASC LIMIT 1")
+            fallback_sub = cursor.fetchone()
+            if fallback_sub:
+                subject_id = fallback_sub[0]
+            else:
+                conn.close()
+                return None
 
     actual_unit_id = None
-    if unit_id:
+    if unit_id and subject_id:
         cursor.execute("SELECT id FROM units WHERE id = ? AND subject_id = ?", (unit_id, subject_id))
         row = cursor.fetchone()
         if row:
@@ -1177,11 +1209,20 @@ def create_note(subject_id, unit_id, title, description, file_url, file_name, fi
             row2 = cursor.fetchone()
             if row2:
                 actual_unit_id = row2[0]
-            else:
-                cursor.execute("SELECT id FROM units WHERE subject_id = ? ORDER BY unit_number ASC LIMIT 1", (subject_id,))
-                row3 = cursor.fetchone()
-                if row3:
-                    actual_unit_id = row3[0]
+
+    if not actual_unit_id and subject_id:
+        import re
+        m = re.search(r'(?:unit\s*[-_:]*\s*(\d+)|(\d+)\s*unit)', (title or "").lower())
+        unit_num = int(m.group(1) or m.group(2)) if m else 1
+        cursor.execute("SELECT id FROM units WHERE subject_id = ? AND unit_number = ? LIMIT 1", (subject_id, unit_num))
+        row3 = cursor.fetchone()
+        if row3:
+            actual_unit_id = row3[0]
+        else:
+            cursor.execute("SELECT id FROM units WHERE subject_id = ? ORDER BY unit_number ASC LIMIT 1", (subject_id,))
+            row4 = cursor.fetchone()
+            if row4:
+                actual_unit_id = row4[0]
 
     try:
         cursor.execute("SELECT MAX(MAX(IFNULL((SELECT MAX(id) FROM notes), 0), IFNULL((SELECT MAX(note_id) FROM deleted_notes), 0)), 600)")
@@ -1336,22 +1377,58 @@ def delete_notes_bulk(note_ids):
 
 def create_student_note_submission(student_id, student_name, student_email, subject_id, unit_id, title, description, file_url, file_name, file_size, is_approved=False):
     conn = get_connection()
+    try:
+        notes_registry.ensure_custom_notes_synced(conn)
+    except Exception:
+        pass
     cursor = conn.cursor()
 
     # 1. Validate subject
-    cursor.execute("SELECT id FROM subjects WHERE id = ?", (subject_id,))
-    if not cursor.fetchone():
-        cursor.execute("SELECT id FROM subjects ORDER BY id ASC LIMIT 1")
-        fallback_sub = cursor.fetchone()
-        if fallback_sub:
-            subject_id = fallback_sub[0]
+    sub_row = None
+    if subject_id:
+        cursor.execute("SELECT id FROM subjects WHERE id = ?", (subject_id,))
+        sub_row = cursor.fetchone()
+    if not sub_row:
+        if subject_id and str(subject_id).isdigit():
+            cursor.execute("SELECT id FROM subjects WHERE code LIKE ? OR code = ?", (f"%{subject_id}%", f"BAS-{subject_id}"))
+            sub_row = cursor.fetchone()
+        if not sub_row and title:
+            t_lower = (title + " " + (description or "")).lower()
+            if "math" in t_lower or "calculus" in t_lower:
+                if "discrete" in t_lower:
+                    cursor.execute("SELECT id FROM subjects WHERE code = 'BCS-303' LIMIT 1")
+                elif any(k in t_lower for k in ["ii", "math-2", "maths-2", "math 2", "203"]):
+                    cursor.execute("SELECT id FROM subjects WHERE code = 'BAS-203' LIMIT 1")
+                else:
+                    cursor.execute("SELECT id FROM subjects WHERE code = 'BAS-103' LIMIT 1")
+                sub_row = cursor.fetchone()
+            elif "mecha" in t_lower:
+                cursor.execute("SELECT id FROM subjects WHERE code = 'BME-101' OR name LIKE '%Mechanical%' LIMIT 1")
+                sub_row = cursor.fetchone()
+            elif "physic" in t_lower:
+                cursor.execute("SELECT id FROM subjects WHERE code = 'BAS-101' LIMIT 1")
+                sub_row = cursor.fetchone()
+            elif "chem" in t_lower:
+                cursor.execute("SELECT id FROM subjects WHERE code = 'BAS-102' LIMIT 1")
+                sub_row = cursor.fetchone()
+            elif "electr" in t_lower or "bee" in t_lower:
+                cursor.execute("SELECT id FROM subjects WHERE code = 'BEE-101' LIMIT 1")
+                sub_row = cursor.fetchone()
+
+        if sub_row:
+            subject_id = sub_row[0]
         else:
-            conn.close()
-            return None
+            cursor.execute("SELECT id FROM subjects ORDER BY id ASC LIMIT 1")
+            fallback_sub = cursor.fetchone()
+            if fallback_sub:
+                subject_id = fallback_sub[0]
+            else:
+                conn.close()
+                return None
 
     # 2. Validate unit
     actual_unit_id = None
-    if unit_id:
+    if unit_id and subject_id:
         cursor.execute("SELECT id FROM units WHERE id = ? AND subject_id = ?", (unit_id, subject_id))
         row = cursor.fetchone()
         if row:
@@ -1361,27 +1438,50 @@ def create_student_note_submission(student_id, student_name, student_email, subj
             row2 = cursor.fetchone()
             if row2:
                 actual_unit_id = row2[0]
-            else:
-                cursor.execute("SELECT id FROM units WHERE subject_id = ? ORDER BY unit_number ASC LIMIT 1", (subject_id,))
-                row3 = cursor.fetchone()
-                if row3:
-                    actual_unit_id = row3[0]
 
-    # 3. Validate student user foreign key
+    if not actual_unit_id and subject_id:
+        import re
+        m = re.search(r'(?:unit\s*[-_:]*\s*(\d+)|(\d+)\s*unit)', (title or "").lower())
+        unit_num = int(m.group(1) or m.group(2)) if m else 1
+        cursor.execute("SELECT id FROM units WHERE subject_id = ? AND unit_number = ? LIMIT 1", (subject_id, unit_num))
+        row3 = cursor.fetchone()
+        if row3:
+            actual_unit_id = row3[0]
+        else:
+            cursor.execute("SELECT id FROM units WHERE subject_id = ? ORDER BY unit_number ASC LIMIT 1", (subject_id,))
+            row4 = cursor.fetchone()
+            if row4:
+                actual_unit_id = row4[0]
+
+    # 3. Student user ID (Validate against users table to prevent Foreign Key constraint errors)
     valid_student_id = None
     if student_id:
-        cursor.execute("SELECT id FROM users WHERE id = ?", (student_id,))
-        if cursor.fetchone():
-            valid_student_id = student_id
+        try:
+            cursor.execute("SELECT id FROM users WHERE id = ?", (student_id,))
+            if cursor.fetchone():
+                valid_student_id = student_id
+            elif str(student_id).isdigit():
+                cursor.execute("SELECT id FROM users WHERE id = ?", (int(student_id),))
+                if cursor.fetchone():
+                    valid_student_id = int(student_id)
+        except Exception:
+            valid_student_id = None
 
     pub_val = 1 if is_approved else 0
     ver_val = 1 if is_approved else 0
     status_val = 'APPROVED' if is_approved else 'PENDING'
 
     try:
-        cursor.execute("SELECT MAX(MAX(IFNULL((SELECT MAX(id) FROM notes), 0), IFNULL((SELECT MAX(note_id) FROM deleted_notes), 0)), 600)")
+        max_custom = 600
+        try:
+            loc_notes = notes_registry.load_local_notes(filter_deleted=False)
+            if loc_notes:
+                max_custom = max([int(n.get("id", 0)) for n in loc_notes if str(n.get("id")).isdigit()] or [600])
+        except Exception:
+            pass
+        cursor.execute("SELECT MAX(MAX(IFNULL((SELECT MAX(id) FROM notes), 0), IFNULL((SELECT MAX(note_id) FROM deleted_notes), 0)), ?)", (max_custom,))
         max_row = cursor.fetchone()
-        max_id = max_row[0] if max_row and max_row[0] else 600
+        max_id = max_row[0] if max_row and max_row[0] else max_custom
         cursor.execute("UPDATE sqlite_sequence SET seq = MAX(IFNULL(seq, 0), ?) WHERE name = 'notes'", (max_id,))
     except Exception:
         pass
@@ -1405,22 +1505,26 @@ def create_student_note_submission(student_id, student_name, student_email, subj
         SELECT n.*, sub.name as subject_name, sub.code as subject_code, sub.semester_id,
                sem.number as semester_number, u.unit_number, u.title as unit_title
         FROM notes n
-        JOIN subjects sub ON n.subject_id = sub.id
-        JOIN semesters sem ON sub.semester_id = sem.id
+        LEFT JOIN subjects sub ON n.subject_id = sub.id
+        LEFT JOIN semesters sem ON sub.semester_id = sem.id
         LEFT JOIN units u ON n.unit_id = u.id
         WHERE n.id = ?
         """, (note_id,))
-        created_row = dict(cursor.fetchone())
-        notes_registry.record_custom_note(created_row)
-    except Exception:
-        pass
+        row = cursor.fetchone()
+        if row:
+            created_row = dict(row)
+            if not created_row.get("contributed_by_id") and student_id:
+                created_row["contributed_by_id"] = student_id
+            notes_registry.record_custom_note(created_row)
+    except Exception as e:
+        print("[Database] Error recording custom note:", e)
     conn.close()
     return note_id
 
-def get_pending_notes():
+def get_pending_notes(force_remote=True):
     conn = get_connection()
     try:
-        notes_registry.ensure_custom_notes_synced(conn)
+        notes_registry.ensure_custom_notes_synced(conn, force_remote=force_remote)
     except Exception:
         pass
     cursor = conn.cursor()
@@ -1431,36 +1535,53 @@ def get_pending_notes():
     LEFT JOIN subjects sub ON n.subject_id = sub.id
     LEFT JOIN semesters sem ON sub.semester_id = sem.id
     LEFT JOIN units u ON n.unit_id = u.id
-    WHERE n.status = 'PENDING' OR (n.is_verified = 0 AND (n.status IS NULL OR n.status != 'REJECTED'))
+    WHERE (n.status = 'PENDING' OR (n.is_verified = 0 AND (n.status IS NULL OR n.status != 'REJECTED')))
+      AND n.id NOT IN (SELECT note_id FROM deleted_notes)
     ORDER BY n.id DESC
     """)
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
     return rows
 
-def get_student_submissions(student_id):
+def get_student_submissions(student_id, student_email=None):
     conn = get_connection()
     try:
         notes_registry.ensure_custom_notes_synced(conn)
     except Exception:
         pass
     cursor = conn.cursor()
-    cursor.execute("""
-    SELECT n.*, sub.name as subject_name, sub.code as subject_code, sub.semester_id,
-           sem.number as semester_number, u.unit_number, u.title as unit_title
-    FROM notes n
-    LEFT JOIN subjects sub ON n.subject_id = sub.id
-    LEFT JOIN semesters sem ON sub.semester_id = sem.id
-    LEFT JOIN units u ON n.unit_id = u.id
-    WHERE n.contributed_by_id = ?
-    ORDER BY n.id DESC
-    """, (student_id,))
+    if student_email:
+        cursor.execute("""
+        SELECT n.*, sub.name as subject_name, sub.code as subject_code, sub.semester_id,
+               sem.number as semester_number, u.unit_number, u.title as unit_title
+        FROM notes n
+        LEFT JOIN subjects sub ON n.subject_id = sub.id
+        LEFT JOIN semesters sem ON sub.semester_id = sem.id
+        LEFT JOIN units u ON n.unit_id = u.id
+        WHERE n.contributed_by_id = ? OR (n.contributed_by_email = ? AND n.contributed_by_email IS NOT NULL AND n.contributed_by_email != '')
+        ORDER BY n.id DESC
+        """, (student_id, str(student_email).strip().lower()))
+    else:
+        cursor.execute("""
+        SELECT n.*, sub.name as subject_name, sub.code as subject_code, sub.semester_id,
+               sem.number as semester_number, u.unit_number, u.title as unit_title
+        FROM notes n
+        LEFT JOIN subjects sub ON n.subject_id = sub.id
+        LEFT JOIN semesters sem ON sub.semester_id = sem.id
+        LEFT JOIN units u ON n.unit_id = u.id
+        WHERE n.contributed_by_id = ?
+        ORDER BY n.id DESC
+        """, (student_id,))
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
     return rows
 
 def verify_student_note(note_id, action="approve", apply_watermark=False, watermark_text=""):
     conn = get_connection()
+    try:
+        notes_registry.ensure_custom_notes_synced(conn)
+    except Exception:
+        pass
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM notes WHERE id = ?", (note_id,))
     note = cursor.fetchone()
@@ -1580,8 +1701,8 @@ def verify_student_note(note_id, action="approve", apply_watermark=False, waterm
         SELECT n.*, sub.name as subject_name, sub.code as subject_code, sub.semester_id,
                sem.number as semester_number, u.unit_number, u.title as unit_title
         FROM notes n
-        JOIN subjects sub ON n.subject_id = sub.id
-        JOIN semesters sem ON sub.semester_id = sem.id
+        LEFT JOIN subjects sub ON n.subject_id = sub.id
+        LEFT JOIN semesters sem ON sub.semester_id = sem.id
         LEFT JOIN units u ON n.unit_id = u.id
         WHERE n.id = ?
         """, (note_id,))
@@ -2052,8 +2173,12 @@ def global_search(term):
 
 # ----------------- Admin Statistics & Uploads -----------------
 
-def get_admin_stats():
+def get_admin_stats(force_remote=False):
     conn = get_connection()
+    try:
+        notes_registry.ensure_custom_notes_synced(conn, force_remote=force_remote)
+    except Exception:
+        pass
     cursor = conn.cursor()
     
     # Accurate Student Metrics from merged database + persistent registry
@@ -2099,7 +2224,11 @@ def get_admin_stats():
         total_pdfs = 0
 
     try:
-        cursor.execute("SELECT COUNT(*) FROM notes WHERE status = 'PENDING' OR (is_verified = 0 AND (status IS NULL OR status != 'REJECTED'))")
+        cursor.execute("""
+            SELECT COUNT(*) FROM notes 
+            WHERE (status = 'PENDING' OR (is_verified = 0 AND (status IS NULL OR status != 'REJECTED')))
+              AND id NOT IN (SELECT note_id FROM deleted_notes)
+        """)
         pending_notes_count = cursor.fetchone()[0]
     except Exception:
         pending_notes_count = 0

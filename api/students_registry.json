@@ -1138,5 +1138,33 @@
     "role": "ADMIN",
     "is_active": 1,
     "created_at": "2026-09-26 16:58:15"
+  },
+  {
+    "id": 136,
+    "full_name": "Aman Verma",
+    "email": "contributor_1792655505@gmail.com",
+    "password_hash": "ffa7c66bbc90496fef29787125cda39c715fd1f5596f847550167a333daa4bcd",
+    "salt": "28b23dd06e870dfc1eaf348152f47827",
+    "college": "Deen Dayal Upadhyaya Gorakhpur University",
+    "course": "B.Tech",
+    "branch": "CSE",
+    "semester": 3,
+    "role": "STUDENT",
+    "is_active": 1,
+    "created_at": "2026-10-22 01:21:45 PM (IST)"
+  },
+  {
+    "id": 136,
+    "full_name": "Aman Verma",
+    "email": "contributor_1792656185@gmail.com",
+    "password_hash": "82c55016701feded6d00545526de1cde88ca58a21bcd19c30d611d158fb5d806",
+    "salt": "1141947f0a953fd0b924cee37edd787e",
+    "college": "Deen Dayal Upadhyaya Gorakhpur University",
+    "course": "B.Tech",
+    "branch": "CSE",
+    "semester": 3,
+    "role": "STUDENT",
+    "is_active": 1,
+    "created_at": "2026-10-22 01:33:05 PM (IST)"
   }
 ]

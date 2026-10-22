@@ -560,7 +560,7 @@ class handler(BaseHTTPRequestHandler):
                 if not user:
                     self.send_json({"error": "Unauthorized session"}, 401)
                     return
-                submissions = database.get_student_submissions(user["id"])
+                submissions = database.get_student_submissions(user["id"], user.get("email"))
                 self.send_json({"submissions": submissions})
                 return
 
@@ -570,7 +570,7 @@ class handler(BaseHTTPRequestHandler):
                 if not user or user.get("role") != "ADMIN":
                     self.send_json({"error": "Admin access required"}, 403)
                     return
-                pending = database.get_pending_notes()
+                pending = database.get_pending_notes(force_remote=True)
                 self.send_json({
                     "notes": pending,
                     "pending_notes": pending,
@@ -585,7 +585,7 @@ class handler(BaseHTTPRequestHandler):
                 if not user or user.get("role") != "ADMIN":
                     self.send_json({"error": "Admin access required"}, 403)
                     return
-                stats = database.get_admin_stats()
+                stats = database.get_admin_stats(force_remote=True)
                 self.send_json({"stats": stats})
                 return
 
@@ -1165,12 +1165,21 @@ class handler(BaseHTTPRequestHandler):
                         subject_id = database.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
                 elif str(subject_id).isdigit():
                     if not database.get_subject_detail(int(subject_id)):
-                        custom_name = (payload.get("custom_subject_name") or payload.get("subject_name") or "").strip()
-                        if custom_name:
-                            custom_code = (payload.get("custom_subject_code") or payload.get("subject_code") or "ME").strip().upper()
-                            custom_sem = int(payload.get("custom_semester_id") or payload.get("semester_id") or 1)
-                            custom_branch = (payload.get("custom_branch") or payload.get("branch") or "ME").strip()
-                            subject_id = database.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
+                        # Check if subject_id matches code e.g. 103 -> BAS-103
+                        conn_chk = database.get_connection()
+                        c_chk = conn_chk.cursor()
+                        c_chk.execute("SELECT id FROM subjects WHERE code LIKE ? OR code = ?", (f"%{subject_id}%", f"BAS-{subject_id}"))
+                        r_chk = c_chk.fetchone()
+                        conn_chk.close()
+                        if r_chk:
+                            subject_id = r_chk[0]
+                        else:
+                            custom_name = (payload.get("custom_subject_name") or payload.get("subject_name") or "").strip()
+                            if custom_name:
+                                custom_code = (payload.get("custom_subject_code") or payload.get("subject_code") or "ME").strip().upper()
+                                custom_sem = int(payload.get("custom_semester_id") or payload.get("semester_id") or 1)
+                                custom_branch = (payload.get("custom_branch") or payload.get("branch") or "ME").strip()
+                                subject_id = database.get_or_create_subject(custom_name, custom_code, custom_sem, custom_branch)
 
                 unit_id = payload.get("unit_id")
                 title = payload.get("title", "").strip()
