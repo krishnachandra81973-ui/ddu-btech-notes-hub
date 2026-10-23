@@ -1592,11 +1592,6 @@ const Admin = {
       }
     }
   },
-      }
-    } catch (err) {
-      App.toast(err.message, "error");
-    }
-  },
 
   async deleteNote(noteId) {
     if (!noteId) return;
