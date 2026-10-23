@@ -180,5 +180,24 @@
     "semester_number": 1,
     "unit_number": 1,
     "unit_title": "Unit 1: Differential Calculus - Successive Differentiation"
+  },
+  {
+    "id": 1000055,
+    "subject_id": 72,
+    "unit_id": 343,
+    "title": "Mechatronic Assignment -1",
+    "description": "Complete solution for Mechatronics Assignment-1 (Unit 4). Covers fundamental concepts of mechatronic systems, sensors, and actuators for BME-101 semester preparation.",
+    "file_url": "/static/uploads/notes/Mechatronic_1_Assignment_-_a5603772.pdf",
+    "file_name": "Mechatronic 1 Assignment -.pdf",
+    "file_size": "3.7 MB",
+    "is_important": 1,
+    "is_published": 1,
+    "is_verified": 1,
+    "status": "APPROVED",
+    "contributed_by_id": null,
+    "contributed_by_name": null,
+    "contributed_by_email": null,
+    "download_count": 0,
+    "created_at": "2026-10-23 19:50:33"
   }
 ]
